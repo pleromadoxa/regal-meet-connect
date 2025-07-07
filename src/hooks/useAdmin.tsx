@@ -120,58 +120,39 @@ export const useAdmin = () => {
 
   const fetchLogs = async () => {
     try {
-      // First try with the foreign key relationship
-      const { data, error } = await supabase
+      // Fetch logs and profiles separately, then join manually
+      const { data: logsData, error: logsError } = await supabase
         .from('platform_usage_logs')
-        .select(`
-          id,
-          user_id,
-          action,
-          ip_address,
-          user_agent,
-          country,
-          created_at,
-          profiles!platform_usage_logs_user_id_fkey (
-            display_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) {
-        console.error('Error with foreign key query, trying alternative approach:', error);
-        
-        // Fallback: fetch logs and profiles separately, then join manually
-        const { data: logsData, error: logsError } = await supabase
-          .from('platform_usage_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(100);
-
-        if (logsError) {
-          console.error('Error fetching logs:', logsError);
-          return;
-        }
-
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, display_name');
-
-        if (profilesError) {
-          console.error('Error fetching profiles for logs:', profilesError);
-        }
-
-        // Manually join the data
-        const logsWithProfiles = logsData?.map(log => ({
-          ...log,
-          profiles: profilesData?.find(profile => profile.id === log.user_id) || null
-        })) || [];
-
-        setLogs(logsWithProfiles);
+      if (logsError) {
+        console.error('Error fetching logs:', logsError);
         return;
       }
 
-      setLogs(data || []);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name');
+
+      if (profilesError) {
+        console.error('Error fetching profiles for logs:', profilesError);
+      }
+
+      // Manually join the data
+      const logsWithProfiles: PlatformUsageLog[] = logsData?.map(log => ({
+        id: log.id,
+        user_id: log.user_id,
+        action: log.action,
+        ip_address: log.ip_address,
+        user_agent: log.user_agent,
+        country: log.country,
+        created_at: log.created_at,
+        profiles: profilesData?.find(profile => profile.id === log.user_id) || null
+      })) || [];
+
+      setLogs(logsWithProfiles);
     } catch (error) {
       console.error('Error fetching logs:', error);
     }

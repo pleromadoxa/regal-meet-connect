@@ -72,7 +72,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
             {isAdmin && !loading && (
               <Button
                 onClick={() => setShowAdmin(true)}
-                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-lg backdrop-blur-sm"
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-lg backdrop-blur-sm transition-all duration-200"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Admin Panel
@@ -81,7 +81,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
             <Button
               onClick={() => signOut()}
               variant="outline"
-              className="bg-white/10 backdrop-blur-lg border-white/20 text-white hover:bg-white/20 shadow-lg"
+              className="bg-white/20 backdrop-blur-lg border-white/30 text-white hover:bg-white/30 hover:border-white/40 shadow-lg transition-all duration-200"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
@@ -137,7 +137,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                   </div>
                   <Button
                     onClick={handleJoinMeeting}
-                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg"
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg transition-all duration-200"
                     disabled={!name.trim() || !meetingId.trim()}
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
@@ -157,14 +157,14 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                     <Button
                       onClick={generateMeetingId}
                       variant="outline"
-                      className="bg-gradient-to-r from-blue-500/80 to-blue-600/80 hover:from-blue-600/90 hover:to-blue-700/90 text-white border-white/20 shadow-lg backdrop-blur-sm"
+                      className="bg-gradient-to-r from-blue-500/80 to-blue-600/80 hover:from-blue-600/90 hover:to-blue-700/90 text-white border-white/20 shadow-lg backdrop-blur-sm transition-all duration-200"
                     >
                       <Dice6 className="h-4 w-4" />
                     </Button>
                   </div>
                   <Button
                     onClick={handleCreateMeeting}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg"
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg transition-all duration-200"
                     disabled={!name.trim()}
                   >
                     <Dice6 className="h-4 w-4 mr-2" />
