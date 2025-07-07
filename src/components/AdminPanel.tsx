@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
 import { useAdmin } from '@/hooks/useAdmin';
-import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut } from 'lucide-react';
+import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Home, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 
 export const AdminPanel = () => {
   const { users, logs, countryStats, loading, assignRole, refreshData } = useAdmin();
@@ -30,6 +32,36 @@ export const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-6">
+      {/* Navigation Bar */}
+      <div className="mb-6">
+        <NavigationMenu className="justify-start">
+          <NavigationMenuList className="flex space-x-4">
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link 
+                  to="/" 
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 focus:bg-white/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to App
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link 
+                  to="/" 
+                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 focus:bg-white/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Main App
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">

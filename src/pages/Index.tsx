@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { JoinMeeting } from '@/components/JoinMeeting';
 import { AuthPage } from '@/components/AuthPage';
+import { AdminAccessButton } from '@/components/AdminAccessButton';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -66,7 +67,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       {!isInMeeting ? (
-        <JoinMeeting onJoinMeeting={handleJoinMeeting} />
+        <div className="relative">
+          <div className="absolute top-6 right-6 z-10">
+            <AdminAccessButton />
+          </div>
+          <JoinMeeting onJoinMeeting={handleJoinMeeting} />
+        </div>
       ) : (
         <VideoConference 
           meetingId={meetingId}
