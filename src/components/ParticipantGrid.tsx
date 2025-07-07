@@ -40,7 +40,7 @@ export const ParticipantGrid = ({
   return (
     <div className={`grid ${gridClass} gap-4 h-full min-h-[400px]`}>
       {/* Local Video */}
-      <Card className="relative overflow-hidden bg-slate-800 border-2 border-yellow-400/50">
+      <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-yellow-400/70 shadow-2xl backdrop-blur-sm">
         {isVideoEnabled && localStream ? (
           <video
             ref={localVideoRef}
@@ -50,20 +50,20 @@ export const ParticipantGrid = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-700">
-            <div className="p-4 bg-slate-600 rounded-full mb-4">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+            <div className="p-6 bg-slate-600/80 rounded-full mb-4 shadow-lg">
               {isVideoEnabled ? (
-                <User className="h-12 w-12 text-gray-300" />
+                <User className="h-16 w-16 text-gray-200" />
               ) : (
-                <VideoOff className="h-12 w-12 text-gray-300" />
+                <VideoOff className="h-16 w-16 text-gray-200" />
               )}
             </div>
-            <p className="text-white font-semibold">Camera Off</p>
+            <p className="text-white font-semibold text-lg">Camera Off</p>
           </div>
         )}
         
-        <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-          <span className="text-white text-sm font-medium">{userName} (You)</span>
+        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
+          <span className="text-white text-sm font-semibold">{userName} (You)</span>
         </div>
       </Card>
 
@@ -85,20 +85,32 @@ const RemoteVideo = ({ remoteStream }: RemoteVideoProps) => {
   useEffect(() => {
     if (videoRef.current && remoteStream.stream) {
       videoRef.current.srcObject = remoteStream.stream;
+      console.log('Setting remote stream for:', remoteStream.userName);
     }
   }, [remoteStream.stream]);
 
+  const hasVideo = remoteStream.stream?.getVideoTracks().length > 0;
+
   return (
-    <Card className="relative overflow-hidden bg-slate-800 border-white/20">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        className="w-full h-full object-cover"
-      />
+    <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-white/30 shadow-2xl backdrop-blur-sm">
+      {hasVideo ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+          <div className="p-6 bg-slate-600/80 rounded-full mb-4 shadow-lg">
+            <User className="h-16 w-16 text-gray-200" />
+          </div>
+          <p className="text-white font-semibold text-lg">Camera Off</p>
+        </div>
+      )}
       
-      <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full">
-        <span className="text-white text-sm font-medium">{remoteStream.userName}</span>
+      <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
+        <span className="text-white text-sm font-semibold">{remoteStream.userName}</span>
       </div>
     </Card>
   );

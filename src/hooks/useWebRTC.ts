@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
@@ -26,8 +25,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const { toast } = useToast();
 
-  const { initializeSignaling, sendSignalingMessage, connectedPeers, cleanup: cleanupSignaling } = 
-    useWebRTCSignaling(meetingId, userId);
+  const { initializeSignaling, sendSignalingMessage, connectedPeers, peerUserNames, cleanup: cleanupSignaling } = 
+    useWebRTCSignaling(meetingId, userId, userName);
 
   const getMediaConstraints = () => ({
     video: {
@@ -127,17 +126,19 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       
       setRemoteStreams(prev => {
         const existing = prev.find(s => s.id === remotePeerId);
+        const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
+        
         if (existing) {
           return prev.map(s => 
             s.id === remotePeerId 
-              ? { ...s, stream: remoteStream }
+              ? { ...s, stream: remoteStream, userName: peerName }
               : s
           );
         }
         return [...prev, { 
           id: remotePeerId, 
           stream: remoteStream, 
-          userName: `User ${remotePeerId.slice(-4)}` 
+          userName: peerName
         }];
       });
     };
@@ -179,7 +180,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
     peerConnections.current.set(remotePeerId, peerConnection);
     return peerConnection;
-  }, [sendSignalingMessage, toast]);
+  }, [sendSignalingMessage, toast, peerUserNames]);
 
   const handleSignalingMessage = useCallback(async (message: any) => {
     const { type, data, from } = message;
@@ -244,7 +245,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     return () => window.removeEventListener('webrtc-signaling', handleSignaling);
   }, [handleSignalingMessage]);
 
-  // Handle new peers joining
+  // Handle new peers joining and update user names
   useEffect(() => {
     connectedPeers.forEach(peerId => {
       if (!peerConnections.current.has(peerId)) {
@@ -252,7 +253,15 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         initiateCallToPeer(peerId);
       }
     });
-  }, [connectedPeers, initiateCallToPeer]);
+
+    // Update remote stream user names when peer names change
+    setRemoteStreams(prev => 
+      prev.map(stream => ({
+        ...stream,
+        userName: peerUserNames.get(stream.id) || `User ${stream.id.slice(-4)}`
+      }))
+    );
+  }, [connectedPeers, initiateCallToPeer, peerUserNames]);
 
   const initialize = async () => {
     try {
