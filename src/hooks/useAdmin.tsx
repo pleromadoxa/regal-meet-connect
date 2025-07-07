@@ -53,12 +53,17 @@ export const useAdmin = () => {
     if (!user) return;
 
     try {
-      const { data } = await supabase.rpc('has_role', {
+      const { data, error } = await supabase.rpc('has_role', {
         _user_id: user.id,
         _role: 'admin'
       });
       
-      setIsAdmin(data || false);
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data || false);
+      }
       
       if (data) {
         await Promise.all([
@@ -69,6 +74,7 @@ export const useAdmin = () => {
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
+      setIsAdmin(false);
     } finally {
       setLoading(false);
     }
@@ -76,15 +82,24 @@ export const useAdmin = () => {
 
   const fetchUsers = async () => {
     try {
-      // Get all profiles first
-      const { data: profiles } = await supabase
+      // Get all profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
 
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        return;
+      }
+
       // Get user roles
-      const { data: userRoles } = await supabase
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+      }
 
       // Combine the data
       const usersWithProfiles = profiles?.map((profile: any) => ({
@@ -105,18 +120,43 @@ export const useAdmin = () => {
 
   const fetchLogs = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('platform_usage_logs')
         .select(`
-          *,
-          profiles (
+          id,
+          user_id,
+          action,
+          ip_address,
+          user_agent,
+          country,
+          created_at,
+          profiles!platform_usage_logs_user_id_fkey (
             display_name
           )
         `)
         .order('created_at', { ascending: false })
         .limit(100);
 
-      setLogs(data || []);
+      if (error) {
+        console.error('Error fetching logs:', error);
+        return;
+      }
+
+      // Transform the data to match our interface
+      const transformedLogs = data?.map(log => ({
+        id: log.id,
+        user_id: log.user_id,
+        action: log.action,
+        ip_address: log.ip_address,
+        user_agent: log.user_agent,
+        country: log.country,
+        created_at: log.created_at,
+        profiles: log.profiles ? {
+          display_name: log.profiles.display_name
+        } : null
+      })) || [];
+
+      setLogs(transformedLogs);
     } catch (error) {
       console.error('Error fetching logs:', error);
     }
@@ -124,10 +164,15 @@ export const useAdmin = () => {
 
   const fetchCountryStats = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('platform_usage_logs')
         .select('country')
         .not('country', 'is', null);
+
+      if (error) {
+        console.error('Error fetching country stats:', error);
+        return;
+      }
 
       if (data) {
         const countryCounts = data.reduce((acc: Record<string, number>, log: any) => {

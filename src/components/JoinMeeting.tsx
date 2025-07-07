@@ -3,44 +3,47 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Crown, LogOut, Shield, Plus, Shuffle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Crown, Dice6, UserPlus, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
-import { AdminPanel } from './AdminPanel';
+import { AdminPanel } from '@/components/AdminPanel';
 
 interface JoinMeetingProps {
-  onJoinMeeting: (name: string, roomId: string) => void;
+  onJoinMeeting: (name: string, meetingId: string) => void;
 }
 
 export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
-  const [roomId, setRoomId] = useState('');
+  const [name, setName] = useState('');
+  const [meetingId, setMeetingId] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
-  const { profile, signOut } = useAuth();
-  const { isAdmin, loading: adminLoading } = useAdmin();
+  const { user, signOut } = useAuth();
+  const { isAdmin, loading } = useAdmin();
 
-  const generateRoomId = () => {
-    // Generate shorter 4-character room ID
-    const id = Math.random().toString(36).substring(2, 6).toUpperCase();
-    setRoomId(id);
+  const generateMeetingId = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 4; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setMeetingId(result);
   };
 
-  const createNewMeeting = () => {
-    // Generate a new meeting ID and join immediately
-    const id = Math.random().toString(36).substring(2, 6).toUpperCase();
-    if (profile?.display_name) {
-      onJoinMeeting(profile.display_name, id);
+  const handleJoinMeeting = () => {
+    if (name.trim() && meetingId.trim()) {
+      onJoinMeeting(name, meetingId);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (profile?.display_name && roomId) {
-      onJoinMeeting(profile.display_name, roomId);
+  const handleCreateMeeting = () => {
+    if (name.trim()) {
+      generateMeetingId();
+      setTimeout(() => {
+        if (meetingId) {
+          onJoinMeeting(name, meetingId);
+        }
+      }, 100);
     }
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
   };
 
   if (showAdmin && isAdmin) {
@@ -48,133 +51,134 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        {/* Header with Admin and Sign Out */}
-        <div className="flex justify-between items-center">
-          {isAdmin && !adminLoading && (
-            <Button
-              onClick={() => setShowAdmin(true)}
-              variant="outline"
-              className="bg-orange-500/20 border-orange-400 text-orange-100 hover:bg-orange-400/30 font-medium backdrop-blur-sm"
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              Admin Panel
-            </Button>
-          )}
-          
-          <Button
-            onClick={handleSignOut}
-            variant="outline"
-            className="bg-white/20 border-white text-white hover:bg-white/30 font-medium ml-auto backdrop-blur-sm"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
-        </div>
-
-        {/* Logo and Title */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Header */}
         <div className="text-center space-y-4">
-          <div className="flex items-center justify-center space-x-3">
-            <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full">
-              <Crown className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold text-white">Regal Meet</h1>
-              <p className="text-blue-200">Premium Video Conferencing</p>
+          <div className="flex justify-center">
+            <div className="p-4 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full">
+              <Crown className="h-12 w-12 text-white" />
             </div>
           </div>
-          {profile?.display_name && (
-            <p className="text-white/80">Welcome back, {profile.display_name}!</p>
-          )}
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Regal Meet</h1>
+            <p className="text-blue-200">Premium video conferencing experience</p>
+          </div>
         </div>
 
-        {/* Create New Meeting Button */}
-        <Card className="bg-white/10 backdrop-blur-lg border-white/20">
-          <CardContent className="pt-6">
+        {/* User Controls */}
+        {user && (
+          <div className="flex justify-center space-x-3">
+            {isAdmin && !loading && (
+              <Button
+                onClick={() => setShowAdmin(true)}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0 shadow-lg backdrop-blur-sm"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Admin Panel
+              </Button>
+            )}
             <Button
-              onClick={createNewMeeting}
-              disabled={!profile?.display_name}
-              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-lg transition-all duration-200 transform hover:scale-105 mb-4"
+              onClick={() => signOut()}
+              variant="outline"
+              className="bg-white/10 backdrop-blur-lg border-white/20 text-white hover:bg-white/20 shadow-lg"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Create New Meeting
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
             </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white/20" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-slate-900 px-2 text-white/60">or</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
-        {/* Join Existing Meeting Card */}
-        <Card className="bg-white/10 backdrop-blur-lg border-white/20">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center text-white flex items-center justify-center space-x-2">
-              <Video className="h-6 w-6" />
-              <span>Join Meeting</span>
-            </CardTitle>
+        {/* Main Card */}
+        <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-center text-white text-xl">Join a Meeting</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="roomId" className="text-sm font-medium text-blue-100">
-                  Meeting ID
-                </label>
-                <div className="flex space-x-2">
-                  <Input
-                    id="roomId"
-                    type="text"
-                    placeholder="Enter meeting ID"
-                    value={roomId}
-                    onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                    maxLength={4}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
-                    required
-                  />
-                  <Button
-                    type="button"
-                    onClick={generateRoomId}
-                    variant="outline"
-                    className="bg-blue-500/20 border-blue-400 text-blue-100 hover:bg-blue-400/30 font-medium backdrop-blur-sm"
-                  >
-                    <Shuffle className="h-4 w-4 mr-1" />
-                    Generate
-                  </Button>
-                </div>
-              </div>
+            <Tabs defaultValue="join" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2 bg-white/10">
+                <TabsTrigger 
+                  value="join" 
+                  className="data-[state=active]:bg-orange-500/80 data-[state=active]:text-white text-white/70"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Join Meeting
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="create" 
+                  className="data-[state=active]:bg-orange-500/80 data-[state=active]:text-white text-white/70"
+                >
+                  <Dice6 className="h-4 w-4 mr-2" />
+                  Create Meeting
+                </TabsTrigger>
+              </TabsList>
 
-              <Button
-                type="submit"
-                disabled={!profile?.display_name || !roomId}
-                className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
-              >
-                <Users className="h-5 w-5 mr-2" />
-                Join Meeting
-              </Button>
-            </form>
+              <div className="space-y-4">
+                <div>
+                  <Input
+                    type="text"
+                    placeholder="Enter your name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-orange-400 focus:ring-orange-400"
+                  />
+                </div>
+
+                <TabsContent value="join" className="space-y-4 mt-0">
+                  <div>
+                    <Input
+                      type="text"
+                      placeholder="Enter Meeting ID"
+                      value={meetingId}
+                      onChange={(e) => setMeetingId(e.target.value.toUpperCase())}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-orange-400 focus:ring-orange-400"
+                      maxLength={4}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleJoinMeeting}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg"
+                    disabled={!name.trim() || !meetingId.trim()}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Join Meeting
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="create" className="space-y-4 mt-0">
+                  <div className="flex space-x-2">
+                    <Input
+                      type="text"
+                      placeholder="Meeting ID"
+                      value={meetingId}
+                      readOnly
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+                    />
+                    <Button
+                      onClick={generateMeetingId}
+                      variant="outline"
+                      className="bg-gradient-to-r from-blue-500/80 to-blue-600/80 hover:from-blue-600/90 hover:to-blue-700/90 text-white border-white/20 shadow-lg backdrop-blur-sm"
+                    >
+                      <Dice6 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={handleCreateMeeting}
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white border-0 shadow-lg"
+                    disabled={!name.trim()}
+                  >
+                    <Dice6 className="h-4 w-4 mr-2" />
+                    Create & Join Meeting
+                  </Button>
+                </TabsContent>
+              </div>
+            </Tabs>
           </CardContent>
         </Card>
 
-        {/* Features */}
-        <div className="grid grid-cols-3 gap-4 text-center">
-          <div className="text-blue-200">
-            <Video className="h-6 w-6 mx-auto mb-2" />
-            <p className="text-sm">HD Video</p>
-          </div>
-          <div className="text-blue-200">
-            <Users className="h-6 w-6 mx-auto mb-2" />
-            <p className="text-sm">Multi-User</p>
-          </div>
-          <div className="text-blue-200">
-            <Crown className="h-6 w-6 mx-auto mb-2" />
-            <p className="text-sm">Premium Quality</p>
-          </div>
+        {/* Footer */}
+        <div className="text-center text-blue-200/60 text-sm">
+          Experience crystal-clear video calls with enterprise-grade security
         </div>
       </div>
     </div>
