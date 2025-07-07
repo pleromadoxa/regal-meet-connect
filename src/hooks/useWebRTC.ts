@@ -1,6 +1,7 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useWebRTCSignaling } from './useWebRTCSignaling';
 
 interface RemoteStream {
   id: string;
@@ -8,7 +9,13 @@ interface RemoteStream {
   userName: string;
 }
 
-export const useWebRTC = (meetingId: string, userName: string) => {
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' }
+];
+
+export const useWebRTC = (meetingId: string, userName: string, userId: string) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
@@ -19,52 +26,65 @@ export const useWebRTC = (meetingId: string, userName: string) => {
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const { toast } = useToast();
 
+  const { initializeSignaling, sendSignalingMessage, connectedPeers, cleanup: cleanupSignaling } = 
+    useWebRTCSignaling(meetingId, userId);
+
+  const getMediaConstraints = () => ({
+    video: {
+      width: { ideal: 1280, max: 1920 },
+      height: { ideal: 720, max: 1080 },
+      frameRate: { ideal: 30, max: 60 },
+      facingMode: 'user'
+    },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: 44100
+    }
+  });
+
   const requestMediaPermissions = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      });
+      const constraints = getMediaConstraints();
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       localStreamRef.current = stream;
       setLocalStream(stream);
       
       console.log('Media permissions granted:', {
         video: stream.getVideoTracks().length > 0,
-        audio: stream.getAudioTracks().length > 0
+        audio: stream.getAudioTracks().length > 0,
+        videoSettings: stream.getVideoTracks()[0]?.getSettings(),
+        audioSettings: stream.getAudioTracks()[0]?.getSettings()
       });
       
       return stream;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accessing media devices:', error);
+      
+      let errorMessage = "Unable to access camera/microphone.";
+      if (error.name === 'NotAllowedError') {
+        errorMessage = "Camera/microphone access denied. Please allow permissions and try again.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = "No camera or microphone found.";
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = "Camera/microphone is already in use by another application.";
+      }
+      
       toast({
         title: "Permission Error",
-        description: "Unable to access camera/microphone. Please check permissions.",
+        description: errorMessage,
         variant: "destructive"
       });
       throw error;
     }
   };
 
-  const createPeerConnection = (remotePeerId: string) => {
-    const configuration: RTCConfiguration = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-      ]
-    };
+  const createPeerConnection = useCallback((remotePeerId: string) => {
+    const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-    const peerConnection = new RTCPeerConnection(configuration);
-
-    // Add local stream tracks to peer connection
+    // Add local stream tracks
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStreamRef.current!);
@@ -96,8 +116,11 @@ export const useWebRTC = (meetingId: string, userName: string) => {
     // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        console.log('ICE candidate generated for:', remotePeerId);
-        // In a real implementation, you would send this to the remote peer via signaling server
+        sendSignalingMessage({
+          type: 'ice-candidate',
+          data: event.candidate,
+          to: remotePeerId
+        });
       }
     };
 
@@ -111,26 +134,89 @@ export const useWebRTC = (meetingId: string, userName: string) => {
           description: `Connection with participant ${remotePeerId.slice(-4)} failed`,
           variant: "destructive"
         });
+      } else if (peerConnection.connectionState === 'connected') {
+        toast({
+          title: "Peer Connected",
+          description: `Connected to participant ${remotePeerId.slice(-4)}`
+        });
       }
     };
 
     peerConnections.current.set(remotePeerId, peerConnection);
     return peerConnection;
-  };
+  }, [sendSignalingMessage, toast]);
+
+  const handleSignalingMessage = useCallback(async (message: any) => {
+    const { type, data, from } = message;
+
+    switch (type) {
+      case 'offer':
+        const pc1 = createPeerConnection(from);
+        await pc1.setRemoteDescription(new RTCSessionDescription(data));
+        const answer = await pc1.createAnswer();
+        await pc1.setLocalDescription(answer);
+        sendSignalingMessage({
+          type: 'answer',
+          data: answer,
+          to: from
+        });
+        break;
+
+      case 'answer':
+        const pc2 = peerConnections.current.get(from);
+        if (pc2) {
+          await pc2.setRemoteDescription(new RTCSessionDescription(data));
+        }
+        break;
+
+      case 'ice-candidate':
+        const pc3 = peerConnections.current.get(from);
+        if (pc3) {
+          await pc3.addIceCandidate(new RTCIceCandidate(data));
+        }
+        break;
+    }
+  }, [createPeerConnection, sendSignalingMessage]);
+
+  const initiateCallToPeer = useCallback(async (peerId: string) => {
+    const peerConnection = createPeerConnection(peerId);
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    
+    sendSignalingMessage({
+      type: 'offer',
+      data: offer,
+      to: peerId
+    });
+  }, [createPeerConnection, sendSignalingMessage]);
+
+  useEffect(() => {
+    const handleSignaling = (event: any) => {
+      handleSignalingMessage(event.detail);
+    };
+
+    window.addEventListener('webrtc-signaling', handleSignaling);
+    return () => window.removeEventListener('webrtc-signaling', handleSignaling);
+  }, [handleSignalingMessage]);
+
+  // Handle new peers joining
+  useEffect(() => {
+    connectedPeers.forEach(peerId => {
+      if (!peerConnections.current.has(peerId)) {
+        initiateCallToPeer(peerId);
+      }
+    });
+  }, [connectedPeers, initiateCallToPeer]);
 
   const initialize = async () => {
     try {
       await requestMediaPermissions();
+      initializeSignaling();
       
-      // Simulate connecting to other participants
-      // In a real app, this would involve signaling server communication
-      setTimeout(() => {
-        console.log('WebRTC initialized for meeting:', meetingId);
-        toast({
-          title: "Connected",
-          description: "Successfully joined the meeting!"
-        });
-      }, 1000);
+      toast({
+        title: "Connected",
+        description: "Successfully joined the meeting!"
+      });
       
     } catch (error) {
       console.error('Failed to initialize WebRTC:', error);
@@ -144,7 +230,6 @@ export const useWebRTC = (meetingId: string, userName: string) => {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
         
-        console.log('Video toggled:', videoTrack.enabled);
         toast({
           title: videoTrack.enabled ? "Camera On" : "Camera Off",
           description: `Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`
@@ -160,7 +245,6 @@ export const useWebRTC = (meetingId: string, userName: string) => {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
         
-        console.log('Audio toggled:', audioTrack.enabled);
         toast({
           title: audioTrack.enabled ? "Microphone On" : "Microphone Off",
           description: `Audio ${audioTrack.enabled ? 'enabled' : 'disabled'}`
@@ -174,7 +258,7 @@ export const useWebRTC = (meetingId: string, userName: string) => {
       if (isScreenSharing) {
         // Stop screen sharing and return to camera
         const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: getMediaConstraints().video
         });
         
         const videoTrack = videoStream.getVideoTracks()[0];
@@ -217,7 +301,7 @@ export const useWebRTC = (meetingId: string, userName: string) => {
         // Handle screen share end
         screenTrack.onended = () => {
           setIsScreenSharing(false);
-          toggleScreenShare(); // This will switch back to camera
+          toggleScreenShare();
         };
         
         // Replace video track in all peer connections
@@ -271,6 +355,9 @@ export const useWebRTC = (meetingId: string, userName: string) => {
     });
     peerConnections.current.clear();
 
+    // Cleanup signaling
+    cleanupSignaling();
+
     // Reset state
     setLocalStream(null);
     setRemoteStreams([]);
@@ -280,7 +367,7 @@ export const useWebRTC = (meetingId: string, userName: string) => {
     localStreamRef.current = null;
     
     console.log('WebRTC cleanup completed');
-  }, []);
+  }, [cleanupSignaling]);
 
   return {
     localStream,
@@ -292,6 +379,7 @@ export const useWebRTC = (meetingId: string, userName: string) => {
     toggleAudio,
     toggleScreenShare,
     initialize,
-    cleanup
+    cleanup,
+    connectedPeers: Array.from(connectedPeers)
   };
 };

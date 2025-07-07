@@ -3,15 +3,16 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Crown } from 'lucide-react';
+import { Video, Users, Crown, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JoinMeetingProps {
   onJoinMeeting: (name: string, roomId: string) => void;
 }
 
 export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
-  const [name, setName] = useState('');
   const [roomId, setRoomId] = useState('');
+  const { profile, signOut } = useAuth();
 
   const generateRoomId = () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -20,12 +21,30 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onJoinMeeting(name, roomId);
+    if (profile?.display_name && roomId) {
+      onJoinMeeting(profile.display_name, roomId);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
+        {/* Header with Sign Out */}
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+
         {/* Logo and Title */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center space-x-3">
@@ -37,6 +56,9 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
               <p className="text-blue-200">Premium Video Conferencing</p>
             </div>
           </div>
+          {profile?.display_name && (
+            <p className="text-white/80">Welcome back, {profile.display_name}!</p>
+          )}
         </div>
 
         {/* Join Meeting Card */}
@@ -49,21 +71,6 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium text-blue-100">
-                  Your Name
-                </label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-yellow-400"
-                  required
-                />
-              </div>
-
               <div className="space-y-2">
                 <label htmlFor="roomId" className="text-sm font-medium text-blue-100">
                   Meeting ID
@@ -91,6 +98,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
 
               <Button
                 type="submit"
+                disabled={!profile?.display_name || !roomId}
                 className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
               >
                 <Users className="h-5 w-5 mr-2" />

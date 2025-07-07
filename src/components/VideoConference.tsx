@@ -1,12 +1,12 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { VideoControls } from '@/components/VideoControls';
 import { ParticipantGrid } from '@/components/ParticipantGrid';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Copy, Users } from 'lucide-react';
+import { Crown, Copy, Users, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface VideoConferenceProps {
   meetingId: string;
@@ -16,6 +16,7 @@ interface VideoConferenceProps {
 
 export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoConferenceProps) => {
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
   const {
     localStream,
     remoteStreams,
@@ -26,13 +27,16 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
     toggleAudio,
     toggleScreenShare,
     initialize,
-    cleanup
-  } = useWebRTC(meetingId, userName);
+    cleanup,
+    connectedPeers
+  } = useWebRTC(meetingId, userName, user?.id || '');
 
   useEffect(() => {
-    initialize();
+    if (user?.id) {
+      initialize();
+    }
     return () => cleanup();
-  }, [meetingId]);
+  }, [meetingId, user?.id]);
 
   const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
@@ -45,6 +49,11 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
   const handleLeaveMeeting = () => {
     cleanup();
     onLeaveMeeting();
+  };
+
+  const handleSignOut = async () => {
+    cleanup();
+    await signOut();
   };
 
   return (
@@ -73,13 +82,22 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
           
           <div className="flex items-center space-x-2 text-white">
             <Users className="h-5 w-5" />
-            <span>{remoteStreams.length + 1}</span>
+            <span>{connectedPeers.length + 1}</span>
           </div>
+
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
       </div>
 
       {/* Video Grid */}
-      <div className="flex-1 mb-6">
+      <div className="flex-1 mb-20">
         <ParticipantGrid
           localStream={localStream}
           remoteStreams={remoteStreams}
