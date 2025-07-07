@@ -130,7 +130,7 @@ export const useAdmin = () => {
           user_agent,
           country,
           created_at,
-          profiles!platform_usage_logs_user_id_fkey (
+          profiles (
             display_name
           )
         `)
@@ -142,21 +142,7 @@ export const useAdmin = () => {
         return;
       }
 
-      // Transform the data to match our interface
-      const transformedLogs = data?.map(log => ({
-        id: log.id,
-        user_id: log.user_id,
-        action: log.action,
-        ip_address: log.ip_address,
-        user_agent: log.user_agent,
-        country: log.country,
-        created_at: log.created_at,
-        profiles: log.profiles ? {
-          display_name: log.profiles.display_name
-        } : null
-      })) || [];
-
-      setLogs(transformedLogs);
+      setLogs(data || []);
     } catch (error) {
       console.error('Error fetching logs:', error);
     }
