@@ -120,6 +120,7 @@ export const useAdmin = () => {
 
   const fetchLogs = async () => {
     try {
+      // First try with the foreign key relationship
       const { data, error } = await supabase
         .from('platform_usage_logs')
         .select(`
@@ -130,7 +131,7 @@ export const useAdmin = () => {
           user_agent,
           country,
           created_at,
-          profiles (
+          profiles!platform_usage_logs_user_id_fkey (
             display_name
           )
         `)
@@ -138,7 +139,35 @@ export const useAdmin = () => {
         .limit(100);
 
       if (error) {
-        console.error('Error fetching logs:', error);
+        console.error('Error with foreign key query, trying alternative approach:', error);
+        
+        // Fallback: fetch logs and profiles separately, then join manually
+        const { data: logsData, error: logsError } = await supabase
+          .from('platform_usage_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (logsError) {
+          console.error('Error fetching logs:', logsError);
+          return;
+        }
+
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, display_name');
+
+        if (profilesError) {
+          console.error('Error fetching profiles for logs:', profilesError);
+        }
+
+        // Manually join the data
+        const logsWithProfiles = logsData?.map(log => ({
+          ...log,
+          profiles: profilesData?.find(profile => profile.id === log.user_id) || null
+        })) || [];
+
+        setLogs(logsWithProfiles);
         return;
       }
 
