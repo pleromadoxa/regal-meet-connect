@@ -9,8 +9,9 @@ import { useWebRTC } from '@/hooks/useWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Copy, Users, LogOut, Menu, X } from 'lucide-react';
+import { Crown, Copy, Users, LogOut, Menu, X, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface VideoConferenceProps {
   meetingId: string;
@@ -29,9 +30,11 @@ export const VideoConference = ({
 }: VideoConferenceProps) => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [selectedVideoId, setSelectedVideoId] = useState<string>('local');
   const [showParticipants, setShowParticipants] = useState(false);
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
+  const [currentMeeting, setCurrentMeeting] = useState<any>(null);
 
   const {
     localStream,
@@ -57,7 +60,8 @@ export const VideoConference = ({
     fetchParticipants, 
     toggleMuteParticipant,
     joinMeeting,
-    joinAsHost
+    joinAsHost,
+    isUserHost
   } = useMeetingManagement();
 
   const { 
@@ -77,9 +81,11 @@ export const VideoConference = ({
         
         if (result) {
           let participantId: string;
+          let meeting: any;
           
           if (isHost && 'participant' in result) {
             participantId = result.participant.id;
+            meeting = result.meeting;
             fetchParticipants(result.meeting.id);
           } else if (!isHost && 'id' in result) {
             participantId = result.id;
@@ -89,6 +95,7 @@ export const VideoConference = ({
           }
           
           setCurrentParticipantId(participantId);
+          setCurrentMeeting(meeting);
         }
       };
       
@@ -131,10 +138,28 @@ export const VideoConference = ({
   };
 
   const handleToggleMute = (participantId: string, isMuted: boolean) => {
-    if (isHost) {
+    // Only hosts can mute/unmute other participants
+    if (isHost || (currentMeeting && isUserHost(currentMeeting))) {
       toggleMuteParticipant(participantId, isMuted);
+      toast({
+        title: isMuted ? "Participant Muted" : "Participant Unmuted",
+        description: "Host action applied successfully"
+      });
+    } else {
+      toast({
+        title: "Permission Denied",
+        description: "Only the host can mute/unmute participants",
+        variant: "destructive"
+      });
     }
   };
+
+  const navigateToSettings = () => {
+    navigate('/settings');
+  };
+
+  // Check if current user is the actual host
+  const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32">
@@ -147,7 +172,12 @@ export const VideoConference = ({
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
               Regal Meet
-              {isHost && <span className="text-yellow-300 ml-2 text-sm">(Host)</span>}
+              {isCurrentUserHost && (
+                <span className="inline-flex items-center ml-2 px-2 py-1 bg-yellow-500/20 border border-yellow-400/40 rounded-full text-yellow-300 text-xs font-medium">
+                  <Crown className="h-3 w-3 mr-1" />
+                  HOST
+                </span>
+              )}
             </h1>
             <p className="text-blue-200 font-medium text-sm sm:text-base">Meeting: {meetingId}</p>
           </div>
@@ -176,6 +206,16 @@ export const VideoConference = ({
             className="lg:hidden bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
           >
             {showParticipants ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
+
+          <Button
+            onClick={navigateToSettings}
+            variant="outline"
+            size="sm"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
+          >
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Settings</span>
           </Button>
 
           <Button
@@ -210,7 +250,7 @@ export const VideoConference = ({
             remoteStreams={remoteStreams}
             localStream={localStream}
             currentUserId={user?.id || ''}
-            isHost={isHost}
+            isHost={isCurrentUserHost}
             onToggleMute={handleToggleMute}
             onSelectVideo={handleVideoSelect}
             selectedVideoId={selectedVideoId}

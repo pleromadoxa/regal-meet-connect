@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
-import { VideoReactions } from '@/components/VideoReactions';
-import { RaiseHand } from '@/components/RaiseHand';
 import { InMeetingChat } from '@/components/InMeetingChat';
+import { RaiseHand } from '@/components/RaiseHand';
+import { VideoReactions } from '@/components/VideoReactions';
 import { 
   Mic, 
   MicOff, 
@@ -13,12 +14,12 @@ import {
   Monitor, 
   MonitorOff, 
   Phone, 
-  RotateCw,
   Settings,
-  ChevronDown,
-  LayoutDashboard
+  MessageSquare,
+  LayoutDashboard,
+  Captions,
+  RotateCcw
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -35,7 +36,7 @@ interface VideoControlsProps {
   onDeviceChange: (type: 'audio' | 'video', deviceId: string) => void;
   onToggleCaptions: () => void;
   captionsEnabled: boolean;
-  userName?: string;
+  userName: string;
   onNavigateToDashboard?: () => void;
 }
 
@@ -54,108 +55,58 @@ export const VideoControls = ({
   onDeviceChange,
   onToggleCaptions,
   captionsEnabled,
-  userName = 'User',
+  userName,
   onNavigateToDashboard
 }: VideoControlsProps) => {
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-
-  const handleSendReaction = (type: 'heart' | 'like' | 'celebration') => {
-    window.dispatchEvent(new CustomEvent('send-reaction', {
-      detail: { type }
-    }));
-  };
+  const [showSettings, setShowSettings] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [handRaised, setHandRaised] = useState(false);
 
   const handleHandRaise = (isRaised: boolean) => {
-    window.dispatchEvent(new CustomEvent('hand-raise', {
-      detail: { isRaised, userName }
-    }));
-  };
-
-  const handleSendMessage = (message: string) => {
-    window.dispatchEvent(new CustomEvent('chat-message', {
-      detail: { message, userName }
-    }));
+    setHandRaised(isRaised);
+    // Here you could broadcast the hand raise status to other participants
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/20 p-2 sm:p-4 pb-safe">
-      <div className="flex flex-col sm:flex-row items-center justify-between max-w-6xl mx-auto space-y-3 sm:space-y-0">
-        {/* Left side - Reactions */}
-        <div className="order-2 sm:order-1 flex items-center space-x-2">
-          <VideoReactions onSendReaction={handleSendReaction} />
-          <RaiseHand onHandRaise={handleHandRaise} />
-          <InMeetingChat userName={userName} onSendMessage={handleSendMessage} />
-        </div>
-
-        {/* Center - Main Controls */}
-        <div className="flex items-center space-x-1 sm:space-x-2 order-1 sm:order-2">
+    <>
+      {/* Main Controls Bar - Fixed at bottom with better mobile positioning */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-white/10 px-4 py-3 sm:py-4">
+        <div className="flex items-center justify-center space-x-2 sm:space-x-4 max-w-4xl mx-auto">
           {/* Audio Control */}
-          <div className="flex items-center">
-            <Button
-              onClick={onToggleAudio}
-              variant="outline"
-              size="sm"
-              className={`rounded-r-none ${
-                isAudioEnabled 
-                  ? 'bg-white/20 border-white/40 text-white hover:bg-white/30' 
-                  : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
-              } shadow-lg backdrop-blur-sm transition-all duration-200`}
-            >
-              {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 bg-slate-800 border-white/20">
-                <DeviceSelector
-                  type="audio"
-                  currentDeviceId={currentAudioDevice}
-                  onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          <Button
+            onClick={onToggleAudio}
+            variant="outline"
+            size="sm"
+            className={`${
+              isAudioEnabled 
+                ? 'bg-white/20 border-white/40 text-white hover:bg-white/30' 
+                : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600'
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
+          >
+            {isAudioEnabled ? (
+              <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
+          </Button>
 
           {/* Video Control */}
-          <div className="flex items-center">
-            <Button
-              onClick={onToggleVideo}
-              variant="outline"
-              size="sm"
-              className={`rounded-r-none ${
-                isVideoEnabled 
-                  ? 'bg-white/20 border-white/40 text-white hover:bg-white/30' 
-                  : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
-              } shadow-lg backdrop-blur-sm transition-all duration-200`}
-            >
-              {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 bg-slate-800 border-white/20">
-                <DeviceSelector
-                  type="video"
-                  currentDeviceId={currentVideoDevice}
-                  onDeviceChange={(deviceId) => onDeviceChange('video', deviceId)}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          <Button
+            onClick={onToggleVideo}
+            variant="outline"
+            size="sm"
+            className={`${
+              isVideoEnabled 
+                ? 'bg-white/20 border-white/40 text-white hover:bg-white/30' 
+                : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600'
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
+          >
+            {isVideoEnabled ? (
+              <Video className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
+          </Button>
 
           {/* Screen Share */}
           <Button
@@ -164,99 +115,142 @@ export const VideoControls = ({
             size="sm"
             className={`${
               isScreenSharing 
-                ? 'bg-blue-500/80 border-blue-400 text-white hover:bg-blue-600/80' 
+                ? 'bg-blue-500/80 border-blue-400 text-white hover:bg-blue-600' 
                 : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
-            } shadow-lg backdrop-blur-sm transition-all duration-200`}
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
           >
-            {isScreenSharing ? <MonitorOff className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+            {isScreenSharing ? (
+              <MonitorOff className="h-4 w-4 sm:h-5 sm:w-5" />
+            ) : (
+              <Monitor className="h-4 w-4 sm:h-5 sm:w-5" />
+            )}
           </Button>
 
-          {/* Switch Camera (Mobile) */}
+          {/* Camera Switch (Mobile only) */}
           <Button
             onClick={onSwitchCamera}
             variant="outline"
             size="sm"
-            className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 sm:hidden"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0 sm:hidden"
           >
-            <RotateCw className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
 
-          {/* Captions */}
+          {/* Raise Hand */}
+          <RaiseHand onHandRaise={handleHandRaise} isRaised={handRaised} />
+
+          {/* Video Reactions */}
+          <VideoReactions userName={userName} />
+
+          {/* Chat Toggle */}
+          <Button
+            onClick={() => setShowChat(!showChat)}
+            variant="outline"
+            size="sm"
+            className={`${
+              showChat 
+                ? 'bg-blue-500/80 border-blue-400 text-white hover:bg-blue-600' 
+                : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
+          >
+            <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+
+          {/* Captions Toggle */}
           <Button
             onClick={onToggleCaptions}
             variant="outline"
             size="sm"
             className={`${
               captionsEnabled 
-                ? 'bg-purple-500/80 border-purple-400 text-white hover:bg-purple-600/80' 
+                ? 'bg-purple-500/80 border-purple-400 text-white hover:bg-purple-600' 
                 : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
-            } shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm px-2 sm:px-3`}
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
           >
-            CC
+            <Captions className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
 
-          {/* Settings */}
-          <Popover open={showDeviceSelector} onOpenChange={setShowDeviceSelector}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 hidden sm:flex"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 bg-slate-800 border-white/20">
-              <div className="space-y-4">
-                <h3 className="text-white font-semibold">Device Settings</h3>
-                <DeviceSelector
-                  type="audio"
-                  currentDeviceId={currentAudioDevice}
-                  onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
-                />
-                <DeviceSelector
-                  type="video"
-                  currentDeviceId={currentVideoDevice}
-                  onDeviceChange={(deviceId) => onDeviceChange('video', deviceId)}
-                />
-                <Button
-                  onClick={onSwitchCamera}
-                  variant="outline"
-                  className="w-full border-white/30 text-white hover:bg-white/10"
-                >
-                  <RotateCw className="h-4 w-4 mr-2" />
-                  Switch Camera ({currentFacingMode === 'user' ? 'Front' : 'Back'})
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Settings Toggle */}
+          <Button
+            onClick={() => setShowSettings(!showSettings)}
+            variant="outline"
+            size="sm"
+            className={`${
+              showSettings 
+                ? 'bg-gray-500/80 border-gray-400 text-white hover:bg-gray-600' 
+                : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
+            } shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0`}
+          >
+            <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+
+          {/* Dashboard Navigation */}
+          {onNavigateToDashboard && (
+            <Button
+              onClick={onNavigateToDashboard}
+              variant="outline"
+              size="sm"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0"
+            >
+              <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+          )}
 
           {/* Leave Meeting */}
           <Button
             onClick={onLeaveMeeting}
             variant="outline"
             size="sm"
-            className="bg-red-500/80 border-red-400 text-white hover:bg-red-600/80 shadow-lg backdrop-blur-sm transition-all duration-200"
+            className="bg-red-500/80 border-red-400 text-white hover:bg-red-600 shadow-lg backdrop-blur-sm transition-all duration-200 h-10 w-10 sm:h-12 sm:w-12 p-0"
           >
-            <Phone className="h-4 w-4 rotate-135" />
+            <Phone className="h-4 w-4 sm:h-5 sm:w-5 rotate-135" />
           </Button>
         </div>
-
-        {/* Right side - Dashboard Navigation */}
-        <div className="order-3 flex items-center">
-          {onNavigateToDashboard && (
-            <Button
-              onClick={onNavigateToDashboard}
-              variant="outline"
-              size="sm"
-              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
-            >
-              <LayoutDashboard className="h-4 w-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Button>
-          )}
-        </div>
       </div>
-    </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="fixed bottom-20 sm:bottom-24 right-4 z-40 w-80 max-w-[90vw]">
+          <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-4">
+            <div className="space-y-4">
+              <h3 className="text-white font-semibold mb-4">Device Settings</h3>
+              
+              <DeviceSelector
+                type="audio"
+                currentDeviceId={currentAudioDevice}
+                onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
+              />
+              
+              <DeviceSelector
+                type="video"
+                currentDeviceId={currentVideoDevice}
+                onDeviceChange={(deviceId) => onDeviceChange('video', deviceId)}
+              />
+
+              {/* Camera Switch for Desktop */}
+              <div className="hidden sm:block">
+                <Button
+                  onClick={onSwitchCamera}
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-white/20 border-white/40 text-white hover:bg-white/30"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Switch Camera ({currentFacingMode === 'user' ? 'Front' : 'Back'})
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* In-Meeting Chat */}
+      {showChat && (
+        <InMeetingChat
+          userName={userName}
+          onClose={() => setShowChat(false)}
+        />
+      )}
+    </>
   );
 };

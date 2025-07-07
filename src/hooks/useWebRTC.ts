@@ -39,7 +39,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         height: { ideal: 720, max: 1080, min: 480 },
         frameRate: { ideal: 30, max: 60, min: 15 },
         facingMode: facingMode,
-        // Enhanced settings for poor network conditions
         aspectRatio: { ideal: 16/9 },
         resizeMode: 'crop-and-scale'
       },
@@ -51,7 +50,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         autoGainControl: true,
         sampleRate: { ideal: 44100, min: 16000 },
         channelCount: { ideal: 2, min: 1 },
-        // Enhanced audio settings
         latency: { ideal: 0.01, max: 0.1 },
         volume: { ideal: 1.0, min: 0.0, max: 1.0 }
       }
@@ -72,7 +70,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       setLocalStream(stream);
       setCurrentFacingMode(facingMode);
       
-      // Set current device IDs
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
       if (videoTrack) {
@@ -91,24 +88,20 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         audioSettings: audioTrack?.getSettings()
       });
       
-      // Update all peer connections with new stream
       peerConnections.current.forEach(async (pc, peerId) => {
         console.log('Updating peer connection with new stream for:', peerId);
         
-        // Remove old tracks
         pc.getSenders().forEach(sender => {
           if (sender.track) {
             pc.removeTrack(sender);
           }
         });
         
-        // Add new tracks
         stream.getTracks().forEach(track => {
           console.log('Adding track to peer connection:', track.kind, peerId);
           pc.addTrack(track, stream);
         });
         
-        // Create new offer to renegotiate
         if (pc.signalingState === 'stable') {
           try {
             const offer = await pc.createOffer();
@@ -168,20 +161,17 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     console.log('Creating peer connection for:', remotePeerId);
     const peerConnection = new RTCPeerConnection({ 
       iceServers: ICE_SERVERS,
-      // Enhanced configuration for better connectivity
       iceCandidatePoolSize: 10,
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require'
     });
 
-    // Add local stream tracks
     if (localStreamRef.current) {
       console.log('Adding local tracks to peer connection for:', remotePeerId);
       localStreamRef.current.getTracks().forEach(track => {
         console.log('Adding track:', track.kind, track.enabled);
         const sender = peerConnection.addTrack(track, localStreamRef.current!);
         
-        // Configure encoding parameters for better quality
         if (track.kind === 'video') {
           const params = sender.getParameters();
           if (params.encodings.length === 0) {
@@ -190,7 +180,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           params.encodings[0] = {
             ...params.encodings[0],
             maxBitrate: 2500000, // 2.5 Mbps max
-            minBitrate: 100000,  // 100 Kbps min
             scaleResolutionDownBy: 1,
             degradationPreference: 'maintain-framerate'
           };
@@ -199,7 +188,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       });
     }
 
-    // Handle incoming remote streams
     peerConnection.ontrack = (event) => {
       console.log('Received remote stream from:', remotePeerId, event);
       const [remoteStream] = event.streams;
@@ -232,7 +220,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     };
 
-    // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         console.log('Sending ICE candidate to:', remotePeerId);
@@ -244,7 +231,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     };
 
-    // Handle connection state changes
     peerConnection.onconnectionstatechange = () => {
       console.log(`Connection state with ${remotePeerId}:`, peerConnection.connectionState);
       
@@ -255,7 +241,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         console.log('Peer connected successfully');
       } else if (peerConnection.connectionState === 'disconnected') {
         console.log('Peer disconnected');
-        // Remove remote stream when disconnected
         setRemoteStreams(prev => prev.filter(s => s.id !== remotePeerId));
       }
     };
@@ -334,7 +319,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     return () => window.removeEventListener('webrtc-signaling', handleSignaling);
   }, [handleSignalingMessage]);
 
-  // Handle new peers joining and update user names
   useEffect(() => {
     connectedPeers.forEach(peerId => {
       if (!peerConnections.current.has(peerId)) {
@@ -343,7 +327,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     });
 
-    // Update remote stream user names when peer names change
     setRemoteStreams(prev => 
       prev.map(stream => ({
         ...stream,
@@ -471,7 +454,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           requestMediaPermissions(currentFacingMode, currentAudioDevice, currentVideoDevice);
         };
         
-        // Replace video track in all peer connections
         peerConnections.current.forEach(pc => {
           const sender = pc.getSenders().find(s => 
             s.track && s.track.kind === 'video'
@@ -481,7 +463,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           }
         });
         
-        // Update local stream
         if (localStreamRef.current) {
           const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
           if (oldVideoTrack) {
