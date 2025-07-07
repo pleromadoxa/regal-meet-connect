@@ -51,10 +51,10 @@ export const useAdmin = () => {
     if (!user) return;
 
     try {
-      const { data } = await supabase.rpc('has_role', {
+      const { data } = await (supabase as any).rpc('has_role', {
         _user_id: user.id,
         _role: 'admin'
-      } as any);
+      });
       
       setIsAdmin(data || false);
       
@@ -75,13 +75,13 @@ export const useAdmin = () => {
   const fetchUsers = async () => {
     try {
       // Get all profiles first
-      const { data: profiles } = await supabase
-        .from('profiles' as any)
+      const { data: profiles } = await (supabase as any)
+        .from('profiles')
         .select('*');
 
       // Get user roles
-      const { data: userRoles } = await supabase
-        .from('user_roles' as any)
+      const { data: userRoles } = await (supabase as any)
+        .from('user_roles')
         .select('user_id, role');
 
       // Combine the data
@@ -103,8 +103,8 @@ export const useAdmin = () => {
 
   const fetchLogs = async () => {
     try {
-      const { data } = await supabase
-        .from('platform_usage_logs' as any)
+      const { data } = await (supabase as any)
+        .from('platform_usage_logs')
         .select(`
           *,
           profiles (
@@ -122,8 +122,8 @@ export const useAdmin = () => {
 
   const fetchCountryStats = async () => {
     try {
-      const { data } = await supabase
-        .from('platform_usage_logs' as any)
+      const { data } = await (supabase as any)
+        .from('platform_usage_logs')
         .select('country')
         .not('country', 'is', null);
 
@@ -147,8 +147,8 @@ export const useAdmin = () => {
 
   const assignRole = async (userId: string, role: 'admin' | 'moderator' | 'user') => {
     try {
-      const { error } = await supabase
-        .from('user_roles' as any)
+      const { error } = await (supabase as any)
+        .from('user_roles')
         .upsert({
           user_id: userId,
           role,
@@ -177,7 +177,7 @@ export const useAdmin = () => {
     if (!user) return;
 
     try {
-      await supabase.rpc('log_platform_usage' as any, {
+      await (supabase as any).rpc('log_platform_usage', {
         _user_id: user.id,
         _action: action,
         _country: country

@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,8 +27,8 @@ export const useAuth = () => {
           // Fetch user profile
           setTimeout(async () => {
             try {
-              const { data: profileData } = await supabase
-                .from('profiles' as any)
+              const { data: profileData } = await (supabase as any)
+                .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
                 .single();
