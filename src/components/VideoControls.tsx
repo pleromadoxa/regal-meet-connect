@@ -23,16 +23,17 @@ export const VideoControls = ({
   onLeaveMeeting
 }: VideoControlsProps) => {
   return (
-    <Card className="bg-black/30 backdrop-blur-lg border-white/10 p-4">
+    <Card className="bg-white/90 backdrop-blur-lg border-white/30 p-4 shadow-xl">
       <div className="flex items-center justify-center space-x-4">
         {/* Audio Control */}
         <Button
           onClick={onToggleAudio}
           size="lg"
-          className={`rounded-full p-4 transition-all duration-200 ${
+          variant="outline"
+          className={`rounded-full p-4 border-2 transition-all duration-200 ${
             isAudioEnabled
-              ? 'bg-slate-600 hover:bg-slate-700 text-white'
-              : 'bg-red-600 hover:bg-red-700 text-white'
+              ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+              : 'bg-red-500 text-white border-red-600 hover:bg-red-600'
           }`}
         >
           {isAudioEnabled ? (
@@ -46,10 +47,11 @@ export const VideoControls = ({
         <Button
           onClick={onToggleVideo}
           size="lg"
-          className={`rounded-full p-4 transition-all duration-200 ${
+          variant="outline"
+          className={`rounded-full p-4 border-2 transition-all duration-200 ${
             isVideoEnabled
-              ? 'bg-slate-600 hover:bg-slate-700 text-white'
-              : 'bg-red-600 hover:bg-red-700 text-white'
+              ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+              : 'bg-red-500 text-white border-red-600 hover:bg-red-600'
           }`}
         >
           {isVideoEnabled ? (
@@ -63,10 +65,11 @@ export const VideoControls = ({
         <Button
           onClick={onToggleScreenShare}
           size="lg"
-          className={`rounded-full p-4 transition-all duration-200 ${
+          variant="outline"
+          className={`rounded-full p-4 border-2 transition-all duration-200 ${
             isScreenSharing
-              ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-              : 'bg-slate-600 hover:bg-slate-700 text-white'
+              ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
           }`}
         >
           {isScreenSharing ? (
@@ -80,7 +83,8 @@ export const VideoControls = ({
         <Button
           onClick={onLeaveMeeting}
           size="lg"
-          className="rounded-full p-4 bg-red-600 hover:bg-red-700 text-white transition-all duration-200 transform hover:scale-105"
+          variant="outline"
+          className="rounded-full p-4 border-2 bg-red-500 text-white border-red-600 hover:bg-red-600 transition-all duration-200 transform hover:scale-105"
         >
           <Phone className="h-6 w-6 rotate-[135deg]" />
         </Button>
