@@ -11,19 +11,55 @@ interface Caption {
   timestamp: string;
 }
 
-// Extend Window interface to include SpeechRecognition
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionResult {
+  readonly [index: number]: SpeechRecognitionAlternative;
+  readonly length: number;
+  readonly isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+interface SpeechRecognitionResultList {
+  readonly [index: number]: SpeechRecognitionResult;
+  readonly length: number;
+}
+
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
   }
+}
+
+interface SpeechRecognitionInterface {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: () => void;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
 }
 
 export const useCaptions = (meetingId: string, participantId: string) => {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isEnabled, setIsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
   const { toast } = useToast();
 
   const startListening = useCallback(() => {
@@ -37,7 +73,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognition() as SpeechRecognitionInterface;
     
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -47,7 +83,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       setIsListening(true);
     };
 
-    recognition.onresult = async (event) => {
+    recognition.onresult = async (event: SpeechRecognitionEvent) => {
       let finalTranscript = '';
       
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -57,8 +93,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         }
       }
 
-      if (finalTranscript.trim()) {
-        // Save caption to database
+      if (finalTranscript.trim() && participantId) {
         try {
           await supabase
             .from('meeting_captions')
@@ -73,7 +108,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       }
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech recognition error:', event.error);
       setIsListening(false);
     };
@@ -81,7 +116,6 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     recognition.onend = () => {
       setIsListening(false);
       if (isEnabled) {
-        // Restart recognition if still enabled
         setTimeout(startListening, 100);
       }
     };
@@ -103,11 +137,20 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     setIsEnabled(newEnabled);
     
     if (newEnabled) {
-      startListening();
-      toast({
-        title: "Captions Enabled",
-        description: "Live captions are now active"
-      });
+      if (participantId) {
+        startListening();
+        toast({
+          title: "Captions Enabled",
+          description: "Live captions are now active"
+        });
+      } else {
+        toast({
+          title: "Cannot Enable Captions",
+          description: "Please join the meeting first",
+          variant: "destructive"
+        });
+        setIsEnabled(false);
+      }
     } else {
       stopListening();
       toast({
@@ -115,10 +158,11 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         description: "Live captions have been turned off"
       });
     }
-  }, [isEnabled, startListening, stopListening, toast]);
+  }, [isEnabled, startListening, stopListening, toast, participantId]);
 
-  // Fetch existing captions
   const fetchCaptions = useCallback(async () => {
+    if (!meetingId) return;
+    
     try {
       const { data, error } = await supabase
         .from('meeting_captions')
@@ -134,8 +178,9 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     }
   }, [meetingId]);
 
-  // Subscribe to real-time caption updates
   useEffect(() => {
+    if (!meetingId) return;
+    
     fetchCaptions();
 
     const channel = supabase
@@ -159,7 +204,6 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     };
   }, [meetingId, fetchCaptions]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopListening();

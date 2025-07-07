@@ -9,10 +9,11 @@ import { MeetingList } from '@/components/MeetingList';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Plus, Settings, Video, LogOut, User } from 'lucide-react';
+import { Crown, Plus, Settings, Video, LogOut, User, Edit } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardProps {
-  onJoinMeeting: (name: string, roomId: string, isHost: boolean) => void;
+  onJoinMeeting?: (name: string, roomId: string, isHost: boolean) => void;
 }
 
 const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
@@ -23,6 +24,8 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   const [newMeetingTitle, setNewMeetingTitle] = useState('');
   const [newMeetingDescription, setNewMeetingDescription] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [displayName, setDisplayName] = useState('');
 
   const {
     meetings,
@@ -33,9 +36,22 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   } = useMeetingManagement();
 
   useEffect(() => {
-    if (user?.display_name) {
-      setUserName(user.display_name);
-    }
+    const fetchProfile = async () => {
+      if (user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.display_name) {
+          setUserName(profile.display_name);
+          setDisplayName(profile.display_name);
+        }
+      }
+    };
+    
+    fetchProfile();
   }, [user]);
 
   const generateMeetingId = () => {
@@ -70,24 +86,36 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
     if (!userName.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please enter your name first",
+        description: "Please set up your display name first",
         variant: "destructive"
       });
+      setIsEditingProfile(true);
       return;
     }
-    onJoinMeeting(userName.trim(), meetingId, true);
+    onJoinMeeting?.(userName.trim(), meetingId, true);
   };
 
   const handleJoinMeetingById = () => {
-    if (!userName.trim() || !meetingId.trim()) {
+    if (!userName.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please enter your name and meeting ID",
+        description: "Please set up your display name first",
+        variant: "destructive"
+      });
+      setIsEditingProfile(true);
+      return;
+    }
+    
+    if (!meetingId.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter a meeting ID",
         variant: "destructive"
       });
       return;
     }
-    onJoinMeeting(userName.trim(), meetingId.trim(), false);
+    
+    onJoinMeeting?.(userName.trim(), meetingId.trim(), false);
   };
 
   const handleDeleteMeeting = async (meetingId: string) => {
@@ -96,6 +124,42 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!displayName.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your display name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user?.id,
+          display_name: displayName.trim()
+        });
+
+      if (error) throw error;
+
+      setUserName(displayName.trim());
+      setIsEditingProfile(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your display name has been updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update your profile. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -111,7 +175,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               <h1 className="text-3xl font-bold text-white drop-shadow-lg">
                 Regal Meet Dashboard
               </h1>
-              <p className="text-blue-200">Welcome back, {user?.display_name || 'User'}!</p>
+              <p className="text-blue-200">Welcome back, {displayName || user?.email || 'User'}!</p>
             </div>
           </div>
 
@@ -149,13 +213,34 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-white/90">Your Name</label>
-                  <Input
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="bg-white/20 border-white/30 text-white placeholder-white/60"
-                  />
+                  <label className="text-sm font-medium text-white/90">Display Name</label>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      value={isEditingProfile ? displayName : userName}
+                      onChange={(e) => isEditingProfile ? setDisplayName(e.target.value) : setUserName(e.target.value)}
+                      placeholder="Enter your display name"
+                      className="bg-white/20 border-white/30 text-white placeholder-white/60"
+                      disabled={!isEditingProfile}
+                    />
+                    <Button
+                      onClick={isEditingProfile ? handleUpdateProfile : () => setIsEditingProfile(true)}
+                      variant="outline"
+                      size="sm"
+                      className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {isEditingProfile && (
+                    <Button
+                      onClick={() => setIsEditingProfile(false)}
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 border-white/30 text-white hover:bg-white/10"
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-white/90">Email</label>

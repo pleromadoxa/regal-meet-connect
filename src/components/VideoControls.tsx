@@ -53,22 +53,21 @@ export const VideoControls = ({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
   const handleSendReaction = (type: 'heart' | 'like' | 'celebration') => {
-    // Broadcast reaction to other participants
     window.dispatchEvent(new CustomEvent('send-reaction', {
       detail: { type }
     }));
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/20 p-3 sm:p-4">
-      <div className="flex flex-col sm:flex-row items-center justify-between max-w-6xl mx-auto space-y-4 sm:space-y-0">
+    <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/20 p-2 sm:p-4 pb-safe">
+      <div className="flex flex-col sm:flex-row items-center justify-between max-w-6xl mx-auto space-y-3 sm:space-y-0">
         {/* Reactions */}
         <div className="order-2 sm:order-1">
           <VideoReactions onSendReaction={handleSendReaction} />
         </div>
 
         {/* Main Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-4 order-1 sm:order-2">
+        <div className="flex items-center space-x-1 sm:space-x-3 order-1 sm:order-2">
           {/* Audio Control with Device Selector */}
           <div className="flex items-center">
             <Button
@@ -81,22 +80,22 @@ export const VideoControls = ({
                   : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
               } shadow-lg backdrop-blur-sm transition-all duration-200`}
             >
-              {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+              {isAudioEnabled ? <Mic className="h-3 w-3 sm:h-4 sm:w-4" /> : <MicOff className="h-3 w-3 sm:h-4 sm:w-4" />}
             </Button>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-l-none border-l-0 px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
+                  className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
                 >
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 bg-slate-800 border-white/20">
                 <DeviceSelector
                   type="audio"
-                  currentDevice={currentAudioDevice}
+                  currentDeviceId={currentAudioDevice}
                   onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
                 />
               </PopoverContent>
@@ -115,22 +114,22 @@ export const VideoControls = ({
                   : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
               } shadow-lg backdrop-blur-sm transition-all duration-200`}
             >
-              {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              {isVideoEnabled ? <Video className="h-3 w-3 sm:h-4 sm:w-4" /> : <VideoOff className="h-3 w-3 sm:h-4 sm:w-4" />}
             </Button>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-l-none border-l-0 px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
+                  className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
                 >
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 bg-slate-800 border-white/20">
                 <DeviceSelector
                   type="video"
-                  currentDevice={currentVideoDevice}
+                  currentDeviceId={currentVideoDevice}
                   onDeviceChange={(deviceId) => onDeviceChange('video', deviceId)}
                 />
               </PopoverContent>
@@ -148,7 +147,7 @@ export const VideoControls = ({
                 : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
             } shadow-lg backdrop-blur-sm transition-all duration-200`}
           >
-            {isScreenSharing ? <MonitorOff className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+            {isScreenSharing ? <MonitorOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Monitor className="h-3 w-3 sm:h-4 sm:w-4" />}
           </Button>
 
           {/* Switch Camera (Mobile) */}
@@ -158,7 +157,7 @@ export const VideoControls = ({
             size="sm"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 sm:hidden"
           >
-            <RotateCw className="h-4 w-4" />
+            <RotateCw className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
 
           {/* Captions */}
@@ -170,7 +169,7 @@ export const VideoControls = ({
               captionsEnabled 
                 ? 'bg-purple-500/80 border-purple-400 text-white hover:bg-purple-600/80' 
                 : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
-            } shadow-lg backdrop-blur-sm transition-all duration-200`}
+            } shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm px-2 sm:px-3`}
           >
             CC
           </Button>
@@ -183,7 +182,7 @@ export const VideoControls = ({
                 size="sm"
                 className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 hidden sm:flex"
               >
-                <Settings className="h-4 w-4" />
+                <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 bg-slate-800 border-white/20">
@@ -191,12 +190,12 @@ export const VideoControls = ({
                 <h3 className="text-white font-semibold">Device Settings</h3>
                 <DeviceSelector
                   type="audio"
-                  currentDevice={currentAudioDevice}
+                  currentDeviceId={currentAudioDevice}
                   onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
                 />
                 <DeviceSelector
                   type="video"
-                  currentDevice={currentVideoDevice}
+                  currentDeviceId={currentVideoDevice}
                   onDeviceChange={(deviceId) => onDeviceChange('video', deviceId)}
                 />
                 <Button
@@ -218,12 +217,12 @@ export const VideoControls = ({
             size="sm"
             className="bg-red-500/80 border-red-400 text-white hover:bg-red-600/80 shadow-lg backdrop-blur-sm transition-all duration-200"
           >
-            <Phone className="h-4 w-4 rotate-135" />
+            <Phone className="h-3 w-3 sm:h-4 sm:w-4 rotate-135" />
           </Button>
         </div>
 
         {/* Empty space for balance on mobile */}
-        <div className="order-3 sm:order-3 w-20 sm:w-0"></div>
+        <div className="order-3 sm:order-3 w-16 sm:w-0"></div>
       </div>
     </div>
   );

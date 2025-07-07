@@ -35,20 +35,20 @@ export const CaptionsDisplay = ({ captions, participants, isVisible }: CaptionsD
   };
 
   return (
-    <Card className="absolute bottom-20 left-4 right-4 sm:left-6 sm:right-6 max-w-2xl mx-auto bg-black/80 backdrop-blur-xl border-white/20 max-h-40">
-      <ScrollArea className="h-full p-4" ref={scrollRef}>
+    <Card className="absolute bottom-20 sm:bottom-24 left-4 right-4 sm:left-6 sm:right-6 max-w-2xl mx-auto bg-black/80 backdrop-blur-xl border-white/20 max-h-32 sm:max-h-40">
+      <ScrollArea className="h-full p-3 sm:p-4" ref={scrollRef}>
         <div className="space-y-2">
           {captions.slice(-10).map((caption) => (
             <div key={caption.id} className="text-sm">
               <div className="flex items-center space-x-2 mb-1">
-                <span className="text-blue-300 font-medium">
+                <span className="text-blue-300 font-medium text-xs sm:text-sm">
                   {getParticipantName(caption.participant_id)}
                 </span>
                 <span className="text-gray-400 text-xs">
                   {format(new Date(caption.timestamp), 'HH:mm:ss')}
                 </span>
               </div>
-              <p className="text-white leading-relaxed">{caption.content}</p>
+              <p className="text-white leading-relaxed text-xs sm:text-sm">{caption.content}</p>
             </div>
           ))}
         </div>

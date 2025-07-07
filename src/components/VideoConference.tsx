@@ -68,7 +68,6 @@ export const VideoConference = ({
     if (user?.id) {
       initialize();
       
-      // Join meeting in database
       const joinMeetingDb = async () => {
         const result = isHost 
           ? await joinAsHost(meetingId, userName)
@@ -79,7 +78,6 @@ export const VideoConference = ({
           
           if (isHost && 'participant' in result) {
             participantId = result.participant.id;
-            // Fetch participants for this meeting
             fetchParticipants(result.meeting.id);
           } else if (!isHost && 'id' in result) {
             participantId = result.id;
@@ -97,7 +95,6 @@ export const VideoConference = ({
     return () => cleanup();
   }, [meetingId, user?.id, isHost]);
 
-  // Auto-hide participants panel on mobile
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
@@ -138,7 +135,7 @@ export const VideoConference = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-24 sm:pb-32">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
         <div className="flex items-center space-x-3">
@@ -170,7 +167,6 @@ export const VideoConference = ({
             <span className="text-white font-medium text-sm sm:text-base">{connectedPeers.length + 1}</span>
           </div>
 
-          {/* Participants Toggle - Mobile */}
           <Button
             onClick={() => setShowParticipants(!showParticipants)}
             variant="outline"
@@ -192,7 +188,7 @@ export const VideoConference = ({
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)]">
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
         {/* Video Area */}
         <div className="flex-1 min-w-0">
           <ParticipantGrid
