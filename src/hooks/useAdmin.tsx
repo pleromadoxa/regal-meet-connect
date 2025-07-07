@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -134,8 +135,8 @@ export const useAdmin = () => {
           return acc;
         }, {});
 
-        const stats = Object.entries(countryCounts)
-          .map(([country, count]) => ({ country, count }))
+        const stats: CountryStats[] = Object.entries(countryCounts)
+          .map(([country, count]) => ({ country, count: count as number }))
           .sort((a, b) => b.count - a.count);
 
         setCountryStats(stats);
@@ -198,3 +199,4 @@ export const useAdmin = () => {
     refreshData: () => Promise.all([fetchUsers(), fetchLogs(), fetchCountryStats()])
   };
 };
+

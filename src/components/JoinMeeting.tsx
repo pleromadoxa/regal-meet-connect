@@ -1,4 +1,5 @@
 
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,13 +42,13 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Header with Admin and Sign Out */}
+        {/* Header with Admin and Sign Out - Made more visible */}
         <div className="flex justify-between items-center">
           {isAdmin && !adminLoading && (
             <Button
               onClick={() => setShowAdmin(true)}
               variant="outline"
-              className="border-orange-400/20 text-orange-400 hover:bg-orange-400/10"
+              className="bg-orange-500/20 border-orange-400 text-orange-100 hover:bg-orange-400/30 font-medium"
             >
               <Shield className="h-4 w-4 mr-2" />
               Admin Panel
@@ -57,7 +58,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
           <Button
             onClick={handleSignOut}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10 ml-auto"
+            className="bg-white/20 border-white text-white hover:bg-white/30 font-medium ml-auto backdrop-blur-sm"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -146,3 +147,4 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
     </div>
   );
 };
+
