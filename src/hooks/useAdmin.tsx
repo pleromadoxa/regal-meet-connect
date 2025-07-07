@@ -54,7 +54,7 @@ export const useAdmin = () => {
       const { data } = await supabase.rpc('has_role', {
         _user_id: user.id,
         _role: 'admin'
-      });
+      } as any);
       
       setIsAdmin(data || false);
       
@@ -76,23 +76,23 @@ export const useAdmin = () => {
     try {
       // Get all profiles first
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles' as any)
         .select('*');
 
       // Get user roles
       const { data: userRoles } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .select('user_id, role');
 
       // Combine the data
-      const usersWithProfiles = profiles?.map(profile => ({
+      const usersWithProfiles = profiles?.map((profile: any) => ({
         id: profile.id,
         email: '', // We can't access auth.users directly
         created_at: profile.created_at,
         profile: {
           display_name: profile.display_name
         },
-        roles: userRoles?.filter(role => role.user_id === profile.id).map(role => role.role) || []
+        roles: userRoles?.filter((role: any) => role.user_id === profile.id).map((role: any) => role.role) || []
       })) || [];
 
       setUsers(usersWithProfiles);
@@ -104,7 +104,7 @@ export const useAdmin = () => {
   const fetchLogs = async () => {
     try {
       const { data } = await supabase
-        .from('platform_usage_logs')
+        .from('platform_usage_logs' as any)
         .select(`
           *,
           profiles (
@@ -123,12 +123,12 @@ export const useAdmin = () => {
   const fetchCountryStats = async () => {
     try {
       const { data } = await supabase
-        .from('platform_usage_logs')
+        .from('platform_usage_logs' as any)
         .select('country')
         .not('country', 'is', null);
 
       if (data) {
-        const countryCounts = data.reduce((acc: Record<string, number>, log) => {
+        const countryCounts = data.reduce((acc: Record<string, number>, log: any) => {
           const country = log.country || 'Unknown';
           acc[country] = (acc[country] || 0) + 1;
           return acc;
@@ -148,7 +148,7 @@ export const useAdmin = () => {
   const assignRole = async (userId: string, role: 'admin' | 'moderator' | 'user') => {
     try {
       const { error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .upsert({
           user_id: userId,
           role,
@@ -177,7 +177,7 @@ export const useAdmin = () => {
     if (!user) return;
 
     try {
-      await supabase.rpc('log_platform_usage', {
+      await supabase.rpc('log_platform_usage' as any, {
         _user_id: user.id,
         _action: action,
         _country: country

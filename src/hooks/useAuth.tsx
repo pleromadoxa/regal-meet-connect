@@ -27,7 +27,7 @@ export const useAuth = () => {
           setTimeout(async () => {
             try {
               const { data: profileData } = await supabase
-                .from('profiles')
+                .from('profiles' as any)
                 .select('*')
                 .eq('id', session.user.id)
                 .single();
