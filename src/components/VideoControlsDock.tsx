@@ -23,6 +23,7 @@ interface DockItem {
   onClick: () => void;
   isActive?: boolean;
   variant?: 'default' | 'danger' | 'success' | 'warning';
+  priority?: 'high' | 'medium' | 'low'; // For mobile display priority
 }
 
 interface VideoControlsDockProps {
@@ -75,7 +76,7 @@ const DockItemComponent = ({
       <div
         className={`
           relative flex items-center justify-center
-          w-11 h-11 rounded-lg
+          w-10 h-10 sm:w-11 sm:h-11 rounded-lg
           backdrop-blur-[2px]
           border
           transition-all duration-300 ease-out
@@ -113,6 +114,7 @@ const DockItemComponent = ({
         transition-all duration-200
         pointer-events-none
         whitespace-nowrap
+        z-50
         ${isHovered 
           ? 'opacity-100 translate-y-0' 
           : 'opacity-0 translate-y-1'
@@ -149,90 +151,104 @@ export const VideoControlsDock = ({
 }: VideoControlsDockProps) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const dockItems: DockItem[] = [
+  const allDockItems: DockItem[] = [
     {
       id: 'audio',
-      icon: isAudioEnabled ? <Mic size={20} /> : <MicOff size={20} />,
+      icon: isAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />,
       label: isAudioEnabled ? 'Mute' : 'Unmute',
       onClick: onToggleAudio,
       isActive: isAudioEnabled,
-      variant: isAudioEnabled ? 'success' : 'danger'
+      variant: isAudioEnabled ? 'success' : 'danger',
+      priority: 'high'
     },
     {
       id: 'video',
-      icon: isVideoEnabled ? <Video size={20} /> : <VideoOff size={20} />,
+      icon: isVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />,
       label: isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera',
       onClick: onToggleVideo,
       isActive: isVideoEnabled,
-      variant: isVideoEnabled ? 'success' : 'danger'
+      variant: isVideoEnabled ? 'success' : 'danger',
+      priority: 'high'
     },
     {
       id: 'screen',
-      icon: isScreenSharing ? <MonitorOff size={20} /> : <Monitor size={20} />,
+      icon: isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />,
       label: isScreenSharing ? 'Stop Sharing' : 'Share Screen',
       onClick: onToggleScreenShare,
-      isActive: isScreenSharing
+      isActive: isScreenSharing,
+      priority: 'medium'
     },
     {
       id: 'camera-switch',
-      icon: <RotateCcw size={20} />,
+      icon: <RotateCcw size={18} />,
       label: 'Switch Camera',
-      onClick: onSwitchCamera
+      onClick: onSwitchCamera,
+      priority: 'low'
     },
     {
       id: 'hand',
-      icon: <Hand size={20} />,
+      icon: <Hand size={18} />,
       label: handRaised ? 'Lower Hand' : 'Raise Hand',
       onClick: onToggleHand,
       isActive: handRaised,
-      variant: 'warning'
+      variant: 'warning',
+      priority: 'medium'
     },
     {
       id: 'chat',
-      icon: <MessageSquare size={20} />,
+      icon: <MessageSquare size={18} />,
       label: 'Chat',
       onClick: onToggleChat,
-      isActive: showChat
+      isActive: showChat,
+      priority: 'medium'
     },
     {
       id: 'captions',
-      icon: <Captions size={20} />,
+      icon: <Captions size={18} />,
       label: captionsEnabled ? 'Hide Captions' : 'Show Captions',
       onClick: onToggleCaptions,
-      isActive: captionsEnabled
+      isActive: captionsEnabled,
+      priority: 'low'
     },
     {
       id: 'settings',
-      icon: <Settings size={20} />,
+      icon: <Settings size={18} />,
       label: 'Settings',
       onClick: onToggleSettings,
-      isActive: showSettings
+      isActive: showSettings,
+      priority: 'low'
     }
   ];
 
   if (onNavigateToDashboard) {
-    dockItems.push({
+    allDockItems.push({
       id: 'dashboard',
-      icon: <LayoutDashboard size={20} />,
+      icon: <LayoutDashboard size={18} />,
       label: 'Dashboard',
-      onClick: onNavigateToDashboard
+      onClick: onNavigateToDashboard,
+      priority: 'low'
     });
   }
 
-  dockItems.push({
+  allDockItems.push({
     id: 'leave',
-    icon: <Phone size={20} className="rotate-135" />,
+    icon: <Phone size={18} className="rotate-135" />,
     label: 'Leave Meeting',
     onClick: onLeaveMeeting,
-    variant: 'danger'
+    variant: 'danger',
+    priority: 'high'
   });
 
+  // For mobile, show only high priority items first, then medium
+  const mobileItems = allDockItems.filter(item => item.priority === 'high');
+  const tabletItems = allDockItems.filter(item => item.priority !== 'low');
+
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-[95vw] flex justify-center">
       <div className="relative">
-        {/* Dock Container */}
+        {/* Mobile Dock - Show only essential controls */}
         <div className={`
-          flex items-end gap-3 px-6 py-4
+          sm:hidden flex items-end gap-2 px-4 py-3
           rounded-2xl
           bg-black/40 backdrop-blur-xl
           border border-white/10
@@ -240,7 +256,47 @@ export const VideoControlsDock = ({
           transition-all duration-500 ease-out
           ${hoveredItem ? 'scale-105' : ''}
         `}>
-          {dockItems.map((item) => (
+          {mobileItems.map((item) => (
+            <DockItemComponent
+              key={item.id}
+              item={item}
+              isHovered={hoveredItem === item.id}
+              onHover={setHoveredItem}
+            />
+          ))}
+        </div>
+
+        {/* Tablet Dock - Show more controls */}
+        <div className={`
+          hidden sm:flex md:hidden items-end gap-2 px-5 py-3
+          rounded-2xl
+          bg-black/40 backdrop-blur-xl
+          border border-white/10
+          shadow-2xl
+          transition-all duration-500 ease-out
+          ${hoveredItem ? 'scale-105' : ''}
+        `}>
+          {tabletItems.map((item) => (
+            <DockItemComponent
+              key={item.id}
+              item={item}
+              isHovered={hoveredItem === item.id}
+              onHover={setHoveredItem}
+            />
+          ))}
+        </div>
+
+        {/* Desktop Dock - Show all controls */}
+        <div className={`
+          hidden md:flex items-end gap-3 px-6 py-4
+          rounded-2xl
+          bg-black/40 backdrop-blur-xl
+          border border-white/10
+          shadow-2xl
+          transition-all duration-500 ease-out
+          ${hoveredItem ? 'scale-105' : ''}
+        `}>
+          {allDockItems.map((item) => (
             <DockItemComponent
               key={item.id}
               item={item}
@@ -251,9 +307,9 @@ export const VideoControlsDock = ({
         </div>
         
         {/* Reflection Effect */}
-        <div className="absolute top-full left-0 right-0 h-8 overflow-hidden opacity-30">
+        <div className="absolute top-full left-0 right-0 h-6 sm:h-8 overflow-hidden opacity-30">
           <div className={`
-            flex items-start gap-3 px-6 py-2
+            flex items-start gap-2 sm:gap-3 px-4 sm:px-6 py-2
             rounded-2xl
             bg-black/20 backdrop-blur-xl
             border border-white/5
@@ -261,12 +317,12 @@ export const VideoControlsDock = ({
             transition-all duration-500 ease-out
             ${hoveredItem ? 'scale-105 scale-y-[-1.05]' : ''}
           `}>
-            {dockItems.map((item) => (
+            {(window.innerWidth < 640 ? mobileItems : window.innerWidth < 768 ? tabletItems : allDockItems).map((item) => (
               <div
                 key={`reflection-${item.id}`}
                 className={`
                   flex items-center justify-center
-                  w-11 h-11 rounded-lg
+                  w-10 h-10 sm:w-11 sm:h-11 rounded-lg
                   bg-white/5
                   transition-all duration-300 ease-out
                   ${hoveredItem === item.id 
