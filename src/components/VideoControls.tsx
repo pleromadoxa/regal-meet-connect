@@ -47,8 +47,9 @@ export const VideoControls = ({
   const [showChat, setShowChat] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
 
-  const handleHandRaise = (isRaised: boolean) => {
-    setHandRaised(isRaised);
+  const handleHandRaise = () => {
+    const newHandRaised = !handRaised;
+    setHandRaised(newHandRaised);
     // Here you could broadcast the hand raise status to other participants
   };
 
@@ -106,14 +107,14 @@ export const VideoControls = ({
         />
       )}
 
-      {/* Video Reactions Overlay - positioned for better visibility */}
-      <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-30">
+      {/* Video Reactions Overlay - positioned with higher z-index */}
+      <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
         <VideoReactions />
       </div>
 
       {/* Raise Hand Component - integrated into dock but keeping for broadcast functionality */}
       <div className="hidden">
-        <RaiseHand onHandRaise={handleHandRaise} isRaised={handRaised} />
+        <RaiseHand onHandRaise={setHandRaised} isRaised={handRaised} />
       </div>
     </>
   );

@@ -22,8 +22,8 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
     const newReaction: Reaction = {
       id: Math.random().toString(36).substring(7),
       type,
-      x: Math.random() * 80 + 10,
-      y: Math.random() * 60 + 20,
+      x: Math.random() * 60 + 20, // Keep reactions within viewport
+      y: Math.random() * 40 + 30, // Keep reactions within viewport
       timestamp: Date.now(),
     };
 
@@ -50,8 +50,8 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
   }, [addReaction]);
 
   return (
-    <>
-      <div className="flex items-center space-x-1 sm:space-x-2">
+    <div className="relative">
+      <div className="flex flex-col items-center space-y-1 sm:space-y-2">
         <Button
           onClick={() => handleReaction('heart')}
           variant="outline"
@@ -78,7 +78,8 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
         </Button>
       </div>
 
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* Reactions overlay - positioned to cover the entire screen */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-[55]">
         {reactions.map((reaction) => (
           <div
             key={reaction.id}
@@ -118,6 +119,6 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
           }
         }
       `}</style>
-    </>
+    </div>
   );
 };

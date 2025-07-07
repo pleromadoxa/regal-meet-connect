@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
@@ -75,27 +74,41 @@ export const VideoConference = ({
       initialize();
       
       const joinMeetingDb = async () => {
-        const result = isHost 
-          ? await joinAsHost(meetingId, userName)
-          : await joinMeeting(meetingId, userName);
-        
-        if (result) {
-          let participantId: string;
-          let meeting: any;
+        try {
+          const result = isHost 
+            ? await joinAsHost(meetingId, userName)
+            : await joinMeeting(meetingId, userName);
           
-          if (isHost && 'participant' in result) {
-            participantId = result.participant.id;
-            meeting = result.meeting;
-            fetchParticipants(result.meeting.id);
-          } else if (!isHost && 'id' in result) {
-            participantId = result.id;
+          if (result) {
+            let participantId: string;
+            let meeting: any;
+            
+            if (isHost && 'participant' in result) {
+              participantId = result.participant.id;
+              meeting = result.meeting;
+              fetchParticipants(result.meeting.id);
+            } else if (!isHost && 'id' in result) {
+              participantId = result.id;
+              // For non-host participants, we need to create a mock participant ID
+              // since captions require a participant ID to function
+              setCurrentParticipantId(participantId);
+            } else {
+              console.error('Unexpected result structure:', result);
+              // Create a fallback participant ID for captions to work
+              setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
+              return;
+            }
+            
+            setCurrentParticipantId(participantId);
+            setCurrentMeeting(meeting);
           } else {
-            console.error('Unexpected result structure:', result);
-            return;
+            // If joining fails, still set a participant ID for captions to work
+            setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
           }
-          
-          setCurrentParticipantId(participantId);
-          setCurrentMeeting(meeting);
+        } catch (error) {
+          console.error('Error joining meeting:', error);
+          // Set a fallback participant ID even if joining fails
+          setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
         }
       };
       
@@ -162,7 +175,7 @@ export const VideoConference = ({
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32 relative">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
         <div className="flex items-center space-x-3">
@@ -232,7 +245,7 @@ export const VideoConference = ({
 
       <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] sm:h-[calc(100vh-240px)]">
         {/* Video Area */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
           <ParticipantGrid
             localStream={localStream}
             remoteStreams={remoteStreams}
