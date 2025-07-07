@@ -1,21 +1,36 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
 import { ParticipantGrid } from '@/components/ParticipantGrid';
+import { ParticipantsList } from '@/components/ParticipantsList';
+import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { useWebRTC } from '@/hooks/useWebRTC';
+import { useMeetingManagement } from '@/hooks/useMeetingManagement';
+import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Copy, Users, LogOut } from 'lucide-react';
+import { Crown, Copy, Users, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface VideoConferenceProps {
   meetingId: string;
   userName: string;
+  isHost?: boolean;
   onLeaveMeeting: () => void;
 }
 
-export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoConferenceProps) => {
+export const VideoConference = ({ 
+  meetingId, 
+  userName, 
+  isHost = false, 
+  onLeaveMeeting 
+}: VideoConferenceProps) => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const [selectedVideoId, setSelectedVideoId] = useState<string>('local');
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
+
   const {
     localStream,
     remoteStreams,
@@ -35,12 +50,57 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
     connectedPeers
   } = useWebRTC(meetingId, userName, user?.id || '');
 
+  const { 
+    participants, 
+    fetchParticipants, 
+    toggleMuteParticipant,
+    joinMeeting,
+    joinAsHost
+  } = useMeetingManagement();
+
+  const { 
+    captions, 
+    isEnabled: captionsEnabled, 
+    toggleCaptions 
+  } = useCaptions(meetingId, currentParticipantId);
+
   useEffect(() => {
     if (user?.id) {
       initialize();
+      
+      // Join meeting in database
+      const joinMeetingDb = async () => {
+        const result = isHost 
+          ? await joinAsHost(meetingId, userName)
+          : await joinMeeting(meetingId, userName);
+        
+        if (result) {
+          const participantId = isHost ? result.participant.id : result.id;
+          setCurrentParticipantId(participantId);
+          
+          // Fetch participants for this meeting
+          if (isHost) {
+            fetchParticipants(result.meeting.id);
+          }
+        }
+      };
+      
+      joinMeetingDb();
     }
     return () => cleanup();
-  }, [meetingId, user?.id]);
+  }, [meetingId, user?.id, isHost]);
+
+  // Auto-hide participants panel on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setShowParticipants(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
@@ -60,6 +120,16 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
     await signOut();
   };
 
+  const handleVideoSelect = (streamId: string) => {
+    setSelectedVideoId(streamId);
+  };
+
+  const handleToggleMute = (participantId: string, isMuted: boolean) => {
+    if (isHost) {
+      toggleMuteParticipant(participantId, isMuted);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4">
       {/* Header */}
@@ -69,7 +139,10 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
             <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">Regal Meet</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
+              Regal Meet
+              {isHost && <span className="text-yellow-300 ml-2 text-sm">(Host)</span>}
+            </h1>
             <p className="text-blue-200 font-medium text-sm sm:text-base">Meeting: {meetingId}</p>
           </div>
         </div>
@@ -90,6 +163,16 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
             <span className="text-white font-medium text-sm sm:text-base">{connectedPeers.length + 1}</span>
           </div>
 
+          {/* Participants Toggle - Mobile */}
+          <Button
+            onClick={() => setShowParticipants(!showParticipants)}
+            variant="outline"
+            size="sm"
+            className="lg:hidden bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
+          >
+            {showParticipants ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
+
           <Button
             onClick={handleSignOut}
             variant="outline"
@@ -102,15 +185,40 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
         </div>
       </div>
 
-      {/* Video Grid */}
-      <div className="flex-1 mb-20 sm:mb-24">
-        <ParticipantGrid
-          localStream={localStream}
-          remoteStreams={remoteStreams}
-          userName={userName}
-          isVideoEnabled={isVideoEnabled}
-        />
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)]">
+        {/* Video Area */}
+        <div className="flex-1 min-w-0">
+          <ParticipantGrid
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            userName={userName}
+            isVideoEnabled={isVideoEnabled}
+            selectedVideoId={selectedVideoId}
+            onVideoSelect={handleVideoSelect}
+          />
+        </div>
+
+        {/* Participants Panel */}
+        <div className={`w-full lg:w-80 ${showParticipants ? 'block' : 'hidden lg:block'}`}>
+          <ParticipantsList
+            participants={participants}
+            remoteStreams={remoteStreams}
+            localStream={localStream}
+            currentUserId={user?.id || ''}
+            isHost={isHost}
+            onToggleMute={handleToggleMute}
+            onSelectVideo={handleVideoSelect}
+            selectedVideoId={selectedVideoId}
+          />
+        </div>
       </div>
+
+      {/* Captions Display */}
+      <CaptionsDisplay
+        captions={captions}
+        participants={participants}
+        isVisible={captionsEnabled}
+      />
 
       {/* Controls */}
       <VideoControls
@@ -126,6 +234,8 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
         onSwitchCamera={switchCamera}
         onLeaveMeeting={handleLeaveMeeting}
         onDeviceChange={handleDeviceChange}
+        onToggleCaptions={toggleCaptions}
+        captionsEnabled={captionsEnabled}
       />
     </div>
   );

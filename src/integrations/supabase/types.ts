@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      meeting_captions: {
+        Row: {
+          content: string
+          id: string
+          meeting_id: string
+          participant_id: string
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          id?: string
+          meeting_id: string
+          participant_id: string
+          timestamp?: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          meeting_id?: string
+          participant_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_captions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_captions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_participants: {
+        Row: {
+          id: string
+          is_host: boolean
+          is_muted: boolean
+          joined_at: string
+          meeting_id: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          id?: string
+          is_host?: boolean
+          is_muted?: boolean
+          joined_at?: string
+          meeting_id: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          id?: string
+          is_host?: boolean
+          is_muted?: boolean
+          joined_at?: string
+          meeting_id?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_participants_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          created_at: string
+          description: string | null
+          host_id: string
+          id: string
+          is_active: boolean
+          meeting_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          host_id: string
+          id?: string
+          is_active?: boolean
+          meeting_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          host_id?: string
+          id?: string
+          is_active?: boolean
+          meeting_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       platform_usage_logs: {
         Row: {
           action: string

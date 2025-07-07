@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
-import { Video, VideoOff, Mic, MicOff, ScreenShare, ScreenShareOff, Phone, SwitchCamera, ChevronDown } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, ScreenShare, ScreenShareOff, Phone, SwitchCamera, ChevronDown, Subtitles } from 'lucide-react';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -18,6 +18,8 @@ interface VideoControlsProps {
   onDeviceChange?: (type: 'audio' | 'video', deviceId: string) => void;
   currentAudioDevice?: string;
   currentVideoDevice?: string;
+  onToggleCaptions?: () => void;
+  captionsEnabled?: boolean;
 }
 
 export const VideoControls = ({
@@ -32,7 +34,9 @@ export const VideoControls = ({
   onLeaveMeeting,
   onDeviceChange,
   currentAudioDevice,
-  currentVideoDevice
+  currentVideoDevice,
+  onToggleCaptions,
+  captionsEnabled = false
 }: VideoControlsProps) => {
   const [showAudioDevices, setShowAudioDevices] = useState(false);
   const [showVideoDevices, setShowVideoDevices] = useState(false);
@@ -48,9 +52,9 @@ export const VideoControls = ({
   };
 
   return (
-    <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
+    <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-2xl px-4">
       <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-3 sm:p-6 shadow-2xl">
-        <div className="flex items-center justify-center space-x-2 sm:space-x-4 lg:space-x-6">
+        <div className="flex items-center justify-center space-x-2 sm:space-x-4 lg:space-x-6 flex-wrap">
           {/* Audio Control with Device Selection */}
           <div className="relative">
             <DeviceSelector
@@ -162,6 +166,22 @@ export const VideoControls = ({
               <ScreenShare className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
             )}
           </Button>
+
+          {/* Captions Control */}
+          {onToggleCaptions && (
+            <Button
+              onClick={onToggleCaptions}
+              size="lg"
+              variant="outline"
+              className={`rounded-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[48px] min-h-[48px] ${
+                captionsEnabled
+                  ? 'bg-purple-500 text-white border-purple-400 hover:bg-purple-600 hover:shadow-xl shadow-purple-500/30'
+                  : 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
+              }`}
+            >
+              <Subtitles className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+            </Button>
+          )}
 
           {/* Camera Switch Control - Show on larger screens */}
           <div className="hidden sm:block">

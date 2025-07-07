@@ -11,10 +11,11 @@ const Index = () => {
   const [isInMeeting, setIsInMeeting] = useState(false);
   const [meetingId, setMeetingId] = useState('');
   const [userName, setUserName] = useState('');
+  const [isHost, setIsHost] = useState(false);
   const { isAuthenticated, loading } = useAuth();
   const { toast } = useToast();
 
-  const handleJoinMeeting = (name: string, roomId: string) => {
+  const handleJoinMeeting = (name: string, roomId: string, hostStatus: boolean = false) => {
     if (!name.trim() || !roomId.trim()) {
       toast({
         title: "Missing Information",
@@ -26,11 +27,12 @@ const Index = () => {
     
     setUserName(name);
     setMeetingId(roomId);
+    setIsHost(hostStatus);
     setIsInMeeting(true);
     
     toast({
       title: "Joining Meeting",
-      description: `Welcome to Regal Meet, ${name}!`
+      description: `Welcome to Regal Meet, ${name}!${hostStatus ? ' You are the host.' : ''}`
     });
   };
 
@@ -38,6 +40,7 @@ const Index = () => {
     setIsInMeeting(false);
     setMeetingId('');
     setUserName('');
+    setIsHost(false);
     
     toast({
       title: "Meeting Ended",
@@ -77,6 +80,7 @@ const Index = () => {
         <VideoConference 
           meetingId={meetingId}
           userName={userName}
+          isHost={isHost}
           onLeaveMeeting={handleLeaveMeeting}
         />
       )}

@@ -14,13 +14,17 @@ interface ParticipantGridProps {
   remoteStreams: RemoteStream[];
   userName: string;
   isVideoEnabled: boolean;
+  selectedVideoId?: string;
+  onVideoSelect?: (streamId: string) => void;
 }
 
 export const ParticipantGrid = ({ 
   localStream, 
   remoteStreams, 
   userName, 
-  isVideoEnabled 
+  isVideoEnabled,
+  selectedVideoId,
+  onVideoSelect
 }: ParticipantGridProps) => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -30,90 +34,131 @@ export const ParticipantGrid = ({
     }
   }, [localStream]);
 
-  const totalParticipants = remoteStreams.length + 1;
-  
-  const getGridClass = () => {
-    if (totalParticipants === 1) return 'grid-cols-1';
-    if (totalParticipants === 2) return 'grid-cols-1 sm:grid-cols-2';
-    if (totalParticipants <= 4) return 'grid-cols-2';
-    return 'grid-cols-2 sm:grid-cols-3';
-  };
+  // Find the selected stream or default to local
+  const selectedStream = selectedVideoId 
+    ? remoteStreams.find(s => s.id === selectedVideoId) || { 
+        id: 'local', 
+        stream: localStream, 
+        userName: userName + ' (You)' 
+      }
+    : { id: 'local', stream: localStream, userName: userName + ' (You)' };
+
+  const otherStreams = selectedVideoId 
+    ? [
+        { id: 'local', stream: localStream, userName: userName + ' (You)' },
+        ...remoteStreams.filter(s => s.id !== selectedVideoId)
+      ]
+    : remoteStreams;
 
   return (
-    <div className={`grid ${getGridClass()} gap-2 sm:gap-4 h-full min-h-[300px] sm:min-h-[400px]`}>
-      {/* Local Video */}
-      <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-yellow-400/70 shadow-2xl backdrop-blur-sm">
-        {isVideoEnabled && localStream ? (
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-            <div className="p-4 sm:p-6 bg-slate-600/80 rounded-full mb-2 sm:mb-4 shadow-lg">
-              {isVideoEnabled ? (
-                <User className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
-              ) : (
-                <VideoOff className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
-              )}
+    <div className="h-full flex flex-col space-y-2 sm:space-y-4">
+      {/* Main Video - Selected participant */}
+      <div className="flex-1 min-h-0">
+        <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-orange-400/70 shadow-2xl backdrop-blur-sm h-full">
+          {selectedStream && selectedStream.stream && (selectedStream.id === 'local' ? isVideoEnabled : true) ? (
+            <MainVideo 
+              stream={selectedStream.stream} 
+              userName={selectedStream.userName}
+              isLocal={selectedStream.id === 'local'}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+              <div className="p-6 sm:p-8 bg-slate-600/80 rounded-full mb-4 shadow-lg">
+                <User className="h-12 w-12 sm:h-20 sm:w-20 text-gray-200" />
+              </div>
+              <p className="text-white font-semibold text-lg sm:text-xl">Camera Off</p>
             </div>
-            <p className="text-white font-semibold text-sm sm:text-lg">Camera Off</p>
+          )}
+          
+          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
+            <span className="text-white text-sm sm:text-base font-semibold">
+              {selectedStream?.userName || 'No participant'}
+            </span>
           </div>
-        )}
-        
-        <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-black/70 backdrop-blur-md px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/20 shadow-lg">
-          <span className="text-white text-xs sm:text-sm font-semibold">{userName} (You)</span>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
-      {/* Remote Videos */}
-      {remoteStreams.map((remote) => (
-        <RemoteVideo key={remote.id} remoteStream={remote} />
-      ))}
+      {/* Thumbnail Videos - Other participants */}
+      {otherStreams.length > 0 && (
+        <div className="flex space-x-2 sm:space-x-4 overflow-x-auto pb-2">
+          {otherStreams.map((stream) => (
+            <Card 
+              key={stream.id} 
+              className={`relative overflow-hidden bg-slate-800/90 border-2 shadow-xl backdrop-blur-sm flex-shrink-0 w-32 h-24 sm:w-48 sm:h-36 cursor-pointer transition-all duration-200 ${
+                selectedVideoId === stream.id 
+                  ? 'border-orange-400/70' 
+                  : 'border-white/30 hover:border-white/50'
+              }`}
+              onClick={() => onVideoSelect?.(stream.id)}
+            >
+              {stream.stream && (stream.id === 'local' ? isVideoEnabled : true) ? (
+                <ThumbnailVideo 
+                  stream={stream.stream} 
+                  userName={stream.userName}
+                  isLocal={stream.id === 'local'}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
+                  <User className="h-6 w-6 sm:h-8 sm:w-8 text-gray-200 mb-1" />
+                  <VideoOff className="h-4 w-4 text-gray-400" />
+                </div>
+              )}
+              
+              <div className="absolute bottom-1 left-1 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs">
+                <span className="text-white font-medium truncate max-w-[100px] block">
+                  {stream.userName}
+                </span>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-interface RemoteVideoProps {
-  remoteStream: RemoteStream;
+interface VideoProps {
+  stream: MediaStream;
+  userName: string;
+  isLocal: boolean;
 }
 
-const RemoteVideo = ({ remoteStream }: RemoteVideoProps) => {
+const MainVideo = ({ stream, isLocal }: VideoProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && remoteStream.stream) {
-      videoRef.current.srcObject = remoteStream.stream;
-      console.log('Setting remote stream for:', remoteStream.userName);
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
     }
-  }, [remoteStream.stream]);
-
-  const hasVideo = remoteStream.stream?.getVideoTracks().length > 0;
+  }, [stream]);
 
   return (
-    <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-white/30 shadow-2xl backdrop-blur-sm">
-      {hasVideo ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-          <div className="p-4 sm:p-6 bg-slate-600/80 rounded-full mb-2 sm:mb-4 shadow-lg">
-            <User className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
-          </div>
-          <p className="text-white font-semibold text-sm sm:text-lg">Camera Off</p>
-        </div>
-      )}
-      
-      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-black/70 backdrop-blur-md px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/20 shadow-lg">
-        <span className="text-white text-xs sm:text-sm font-semibold">{remoteStream.userName}</span>
-      </div>
-    </Card>
+    <video
+      ref={videoRef}
+      autoPlay
+      muted={isLocal}
+      playsInline
+      className="w-full h-full object-cover"
+    />
+  );
+};
+
+const ThumbnailVideo = ({ stream, isLocal }: VideoProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      muted={isLocal}
+      playsInline
+      className="w-full h-full object-cover"
+    />
   );
 };
