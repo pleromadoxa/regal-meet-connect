@@ -11,6 +11,14 @@ interface Caption {
   timestamp: string;
 }
 
+// Extend Window interface to include SpeechRecognition
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
 export const useCaptions = (meetingId: string, participantId: string) => {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isEnabled, setIsEnabled] = useState(false);

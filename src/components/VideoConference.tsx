@@ -75,13 +75,20 @@ export const VideoConference = ({
           : await joinMeeting(meetingId, userName);
         
         if (result) {
-          const participantId = isHost ? result.participant.id : result.id;
-          setCurrentParticipantId(participantId);
+          let participantId: string;
           
-          // Fetch participants for this meeting
-          if (isHost) {
+          if (isHost && 'participant' in result) {
+            participantId = result.participant.id;
+            // Fetch participants for this meeting
             fetchParticipants(result.meeting.id);
+          } else if (!isHost && 'id' in result) {
+            participantId = result.id;
+          } else {
+            console.error('Unexpected result structure:', result);
+            return;
           }
+          
+          setCurrentParticipantId(participantId);
         }
       };
       

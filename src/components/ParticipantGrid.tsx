@@ -1,6 +1,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
+import { VideoReactions } from '@/components/VideoReactions';
 import { User, VideoOff } from 'lucide-react';
 
 interface RemoteStream {
@@ -52,8 +53,8 @@ export const ParticipantGrid = ({
 
   return (
     <div className="h-full flex flex-col space-y-2 sm:space-y-4">
-      {/* Main Video - Selected participant */}
-      <div className="flex-1 min-h-0">
+      {/* Main Video - Selected participant with reactions overlay */}
+      <div className="flex-1 min-h-0 relative">
         <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-orange-400/70 shadow-2xl backdrop-blur-sm h-full">
           {selectedStream && selectedStream.stream && (selectedStream.id === 'local' ? isVideoEnabled : true) ? (
             <MainVideo 
@@ -74,6 +75,11 @@ export const ParticipantGrid = ({
             <span className="text-white text-sm sm:text-base font-semibold">
               {selectedStream?.userName || 'No participant'}
             </span>
+          </div>
+
+          {/* Video Reactions Overlay for Main Video */}
+          <div className="absolute inset-0 pointer-events-none">
+            <VideoReactions />
           </div>
         </Card>
       </div>

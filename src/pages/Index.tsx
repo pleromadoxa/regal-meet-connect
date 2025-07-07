@@ -4,14 +4,18 @@ import { VideoConference } from '@/components/VideoConference';
 import { JoinMeeting } from '@/components/JoinMeeting';
 import { AuthPage } from '@/components/AuthPage';
 import { AdminAccessButton } from '@/components/AdminAccessButton';
+import Dashboard from './Dashboard';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard } from 'lucide-react';
 
 const Index = () => {
   const [isInMeeting, setIsInMeeting] = useState(false);
   const [meetingId, setMeetingId] = useState('');
   const [userName, setUserName] = useState('');
   const [isHost, setIsHost] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const { isAuthenticated, loading } = useAuth();
   const { toast } = useToast();
 
@@ -29,6 +33,7 @@ const Index = () => {
     setMeetingId(roomId);
     setIsHost(hostStatus);
     setIsInMeeting(true);
+    setShowDashboard(false);
     
     toast({
       title: "Joining Meeting",
@@ -67,23 +72,38 @@ const Index = () => {
     return <AuthPage onAuthSuccess={handleAuthSuccess} />;
   }
 
+  if (isInMeeting) {
+    return (
+      <VideoConference 
+        meetingId={meetingId}
+        userName={userName}
+        isHost={isHost}
+        onLeaveMeeting={handleLeaveMeeting}
+      />
+    );
+  }
+
+  if (showDashboard) {
+    return <Dashboard onJoinMeeting={handleJoinMeeting} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
-      {!isInMeeting ? (
-        <div className="relative">
-          <div className="absolute top-6 right-6 z-10">
-            <AdminAccessButton />
-          </div>
-          <JoinMeeting onJoinMeeting={handleJoinMeeting} />
+      <div className="relative">
+        <div className="absolute top-6 right-6 z-10 flex space-x-2">
+          <Button
+            onClick={() => setShowDashboard(true)}
+            variant="outline"
+            size="sm"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
+          >
+            <LayoutDashboard className="h-4 w-4 mr-2" />
+            Dashboard
+          </Button>
+          <AdminAccessButton />
         </div>
-      ) : (
-        <VideoConference 
-          meetingId={meetingId}
-          userName={userName}
-          isHost={isHost}
-          onLeaveMeeting={handleLeaveMeeting}
-        />
-      )}
+        <JoinMeeting onJoinMeeting={handleJoinMeeting} />
+      </div>
     </div>
   );
 };
