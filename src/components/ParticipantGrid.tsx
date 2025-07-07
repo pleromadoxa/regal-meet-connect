@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { VideoReactions } from '@/components/VideoReactions';
+import { AudioIndicator } from '@/components/AudioIndicator';
 import { User, VideoOff } from 'lucide-react';
 
 interface RemoteStream {
@@ -71,10 +72,16 @@ export const ParticipantGrid = ({
             </div>
           )}
           
-          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
-            <span className="text-white text-sm sm:text-base font-semibold">
-              {selectedStream?.userName || 'No participant'}
-            </span>
+          <div className="absolute bottom-4 left-4 flex items-center space-x-2">
+            <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
+              <span className="text-white text-sm sm:text-base font-semibold">
+                {selectedStream?.userName || 'No participant'}
+              </span>
+            </div>
+            <AudioIndicator 
+              stream={selectedStream?.stream || null} 
+              className="bg-black/70 backdrop-blur-md px-2 py-1 rounded-full border border-white/20"
+            />
           </div>
 
           {/* Video Reactions Overlay for Main Video */}
@@ -84,13 +91,13 @@ export const ParticipantGrid = ({
         </Card>
       </div>
 
-      {/* Thumbnail Videos - Other participants */}
+      {/* Thumbnail Videos - Other participants with better mobile spacing */}
       {otherStreams.length > 0 && (
-        <div className="flex space-x-2 sm:space-x-4 overflow-x-auto pb-2">
+        <div className="flex space-x-2 sm:space-x-4 overflow-x-auto pb-2 px-1">
           {otherStreams.map((stream) => (
             <Card 
               key={stream.id} 
-              className={`relative overflow-hidden bg-slate-800/90 border-2 shadow-xl backdrop-blur-sm flex-shrink-0 w-32 h-24 sm:w-48 sm:h-36 cursor-pointer transition-all duration-200 ${
+              className={`relative overflow-hidden bg-slate-800/90 border-2 shadow-xl backdrop-blur-sm flex-shrink-0 w-28 h-20 sm:w-48 sm:h-36 cursor-pointer transition-all duration-200 ${
                 selectedVideoId === stream.id 
                   ? 'border-orange-400/70' 
                   : 'border-white/30 hover:border-white/50'
@@ -110,10 +117,16 @@ export const ParticipantGrid = ({
                 </div>
               )}
               
-              <div className="absolute bottom-1 left-1 bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs">
-                <span className="text-white font-medium truncate max-w-[100px] block">
-                  {stream.userName}
-                </span>
+              <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between">
+                <div className="bg-black/70 backdrop-blur-md px-2 py-1 rounded text-xs">
+                  <span className="text-white font-medium truncate max-w-[80px] block">
+                    {stream.userName}
+                  </span>
+                </div>
+                <AudioIndicator 
+                  stream={stream.stream} 
+                  className="bg-black/70 backdrop-blur-md px-1 py-1 rounded"
+                />
               </div>
             </Card>
           ))}
@@ -145,6 +158,11 @@ const MainVideo = ({ stream, isLocal }: VideoProps) => {
       muted={isLocal}
       playsInline
       className="w-full h-full object-cover"
+      style={{
+        // Improve video quality and smoothness
+        imageRendering: 'auto',
+        objectFit: 'cover'
+      }}
     />
   );
 };
@@ -165,6 +183,11 @@ const ThumbnailVideo = ({ stream, isLocal }: VideoProps) => {
       muted={isLocal}
       playsInline
       className="w-full h-full object-cover"
+      style={{
+        // Improve video quality and smoothness
+        imageRendering: 'auto',
+        objectFit: 'cover'
+      }}
     />
   );
 };

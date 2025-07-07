@@ -17,13 +17,15 @@ interface VideoConferenceProps {
   userName: string;
   isHost?: boolean;
   onLeaveMeeting: () => void;
+  onNavigateToDashboard?: () => void;
 }
 
 export const VideoConference = ({ 
   meetingId, 
   userName, 
   isHost = false, 
-  onLeaveMeeting 
+  onLeaveMeeting,
+  onNavigateToDashboard
 }: VideoConferenceProps) => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -135,7 +137,7 @@ export const VideoConference = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-24 sm:pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
         <div className="flex items-center space-x-3">
@@ -188,7 +190,7 @@ export const VideoConference = ({
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] sm:h-[calc(100vh-240px)]">
         {/* Video Area */}
         <div className="flex-1 min-w-0">
           <ParticipantGrid
@@ -239,6 +241,8 @@ export const VideoConference = ({
         onDeviceChange={handleDeviceChange}
         onToggleCaptions={toggleCaptions}
         captionsEnabled={captionsEnabled}
+        userName={userName}
+        onNavigateToDashboard={onNavigateToDashboard}
       />
     </div>
   );

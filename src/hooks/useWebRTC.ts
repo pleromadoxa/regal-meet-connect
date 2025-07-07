@@ -35,10 +35,13 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     video: videoDeviceId ? 
       { deviceId: { exact: videoDeviceId } } : 
       {
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 720, max: 1080 },
-        frameRate: { ideal: 30, max: 60 },
-        facingMode: facingMode
+        width: { ideal: 1280, max: 1920, min: 640 },
+        height: { ideal: 720, max: 1080, min: 480 },
+        frameRate: { ideal: 30, max: 60, min: 15 },
+        facingMode: facingMode,
+        // Enhanced settings for poor network conditions
+        aspectRatio: { ideal: 16/9 },
+        resizeMode: 'crop-and-scale'
       },
     audio: audioDeviceId ? 
       { deviceId: { exact: audioDeviceId } } : 
@@ -46,7 +49,11 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-        sampleRate: 44100
+        sampleRate: { ideal: 44100, min: 16000 },
+        channelCount: { ideal: 2, min: 1 },
+        // Enhanced audio settings
+        latency: { ideal: 0.01, max: 0.1 },
+        volume: { ideal: 1.0, min: 0.0, max: 1.0 }
       }
   });
 
@@ -159,14 +166,36 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   const createPeerConnection = useCallback((remotePeerId: string) => {
     console.log('Creating peer connection for:', remotePeerId);
-    const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const peerConnection = new RTCPeerConnection({ 
+      iceServers: ICE_SERVERS,
+      // Enhanced configuration for better connectivity
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
+    });
 
     // Add local stream tracks
     if (localStreamRef.current) {
       console.log('Adding local tracks to peer connection for:', remotePeerId);
       localStreamRef.current.getTracks().forEach(track => {
         console.log('Adding track:', track.kind, track.enabled);
-        peerConnection.addTrack(track, localStreamRef.current!);
+        const sender = peerConnection.addTrack(track, localStreamRef.current!);
+        
+        // Configure encoding parameters for better quality
+        if (track.kind === 'video') {
+          const params = sender.getParameters();
+          if (params.encodings.length === 0) {
+            params.encodings.push({});
+          }
+          params.encodings[0] = {
+            ...params.encodings[0],
+            maxBitrate: 2500000, // 2.5 Mbps max
+            minBitrate: 100000,  // 100 Kbps min
+            scaleResolutionDownBy: 1,
+            degradationPreference: 'maintain-framerate'
+          };
+          sender.setParameters(params);
+        }
       });
     }
 

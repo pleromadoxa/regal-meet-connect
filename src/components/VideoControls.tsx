@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeviceSelector } from '@/components/DeviceSelector';
 import { VideoReactions } from '@/components/VideoReactions';
+import { RaiseHand } from '@/components/RaiseHand';
+import { InMeetingChat } from '@/components/InMeetingChat';
 import { 
   Mic, 
   MicOff, 
@@ -13,7 +15,8 @@ import {
   Phone, 
   RotateCw,
   Settings,
-  ChevronDown
+  ChevronDown,
+  LayoutDashboard
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -32,6 +35,8 @@ interface VideoControlsProps {
   onDeviceChange: (type: 'audio' | 'video', deviceId: string) => void;
   onToggleCaptions: () => void;
   captionsEnabled: boolean;
+  userName?: string;
+  onNavigateToDashboard?: () => void;
 }
 
 export const VideoControls = ({
@@ -48,7 +53,9 @@ export const VideoControls = ({
   onLeaveMeeting,
   onDeviceChange,
   onToggleCaptions,
-  captionsEnabled
+  captionsEnabled,
+  userName = 'User',
+  onNavigateToDashboard
 }: VideoControlsProps) => {
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
@@ -58,17 +65,31 @@ export const VideoControls = ({
     }));
   };
 
+  const handleHandRaise = (isRaised: boolean) => {
+    window.dispatchEvent(new CustomEvent('hand-raise', {
+      detail: { isRaised, userName }
+    }));
+  };
+
+  const handleSendMessage = (message: string) => {
+    window.dispatchEvent(new CustomEvent('chat-message', {
+      detail: { message, userName }
+    }));
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/20 p-2 sm:p-4 pb-safe">
       <div className="flex flex-col sm:flex-row items-center justify-between max-w-6xl mx-auto space-y-3 sm:space-y-0">
-        {/* Reactions */}
-        <div className="order-2 sm:order-1">
+        {/* Left side - Reactions */}
+        <div className="order-2 sm:order-1 flex items-center space-x-2">
           <VideoReactions onSendReaction={handleSendReaction} />
+          <RaiseHand onHandRaise={handleHandRaise} />
+          <InMeetingChat userName={userName} onSendMessage={handleSendMessage} />
         </div>
 
-        {/* Main Controls */}
-        <div className="flex items-center space-x-1 sm:space-x-3 order-1 sm:order-2">
-          {/* Audio Control with Device Selector */}
+        {/* Center - Main Controls */}
+        <div className="flex items-center space-x-1 sm:space-x-2 order-1 sm:order-2">
+          {/* Audio Control */}
           <div className="flex items-center">
             <Button
               onClick={onToggleAudio}
@@ -80,7 +101,7 @@ export const VideoControls = ({
                   : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
               } shadow-lg backdrop-blur-sm transition-all duration-200`}
             >
-              {isAudioEnabled ? <Mic className="h-3 w-3 sm:h-4 sm:w-4" /> : <MicOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+              {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
             </Button>
             <Popover>
               <PopoverTrigger asChild>
@@ -89,7 +110,7 @@ export const VideoControls = ({
                   size="sm"
                   className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
                 >
-                  <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3" />
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 bg-slate-800 border-white/20">
@@ -102,7 +123,7 @@ export const VideoControls = ({
             </Popover>
           </div>
 
-          {/* Video Control with Device Selector */}
+          {/* Video Control */}
           <div className="flex items-center">
             <Button
               onClick={onToggleVideo}
@@ -114,7 +135,7 @@ export const VideoControls = ({
                   : 'bg-red-500/80 border-red-400 text-white hover:bg-red-600/80'
               } shadow-lg backdrop-blur-sm transition-all duration-200`}
             >
-              {isVideoEnabled ? <Video className="h-3 w-3 sm:h-4 sm:w-4" /> : <VideoOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+              {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
             </Button>
             <Popover>
               <PopoverTrigger asChild>
@@ -123,7 +144,7 @@ export const VideoControls = ({
                   size="sm"
                   className="rounded-l-none border-l-0 px-1 sm:px-2 bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm"
                 >
-                  <ChevronDown className="h-2 w-2 sm:h-3 sm:w-3" />
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 bg-slate-800 border-white/20">
@@ -147,7 +168,7 @@ export const VideoControls = ({
                 : 'bg-white/20 border-white/40 text-white hover:bg-white/30'
             } shadow-lg backdrop-blur-sm transition-all duration-200`}
           >
-            {isScreenSharing ? <MonitorOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Monitor className="h-3 w-3 sm:h-4 sm:w-4" />}
+            {isScreenSharing ? <MonitorOff className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
           </Button>
 
           {/* Switch Camera (Mobile) */}
@@ -157,7 +178,7 @@ export const VideoControls = ({
             size="sm"
             className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 sm:hidden"
           >
-            <RotateCw className="h-3 w-3 sm:h-4 sm:w-4" />
+            <RotateCw className="h-4 w-4" />
           </Button>
 
           {/* Captions */}
@@ -182,7 +203,7 @@ export const VideoControls = ({
                 size="sm"
                 className="bg-white/20 border-white/40 text-white hover:bg-white/30 shadow-lg backdrop-blur-sm transition-all duration-200 hidden sm:flex"
               >
-                <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Settings className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 bg-slate-800 border-white/20">
@@ -217,12 +238,24 @@ export const VideoControls = ({
             size="sm"
             className="bg-red-500/80 border-red-400 text-white hover:bg-red-600/80 shadow-lg backdrop-blur-sm transition-all duration-200"
           >
-            <Phone className="h-3 w-3 sm:h-4 sm:w-4 rotate-135" />
+            <Phone className="h-4 w-4 rotate-135" />
           </Button>
         </div>
 
-        {/* Empty space for balance on mobile */}
-        <div className="order-3 sm:order-3 w-16 sm:w-0"></div>
+        {/* Right side - Dashboard Navigation */}
+        <div className="order-3 flex items-center">
+          {onNavigateToDashboard && (
+            <Button
+              onClick={onNavigateToDashboard}
+              variant="outline"
+              size="sm"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
+            >
+              <LayoutDashboard className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
