@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
@@ -24,10 +23,13 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
     isAudioEnabled,
     isScreenSharing,
     currentFacingMode,
+    currentAudioDevice,
+    currentVideoDevice,
     toggleVideo,
     toggleAudio,
     switchCamera,
     toggleScreenShare,
+    handleDeviceChange,
     initialize,
     cleanup,
     connectedPeers
@@ -116,11 +118,14 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
         isAudioEnabled={isAudioEnabled}
         isScreenSharing={isScreenSharing}
         currentFacingMode={currentFacingMode}
+        currentAudioDevice={currentAudioDevice}
+        currentVideoDevice={currentVideoDevice}
         onToggleVideo={toggleVideo}
         onToggleAudio={toggleAudio}
         onToggleScreenShare={toggleScreenShare}
         onSwitchCamera={switchCamera}
         onLeaveMeeting={handleLeaveMeeting}
+        onDeviceChange={handleDeviceChange}
       />
     </div>
   );

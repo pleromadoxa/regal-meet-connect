@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
@@ -22,6 +21,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user');
+  const [currentAudioDevice, setCurrentAudioDevice] = useState<string>('');
+  const [currentVideoDevice, setCurrentVideoDevice] = useState<string>('');
   
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -30,24 +31,28 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const { initializeSignaling, sendSignalingMessage, connectedPeers, peerUserNames, cleanup: cleanupSignaling } = 
     useWebRTCSignaling(meetingId, userId, userName);
 
-  const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user') => ({
-    video: {
-      width: { ideal: 1280, max: 1920 },
-      height: { ideal: 720, max: 1080 },
-      frameRate: { ideal: 30, max: 60 },
-      facingMode: facingMode
-    },
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-      sampleRate: 44100
-    }
+  const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user', audioDeviceId?: string, videoDeviceId?: string) => ({
+    video: videoDeviceId ? 
+      { deviceId: { exact: videoDeviceId } } : 
+      {
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 30, max: 60 },
+        facingMode: facingMode
+      },
+    audio: audioDeviceId ? 
+      { deviceId: { exact: audioDeviceId } } : 
+      {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 44100
+      }
   });
 
-  const requestMediaPermissions = async (facingMode: 'user' | 'environment' = 'user') => {
+  const requestMediaPermissions = async (facingMode: 'user' | 'environment' = 'user', audioDeviceId?: string, videoDeviceId?: string) => {
     try {
-      const constraints = getMediaConstraints(facingMode);
+      const constraints = getMediaConstraints(facingMode, audioDeviceId, videoDeviceId);
       console.log('Requesting media permissions with constraints:', constraints);
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -60,24 +65,55 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       setLocalStream(stream);
       setCurrentFacingMode(facingMode);
       
+      // Set current device IDs
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        setCurrentVideoDevice(settings.deviceId || '');
+      }
+      if (audioTrack) {
+        const settings = audioTrack.getSettings();
+        setCurrentAudioDevice(settings.deviceId || '');
+      }
+      
       console.log('Media permissions granted:', {
         video: stream.getVideoTracks().length > 0,
         audio: stream.getAudioTracks().length > 0,
-        videoSettings: stream.getVideoTracks()[0]?.getSettings(),
-        audioSettings: stream.getAudioTracks()[0]?.getSettings()
+        videoSettings: videoTrack?.getSettings(),
+        audioSettings: audioTrack?.getSettings()
       });
       
       // Update all peer connections with new stream
       peerConnections.current.forEach(async (pc, peerId) => {
-        const senders = pc.getSenders();
-        const videoSender = senders.find(s => s.track?.kind === 'video');
-        const audioSender = senders.find(s => s.track?.kind === 'audio');
+        console.log('Updating peer connection with new stream for:', peerId);
         
-        if (videoSender && stream.getVideoTracks()[0]) {
-          await videoSender.replaceTrack(stream.getVideoTracks()[0]);
-        }
-        if (audioSender && stream.getAudioTracks()[0]) {
-          await audioSender.replaceTrack(stream.getAudioTracks()[0]);
+        // Remove old tracks
+        pc.getSenders().forEach(sender => {
+          if (sender.track) {
+            pc.removeTrack(sender);
+          }
+        });
+        
+        // Add new tracks
+        stream.getTracks().forEach(track => {
+          console.log('Adding track to peer connection:', track.kind, peerId);
+          pc.addTrack(track, stream);
+        });
+        
+        // Create new offer to renegotiate
+        if (pc.signalingState === 'stable') {
+          try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignalingMessage({
+              type: 'offer',
+              data: offer,
+              to: peerId
+            });
+          } catch (error) {
+            console.error('Error creating renegotiation offer:', error);
+          }
         }
       });
       
@@ -122,38 +158,49 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   };
 
   const createPeerConnection = useCallback((remotePeerId: string) => {
+    console.log('Creating peer connection for:', remotePeerId);
     const peerConnection = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
     // Add local stream tracks
     if (localStreamRef.current) {
       console.log('Adding local tracks to peer connection for:', remotePeerId);
       localStreamRef.current.getTracks().forEach(track => {
+        console.log('Adding track:', track.kind, track.enabled);
         peerConnection.addTrack(track, localStreamRef.current!);
       });
     }
 
     // Handle incoming remote streams
     peerConnection.ontrack = (event) => {
-      console.log('Received remote stream from:', remotePeerId);
+      console.log('Received remote stream from:', remotePeerId, event);
       const [remoteStream] = event.streams;
       
-      setRemoteStreams(prev => {
-        const existing = prev.find(s => s.id === remotePeerId);
-        const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
+      if (remoteStream && remoteStream.getTracks().length > 0) {
+        console.log('Remote stream tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
         
-        if (existing) {
-          return prev.map(s => 
-            s.id === remotePeerId 
-              ? { ...s, stream: remoteStream, userName: peerName }
-              : s
-          );
-        }
-        return [...prev, { 
-          id: remotePeerId, 
-          stream: remoteStream, 
-          userName: peerName
-        }];
-      });
+        setRemoteStreams(prev => {
+          const existing = prev.find(s => s.id === remotePeerId);
+          const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
+          
+          if (existing) {
+            console.log('Updating existing remote stream for:', remotePeerId);
+            return prev.map(s => 
+              s.id === remotePeerId 
+                ? { ...s, stream: remoteStream, userName: peerName }
+                : s
+            );
+          }
+          
+          console.log('Adding new remote stream for:', remotePeerId);
+          return [...prev, { 
+            id: remotePeerId, 
+            stream: remoteStream, 
+            userName: peerName
+          }];
+        });
+      } else {
+        console.warn('Received empty or invalid remote stream from:', remotePeerId);
+      }
     };
 
     // Handle ICE candidates
@@ -177,6 +224,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         peerConnection.restartIce();
       } else if (peerConnection.connectionState === 'connected') {
         console.log('Peer connected successfully');
+      } else if (peerConnection.connectionState === 'disconnected') {
+        console.log('Peer disconnected');
+        // Remove remote stream when disconnected
+        setRemoteStreams(prev => prev.filter(s => s.id !== remotePeerId));
       }
     };
 
@@ -191,10 +242,12 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     try {
       switch (type) {
         case 'offer':
+          console.log('Received offer from:', from);
           const pc1 = createPeerConnection(from);
           await pc1.setRemoteDescription(new RTCSessionDescription(data));
           const answer = await pc1.createAnswer();
           await pc1.setLocalDescription(answer);
+          console.log('Sending answer to:', from);
           sendSignalingMessage({
             type: 'answer',
             data: answer,
@@ -203,16 +256,20 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           break;
 
         case 'answer':
+          console.log('Received answer from:', from);
           const pc2 = peerConnections.current.get(from);
           if (pc2) {
             await pc2.setRemoteDescription(new RTCSessionDescription(data));
+            console.log('Set remote description for answer from:', from);
           }
           break;
 
         case 'ice-candidate':
+          console.log('Received ICE candidate from:', from);
           const pc3 = peerConnections.current.get(from);
           if (pc3) {
             await pc3.addIceCandidate(new RTCIceCandidate(data));
+            console.log('Added ICE candidate from:', from);
           }
           break;
       }
@@ -228,6 +285,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
       
+      console.log('Sending offer to:', peerId);
       sendSignalingMessage({
         type: 'offer',
         data: offer,
@@ -281,6 +339,29 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     }
   };
 
+  const handleDeviceChange = async (type: 'audio' | 'video', deviceId: string) => {
+    try {
+      console.log('Changing device:', type, deviceId);
+      if (type === 'audio') {
+        await requestMediaPermissions(currentFacingMode, deviceId, currentVideoDevice);
+      } else {
+        await requestMediaPermissions(currentFacingMode, currentAudioDevice, deviceId);
+      }
+      
+      toast({
+        title: "Device Changed",
+        description: `${type === 'audio' ? 'Microphone' : 'Camera'} updated successfully`
+      });
+    } catch (error) {
+      console.error('Failed to change device:', error);
+      toast({
+        title: "Device Change Failed",
+        description: `Unable to switch ${type}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   const toggleVideo = useCallback(() => {
     if (localStreamRef.current) {
       const videoTrack = localStreamRef.current.getVideoTracks()[0];
@@ -323,7 +404,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
     try {
       const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-      await requestMediaPermissions(newFacingMode);
+      await requestMediaPermissions(newFacingMode, currentAudioDevice, currentVideoDevice);
       
       toast({
         title: "Camera Switched",
@@ -337,12 +418,12 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         variant: "destructive"
       });
     }
-  }, [currentFacingMode, isScreenSharing, toast]);
+  }, [currentFacingMode, isScreenSharing, toast, currentAudioDevice, currentVideoDevice]);
 
   const toggleScreenShare = useCallback(async () => {
     try {
       if (isScreenSharing) {
-        await requestMediaPermissions(currentFacingMode);
+        await requestMediaPermissions(currentFacingMode, currentAudioDevice, currentVideoDevice);
         setIsScreenSharing(false);
         toast({
           title: "Screen Share Stopped",
@@ -358,7 +439,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         
         screenTrack.onended = () => {
           setIsScreenSharing(false);
-          requestMediaPermissions(currentFacingMode);
+          requestMediaPermissions(currentFacingMode, currentAudioDevice, currentVideoDevice);
         };
         
         // Replace video track in all peer connections
@@ -396,7 +477,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         variant: "destructive"
       });
     }
-  }, [isScreenSharing, currentFacingMode, toast]);
+  }, [isScreenSharing, currentFacingMode, toast, currentAudioDevice, currentVideoDevice]);
 
   const cleanup = useCallback(() => {
     console.log('Cleaning up WebRTC...');
@@ -431,10 +512,13 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     isAudioEnabled,
     isScreenSharing,
     currentFacingMode,
+    currentAudioDevice,
+    currentVideoDevice,
     toggleVideo,
     toggleAudio,
     switchCamera,
     toggleScreenShare,
+    handleDeviceChange,
     initialize,
     cleanup,
     connectedPeers: Array.from(connectedPeers)

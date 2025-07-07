@@ -1,7 +1,9 @@
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Video, VideoOff, Mic, MicOff, ScreenShare, ScreenShareOff, Phone, SwitchCamera } from 'lucide-react';
+import { DeviceSelector } from '@/components/DeviceSelector';
+import { Video, VideoOff, Mic, MicOff, ScreenShare, ScreenShareOff, Phone, SwitchCamera, ChevronDown } from 'lucide-react';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -13,6 +15,9 @@ interface VideoControlsProps {
   onToggleScreenShare: () => void;
   onSwitchCamera: () => void;
   onLeaveMeeting: () => void;
+  onDeviceChange?: (type: 'audio' | 'video', deviceId: string) => void;
+  currentAudioDevice?: string;
+  currentVideoDevice?: string;
 }
 
 export const VideoControls = ({
@@ -24,47 +29,109 @@ export const VideoControls = ({
   onToggleAudio,
   onToggleScreenShare,
   onSwitchCamera,
-  onLeaveMeeting
+  onLeaveMeeting,
+  onDeviceChange,
+  currentAudioDevice,
+  currentVideoDevice
 }: VideoControlsProps) => {
+  const [showAudioDevices, setShowAudioDevices] = useState(false);
+  const [showVideoDevices, setShowVideoDevices] = useState(false);
+
+  const handleAudioDeviceChange = (deviceId: string) => {
+    onDeviceChange?.('audio', deviceId);
+    setShowAudioDevices(false);
+  };
+
+  const handleVideoDeviceChange = (deviceId: string) => {
+    onDeviceChange?.('video', deviceId);
+    setShowVideoDevices(false);
+  };
+
   return (
     <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-lg px-4">
       <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-3 sm:p-6 shadow-2xl">
         <div className="flex items-center justify-center space-x-2 sm:space-x-4 lg:space-x-6">
-          {/* Audio Control */}
-          <Button
-            onClick={onToggleAudio}
-            size="lg"
-            variant="outline"
-            className={`rounded-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[48px] min-h-[48px] ${
-              isAudioEnabled
-                ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
-                : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
-            }`}
-          >
-            {isAudioEnabled ? (
-              <Mic className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-            ) : (
-              <MicOff className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-            )}
-          </Button>
+          {/* Audio Control with Device Selection */}
+          <div className="relative">
+            <DeviceSelector
+              type="audio"
+              currentDeviceId={currentAudioDevice}
+              onDeviceChange={handleAudioDeviceChange}
+              isOpen={showAudioDevices}
+              onToggle={() => setShowAudioDevices(!showAudioDevices)}
+            />
+            <div className="flex items-center">
+              <Button
+                onClick={onToggleAudio}
+                size="lg"
+                variant="outline"
+                className={`rounded-l-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[40px] min-h-[48px] border-r-0 ${
+                  isAudioEnabled
+                    ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
+                    : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
+                }`}
+              >
+                {isAudioEnabled ? (
+                  <Mic className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                ) : (
+                  <MicOff className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                )}
+              </Button>
+              <Button
+                onClick={() => setShowAudioDevices(!showAudioDevices)}
+                size="lg"
+                variant="outline"
+                className={`rounded-r-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[24px] min-h-[48px] border-l-0 ${
+                  isAudioEnabled
+                    ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
+                    : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
+                }`}
+              >
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+            </div>
+          </div>
 
-          {/* Video Control */}
-          <Button
-            onClick={onToggleVideo}
-            size="lg"
-            variant="outline"
-            className={`rounded-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[48px] min-h-[48px] ${
-              isVideoEnabled
-                ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
-                : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
-            }`}
-          >
-            {isVideoEnabled ? (
-              <Video className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-            ) : (
-              <VideoOff className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-            )}
-          </Button>
+          {/* Video Control with Device Selection */}
+          <div className="relative">
+            <DeviceSelector
+              type="video"
+              currentDeviceId={currentVideoDevice}
+              onDeviceChange={handleVideoDeviceChange}
+              isOpen={showVideoDevices}
+              onToggle={() => setShowVideoDevices(!showVideoDevices)}
+            />
+            <div className="flex items-center">
+              <Button
+                onClick={onToggleVideo}
+                size="lg"
+                variant="outline"
+                className={`rounded-l-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[40px] min-h-[48px] border-r-0 ${
+                  isVideoEnabled
+                    ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
+                    : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
+                }`}
+              >
+                {isVideoEnabled ? (
+                  <Video className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                ) : (
+                  <VideoOff className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                )}
+              </Button>
+              <Button
+                onClick={() => setShowVideoDevices(!showVideoDevices)}
+                size="lg"
+                variant="outline"
+                className={`rounded-r-full p-2 sm:p-3 lg:p-4 border-2 transition-all duration-200 shadow-lg min-w-[24px] min-h-[48px] border-l-0 ${
+                  isVideoEnabled
+                    ? 'bg-white text-slate-800 border-white/80 hover:bg-gray-100 hover:shadow-xl'
+                    : 'bg-red-500 text-white border-red-400 hover:bg-red-600 hover:shadow-xl shadow-red-500/30'
+                }`}
+              >
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+            </div>
+          </div>
 
           {/* Camera Switch Control - Only show on mobile */}
           <div className="block sm:hidden">
