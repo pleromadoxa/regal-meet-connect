@@ -180,8 +180,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           params.encodings[0] = {
             ...params.encodings[0],
             maxBitrate: 2500000, // 2.5 Mbps max
-            scaleResolutionDownBy: 1,
-            degradationPreference: 'maintain-framerate'
+            scaleResolutionDownBy: 1
           };
           sender.setParameters(params);
         }

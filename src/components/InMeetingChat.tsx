@@ -18,10 +18,10 @@ interface InMeetingChatProps {
   userName: string;
   onSendMessage?: (message: string) => void;
   messages?: ChatMessage[];
+  onClose: () => void;
 }
 
-export const InMeetingChat = ({ userName, onSendMessage, messages = [] }: InMeetingChatProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose }: InMeetingChatProps) => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(messages);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,71 +55,53 @@ export const InMeetingChat = ({ userName, onSendMessage, messages = [] }: InMeet
   };
 
   return (
-    <>
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
-        variant="outline"
-        size="sm"
-        className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 relative"
-      >
-        <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-        {chatMessages.length > 0 && (
-          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-            {chatMessages.length > 9 ? '9+' : chatMessages.length}
-          </div>
-        )}
-      </Button>
-
-      {isOpen && (
-        <Card className="absolute bottom-20 right-4 w-80 h-96 bg-black/90 backdrop-blur-xl border-white/20 shadow-2xl z-50">
-          <div className="flex items-center justify-between p-3 border-b border-white/20">
-            <h3 className="text-white font-semibold">Meeting Chat</h3>
-            <Button
-              onClick={() => setIsOpen(false)}
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/10"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <ScrollArea className="flex-1 p-3 h-64" ref={scrollRef}>
-            <div className="space-y-3">
-              {chatMessages.map((msg) => (
-                <div key={msg.id} className="text-sm">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-blue-300 font-medium">{msg.userName}</span>
-                    <span className="text-gray-400 text-xs">
-                      {format(msg.timestamp, 'HH:mm')}
-                    </span>
-                  </div>
-                  <p className="text-white">{msg.message}</p>
-                </div>
-              ))}
+    <Card className="fixed bottom-20 sm:bottom-24 right-4 w-80 h-96 bg-black/90 backdrop-blur-xl border-white/20 shadow-2xl z-50">
+      <div className="flex items-center justify-between p-3 border-b border-white/20">
+        <h3 className="text-white font-semibold">Meeting Chat</h3>
+        <Button
+          onClick={onClose}
+          variant="ghost"
+          size="sm"
+          className="text-white hover:bg-white/10"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      <ScrollArea className="flex-1 p-3 h-64" ref={scrollRef}>
+        <div className="space-y-3">
+          {chatMessages.map((msg) => (
+            <div key={msg.id} className="text-sm">
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="text-blue-300 font-medium">{msg.userName}</span>
+                <span className="text-gray-400 text-xs">
+                  {format(msg.timestamp, 'HH:mm')}
+                </span>
+              </div>
+              <p className="text-white">{msg.message}</p>
             </div>
-          </ScrollArea>
+          ))}
+        </div>
+      </ScrollArea>
 
-          <div className="p-3 border-t border-white/20">
-            <div className="flex space-x-2">
-              <Input
-                value={currentMessage}
-                onChange={(e) => setCurrentMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type a message..."
-                className="bg-white/10 border-white/20 text-white placeholder-gray-400"
-              />
-              <Button
-                onClick={handleSendMessage}
-                size="sm"
-                className="bg-blue-500/80 hover:bg-blue-600/80"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-    </>
+      <div className="p-3 border-t border-white/20">
+        <div className="flex space-x-2">
+          <Input
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message..."
+            className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+          />
+          <Button
+            onClick={handleSendMessage}
+            size="sm"
+            className="bg-blue-500/80 hover:bg-blue-600/80"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 };
