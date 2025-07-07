@@ -1,10 +1,9 @@
 
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Crown, LogOut, Shield } from 'lucide-react';
+import { Video, Users, Crown, LogOut, Shield, Plus, Shuffle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
 import { AdminPanel } from './AdminPanel';
@@ -20,8 +19,17 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   const generateRoomId = () => {
-    const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generate shorter 4-character room ID
+    const id = Math.random().toString(36).substring(2, 6).toUpperCase();
     setRoomId(id);
+  };
+
+  const createNewMeeting = () => {
+    // Generate a new meeting ID and join immediately
+    const id = Math.random().toString(36).substring(2, 6).toUpperCase();
+    if (profile?.display_name) {
+      onJoinMeeting(profile.display_name, id);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,13 +50,13 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Header with Admin and Sign Out - Made more visible */}
+        {/* Header with Admin and Sign Out */}
         <div className="flex justify-between items-center">
           {isAdmin && !adminLoading && (
             <Button
               onClick={() => setShowAdmin(true)}
               variant="outline"
-              className="bg-orange-500/20 border-orange-400 text-orange-100 hover:bg-orange-400/30 font-medium"
+              className="bg-orange-500/20 border-orange-400 text-orange-100 hover:bg-orange-400/30 font-medium backdrop-blur-sm"
             >
               <Shield className="h-4 w-4 mr-2" />
               Admin Panel
@@ -81,7 +89,30 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
           )}
         </div>
 
-        {/* Join Meeting Card */}
+        {/* Create New Meeting Button */}
+        <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+          <CardContent className="pt-6">
+            <Button
+              onClick={createNewMeeting}
+              disabled={!profile?.display_name}
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 rounded-lg transition-all duration-200 transform hover:scale-105 mb-4"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Create New Meeting
+            </Button>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-white/20" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-slate-900 px-2 text-white/60">or</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Join Existing Meeting Card */}
         <Card className="bg-white/10 backdrop-blur-lg border-white/20">
           <CardHeader>
             <CardTitle className="text-2xl text-center text-white flex items-center justify-center space-x-2">
@@ -102,6 +133,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                     placeholder="Enter meeting ID"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                    maxLength={4}
                     className="bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
                     required
                   />
@@ -109,8 +141,9 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                     type="button"
                     onClick={generateRoomId}
                     variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className="bg-blue-500/20 border-blue-400 text-blue-100 hover:bg-blue-400/30 font-medium backdrop-blur-sm"
                   >
+                    <Shuffle className="h-4 w-4 mr-1" />
                     Generate
                   </Button>
                 </div>
@@ -147,4 +180,3 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
     </div>
   );
 };
-
