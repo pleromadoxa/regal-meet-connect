@@ -75,7 +75,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         {/* Logo and Title */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center space-x-3">
-            <div className="p-3 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full">
+            <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full">
               <Crown className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -106,7 +106,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                       placeholder="Enter your display name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-yellow-400"
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
                       required={!isLogin}
                     />
                   </div>
@@ -124,7 +124,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-yellow-400"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
                     required
                   />
                 </div>
@@ -141,7 +141,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-yellow-400"
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
                     required
                   />
                 </div>
@@ -150,7 +150,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
               >
                 {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
               </Button>

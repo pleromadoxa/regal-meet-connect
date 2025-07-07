@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Crown, LogOut } from 'lucide-react';
+import { Video, Users, Crown, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
+import { AdminPanel } from './AdminPanel';
 
 interface JoinMeetingProps {
   onJoinMeeting: (name: string, roomId: string) => void;
@@ -12,7 +14,9 @@ interface JoinMeetingProps {
 
 export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   const [roomId, setRoomId] = useState('');
+  const [showAdmin, setShowAdmin] = useState(false);
   const { profile, signOut } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
 
   const generateRoomId = () => {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -30,15 +34,30 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
     await signOut();
   };
 
+  if (showAdmin && isAdmin) {
+    return <AdminPanel />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Header with Sign Out */}
-        <div className="flex justify-end">
+        {/* Header with Admin and Sign Out */}
+        <div className="flex justify-between items-center">
+          {isAdmin && !adminLoading && (
+            <Button
+              onClick={() => setShowAdmin(true)}
+              variant="outline"
+              className="border-orange-400/20 text-orange-400 hover:bg-orange-400/10"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Admin Panel
+            </Button>
+          )}
+          
           <Button
             onClick={handleSignOut}
             variant="outline"
-            className="border-white/20 text-white hover:bg-white/10"
+            className="border-white/20 text-white hover:bg-white/10 ml-auto"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -48,7 +67,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
         {/* Logo and Title */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center space-x-3">
-            <div className="p-3 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full">
+            <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full">
               <Crown className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -82,7 +101,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                     placeholder="Enter meeting ID"
                     value={roomId}
                     onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                    className="bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-yellow-400"
+                    className="bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
                     required
                   />
                   <Button
@@ -99,7 +118,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
               <Button
                 type="submit"
                 disabled={!profile?.display_name || !roomId}
-                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
               >
                 <Users className="h-5 w-5 mr-2" />
                 Join Meeting

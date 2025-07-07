@@ -61,7 +61,7 @@ export const VideoConference = ({ meetingId, userName, onLeaveMeeting }: VideoCo
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-lg">
+          <div className="p-2 bg-gradient-to-r from-orange-400 to-orange-600 rounded-lg">
             <Crown className="h-6 w-6 text-white" />
           </div>
           <div>
