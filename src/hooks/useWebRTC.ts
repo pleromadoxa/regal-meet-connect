@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
@@ -271,18 +272,22 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         case 'answer':
           console.log('Received answer from:', from);
           const pc2 = peerConnections.current.get(from);
-          if (pc2) {
+          if (pc2 && pc2.signalingState === 'have-local-offer') {
             await pc2.setRemoteDescription(new RTCSessionDescription(data));
             console.log('Set remote description for answer from:', from);
+          } else {
+            console.warn('Cannot set remote description - wrong state:', pc2?.signalingState);
           }
           break;
 
         case 'ice-candidate':
           console.log('Received ICE candidate from:', from);
           const pc3 = peerConnections.current.get(from);
-          if (pc3) {
+          if (pc3 && pc3.remoteDescription) {
             await pc3.addIceCandidate(new RTCIceCandidate(data));
             console.log('Added ICE candidate from:', from);
+          } else {
+            console.warn('Cannot add ICE candidate - no remote description set');
           }
           break;
       }

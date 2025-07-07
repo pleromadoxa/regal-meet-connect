@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
@@ -174,6 +175,9 @@ export const VideoConference = ({
   // Check if current user is the actual host
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
 
+  // Calculate total participant count (including local user)
+  const totalParticipantCount = connectedPeers.length + 1;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32 relative">
       {/* Header */}
@@ -209,7 +213,7 @@ export const VideoConference = ({
           
           <div className="flex items-center space-x-2 bg-white/20 px-2 sm:px-3 py-1 sm:py-2 rounded-lg backdrop-blur-sm border border-white/30">
             <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            <span className="text-white font-medium text-sm sm:text-base">{connectedPeers.length + 1}</span>
+            <span className="text-white font-medium text-sm sm:text-base">{totalParticipantCount}</span>
           </div>
 
           <Button
