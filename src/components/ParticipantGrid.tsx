@@ -31,14 +31,16 @@ export const ParticipantGrid = ({
   }, [localStream]);
 
   const totalParticipants = remoteStreams.length + 1;
-  const gridClass = totalParticipants === 1 
-    ? 'grid-cols-1' 
-    : totalParticipants <= 4 
-    ? 'grid-cols-2' 
-    : 'grid-cols-3';
+  
+  const getGridClass = () => {
+    if (totalParticipants === 1) return 'grid-cols-1';
+    if (totalParticipants === 2) return 'grid-cols-1 sm:grid-cols-2';
+    if (totalParticipants <= 4) return 'grid-cols-2';
+    return 'grid-cols-2 sm:grid-cols-3';
+  };
 
   return (
-    <div className={`grid ${gridClass} gap-4 h-full min-h-[400px]`}>
+    <div className={`grid ${getGridClass()} gap-2 sm:gap-4 h-full min-h-[300px] sm:min-h-[400px]`}>
       {/* Local Video */}
       <Card className="relative overflow-hidden bg-slate-800/90 border-2 border-yellow-400/70 shadow-2xl backdrop-blur-sm">
         {isVideoEnabled && localStream ? (
@@ -51,19 +53,19 @@ export const ParticipantGrid = ({
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-            <div className="p-6 bg-slate-600/80 rounded-full mb-4 shadow-lg">
+            <div className="p-4 sm:p-6 bg-slate-600/80 rounded-full mb-2 sm:mb-4 shadow-lg">
               {isVideoEnabled ? (
-                <User className="h-16 w-16 text-gray-200" />
+                <User className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
               ) : (
-                <VideoOff className="h-16 w-16 text-gray-200" />
+                <VideoOff className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
               )}
             </div>
-            <p className="text-white font-semibold text-lg">Camera Off</p>
+            <p className="text-white font-semibold text-sm sm:text-lg">Camera Off</p>
           </div>
         )}
         
-        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
-          <span className="text-white text-sm font-semibold">{userName} (You)</span>
+        <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-black/70 backdrop-blur-md px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/20 shadow-lg">
+          <span className="text-white text-xs sm:text-sm font-semibold">{userName} (You)</span>
         </div>
       </Card>
 
@@ -102,15 +104,15 @@ const RemoteVideo = ({ remoteStream }: RemoteVideoProps) => {
         />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-          <div className="p-6 bg-slate-600/80 rounded-full mb-4 shadow-lg">
-            <User className="h-16 w-16 text-gray-200" />
+          <div className="p-4 sm:p-6 bg-slate-600/80 rounded-full mb-2 sm:mb-4 shadow-lg">
+            <User className="h-8 w-8 sm:h-16 sm:w-16 text-gray-200" />
           </div>
-          <p className="text-white font-semibold text-lg">Camera Off</p>
+          <p className="text-white font-semibold text-sm sm:text-lg">Camera Off</p>
         </div>
       )}
       
-      <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 shadow-lg">
-        <span className="text-white text-sm font-semibold">{remoteStream.userName}</span>
+      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-black/70 backdrop-blur-md px-2 sm:px-4 py-1 sm:py-2 rounded-full border border-white/20 shadow-lg">
+        <span className="text-white text-xs sm:text-sm font-semibold">{remoteStream.userName}</span>
       </div>
     </Card>
   );

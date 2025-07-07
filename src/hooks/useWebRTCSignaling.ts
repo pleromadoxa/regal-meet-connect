@@ -1,5 +1,5 @@
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,30 +19,41 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
   const { toast } = useToast();
 
   const initializeSignaling = useCallback(() => {
-    if (channelRef.current) return;
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+    }
 
     console.log('Initializing signaling for user:', userName);
 
-    channelRef.current = supabase.channel(`meeting-${meetingId}`)
+    const channel = supabase.channel(`meeting-${meetingId}`, {
+      config: {
+        presence: {
+          key: userId,
+        },
+      },
+    });
+
+    channel
       .on('broadcast', { event: 'signaling' }, (payload) => {
         const message: SignalingMessage = payload.payload;
         
-        // Don't process our own messages
         if (message.from === userId) return;
         
-        // Handle user info messages
         if (message.type === 'user-info' && message.userName) {
-          setPeerUserNames(prev => new Map(prev.set(message.from, message.userName!)));
+          setPeerUserNames(prev => {
+            const newMap = new Map(prev);
+            newMap.set(message.from, message.userName!);
+            return newMap;
+          });
           console.log('Received user info:', message.from, message.userName);
         }
         
-        // Emit custom event for WebRTC hook to handle
         window.dispatchEvent(new CustomEvent('webrtc-signaling', {
           detail: message
         }));
       })
       .on('presence', { event: 'sync' }, () => {
-        const newState = channelRef.current.presenceState();
+        const newState = channel.presenceState();
         const peers = new Set(Object.keys(newState).filter(id => id !== userId));
         setConnectedPeers(peers);
         console.log('Presence sync, connected peers:', Array.from(peers));
@@ -52,7 +63,6 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
           setConnectedPeers(prev => new Set([...prev, key]));
           console.log('Peer joined:', key);
           
-          // Send our user info to new peer
           setTimeout(() => {
             sendSignalingMessage({
               type: 'user-info',
@@ -79,13 +89,12 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channelRef.current.track({
+          await channel.track({
             user_id: userId,
             user_name: userName,
             online_at: new Date().toISOString(),
           });
           
-          // Broadcast user info to all peers
           setTimeout(() => {
             sendSignalingMessage({
               type: 'user-info',
@@ -96,7 +105,8 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
         }
       });
 
-    return channelRef.current;
+    channelRef.current = channel;
+    return channel;
   }, [meetingId, userId, userName]);
 
   const sendSignalingMessage = useCallback((message: Omit<SignalingMessage, 'from' | 'meetingId'>) => {
