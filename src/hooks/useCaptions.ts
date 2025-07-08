@@ -60,6 +60,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
+  const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const startListening = useCallback(() => {
@@ -72,59 +73,129 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition() as SpeechRecognitionInterface;
-    
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    if (!participantId) {
+      console.warn('Cannot start speech recognition - no participant ID');
+      return;
+    }
 
-    recognition.onstart = () => {
-      setIsListening(true);
-    };
-
-    recognition.onresult = async (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition() as SpeechRecognitionInterface;
       
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        }
-      }
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-      if (finalTranscript.trim() && participantId) {
-        try {
-          await supabase
-            .from('meeting_captions')
-            .insert({
+      recognition.onstart = () => {
+        console.log('Speech recognition started');
+        setIsListening(true);
+        if (restartTimeoutRef.current) {
+          clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = null;
+        }
+      };
+
+      recognition.onresult = async (event: SpeechRecognitionEvent) => {
+        console.log('Speech recognition result:', event);
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        console.log('Final transcript:', finalTranscript);
+        console.log('Interim transcript:', interimTranscript);
+
+        if (finalTranscript.trim() && participantId && meetingId) {
+          try {
+            console.log('Saving caption to database:', {
               meeting_id: meetingId,
               participant_id: participantId,
               content: finalTranscript.trim()
             });
-        } catch (error) {
-          console.error('Error saving caption:', error);
+
+            const { data, error } = await supabase
+              .from('meeting_captions')
+              .insert({
+                meeting_id: meetingId,
+                participant_id: participantId,
+                content: finalTranscript.trim()
+              })
+              .select();
+
+            if (error) {
+              console.error('Error saving caption:', error);
+            } else {
+              console.log('Caption saved successfully:', data);
+            }
+          } catch (error) {
+            console.error('Error saving caption:', error);
+          }
         }
-      }
-    };
+      };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        
+        // Only show error toast for critical errors
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          toast({
+            title: "Microphone Access Denied",
+            description: "Please allow microphone access to use captions",
+            variant: "destructive"
+          });
+        }
+        
+        // Auto-restart on recoverable errors
+        if (isEnabled && (event.error === 'network' || event.error === 'aborted')) {
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isEnabled) {
+              console.log('Restarting speech recognition after error');
+              startListening();
+            }
+          }, 1000);
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        setIsListening(false);
+        
+        // Auto-restart if still enabled and no restart timeout is set
+        if (isEnabled && !restartTimeoutRef.current) {
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isEnabled) {
+              console.log('Restarting speech recognition');
+              startListening();
+            }
+          }, 100);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      console.log('Starting speech recognition...');
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
       setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      if (isEnabled) {
-        setTimeout(startListening, 100);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    }
   }, [meetingId, participantId, isEnabled, toast]);
 
   const stopListening = useCallback(() => {
+    console.log('Stopping speech recognition');
+    
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+    
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
@@ -134,6 +205,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
 
   const toggleCaptions = useCallback(() => {
     const newEnabled = !isEnabled;
+    console.log('Toggling captions:', newEnabled);
     setIsEnabled(newEnabled);
     
     if (newEnabled) {
@@ -141,7 +213,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         startListening();
         toast({
           title: "Captions Enabled",
-          description: "Live captions are now active"
+          description: "Live captions are now active. Start speaking to see transcriptions."
         });
       } else {
         toast({
@@ -172,6 +244,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         .limit(50);
 
       if (error) throw error;
+      console.log('Fetched captions:', data);
       setCaptions(data || []);
     } catch (error) {
       console.error('Error fetching captions:', error);
@@ -194,6 +267,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
           filter: `meeting_id=eq.${meetingId}`
         },
         (payload) => {
+          console.log('New caption received:', payload.new);
           setCaptions(prev => [...prev, payload.new as Caption].slice(-50));
         }
       )
@@ -207,6 +281,9 @@ export const useCaptions = (meetingId: string, participantId: string) => {
   useEffect(() => {
     return () => {
       stopListening();
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+      }
     };
   }, [stopListening]);
 
