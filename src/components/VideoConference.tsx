@@ -1,10 +1,11 @@
+
 import React, { useEffect } from 'react';
 import { VideoControls } from '@/components/VideoControls';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingFeatures } from '@/components/MeetingFeatures';
 import { ParticipantReactions } from '@/components/ParticipantReactions';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
-import { MeetingLayout } from '@/components/meeting/MeetingLayout';
+import { NewMeetingLayout } from '@/components/meeting/NewMeetingLayout';
 import { 
   useMeetingState, 
   useHandRaiseNotifications, 
@@ -286,7 +287,7 @@ export const VideoConference = ({
           connectionQuality={connectionQuality}
         />
 
-        <MeetingLayout
+        <NewMeetingLayout
           localStream={localStream}
           remoteStreams={remoteStreams}
           userName={userName}
