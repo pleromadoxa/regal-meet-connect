@@ -47,6 +47,7 @@ interface SpeechRecognitionInterface {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives: number;
   onstart: () => void;
   onresult: (event: SpeechRecognitionEvent) => void;
   onerror: (event: SpeechRecognitionErrorEvent) => void;
@@ -59,22 +60,24 @@ export const useCaptions = (meetingId: string, participantId: string) => {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isEnabled, setIsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
   const recognitionRef = useRef<SpeechRecognitionInterface | null>(null);
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTranscriptRef = useRef<string>('');
   const { toast } = useToast();
 
   const startListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast({
         title: "Not Supported",
-        description: "Speech recognition is not supported in this browser",
+        description: "Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.",
         variant: "destructive"
       });
       return;
     }
 
-    if (!participantId) {
-      console.warn('Cannot start speech recognition - no participant ID');
+    if (!participantId || !meetingId) {
+      console.warn('Cannot start speech recognition - missing participant ID or meeting ID');
       return;
     }
 
@@ -83,12 +86,14 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       const recognition = new SpeechRecognition() as SpeechRecognitionInterface;
       
       recognition.continuous = true;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         console.log('Speech recognition started');
         setIsListening(true);
+        setCurrentTranscript('');
         if (restartTimeoutRef.current) {
           clearTimeout(restartTimeoutRef.current);
           restartTimeoutRef.current = null;
@@ -96,39 +101,54 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       };
 
       recognition.onresult = async (event: SpeechRecognitionEvent) => {
-        console.log('Speech recognition result received');
-        
+        let interimTranscript = '';
+        let finalTranscript = '';
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          
           if (event.results[i].isFinal) {
-            const transcript = event.results[i][0].transcript.trim();
-            console.log('Final transcript:', transcript);
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
 
-            if (transcript && participantId && meetingId) {
-              try {
-                console.log('Saving caption to database:', {
-                  meeting_id: meetingId,
-                  participant_id: participantId,
-                  content: transcript
-                });
+        // Show interim results
+        if (interimTranscript) {
+          setCurrentTranscript(interimTranscript);
+        }
 
-                const { data, error } = await supabase
-                  .from('meeting_captions')
-                  .insert({
-                    meeting_id: meetingId,
-                    participant_id: participantId,
-                    content: transcript
-                  })
-                  .select();
+        // Process final results
+        if (finalTranscript.trim() && finalTranscript.trim() !== lastTranscriptRef.current) {
+          const cleanTranscript = finalTranscript.trim();
+          lastTranscriptRef.current = cleanTranscript;
+          setCurrentTranscript('');
+          
+          console.log('Final speech transcript:', cleanTranscript);
 
-                if (error) {
-                  console.error('Error saving caption:', error);
-                } else {
-                  console.log('Caption saved successfully:', data);
-                }
-              } catch (error) {
-                console.error('Error saving caption:', error);
-              }
+          try {
+            const { data, error } = await supabase
+              .from('meeting_captions')
+              .insert({
+                meeting_id: meetingId,
+                participant_id: participantId,
+                content: cleanTranscript
+              })
+              .select();
+
+            if (error) {
+              console.error('Error saving caption:', error);
+              toast({
+                title: "Caption Error",
+                description: "Failed to save caption. Check your connection.",
+                variant: "destructive"
+              });
+            } else {
+              console.log('Caption saved successfully:', data);
             }
+          } catch (error) {
+            console.error('Error saving caption:', error);
           }
         }
       };
@@ -136,47 +156,69 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
+        setCurrentTranscript('');
         
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           toast({
-            title: "Microphone Access Denied",
-            description: "Please allow microphone access to use captions",
+            title: "Microphone Access Required",
+            description: "Please allow microphone access and try again. Check your browser settings.",
             variant: "destructive"
           });
+          setIsEnabled(false);
+          return;
+        }
+        
+        if (event.error === 'no-speech') {
+          console.log('No speech detected, continuing...');
+          // Don't show error for no speech, just continue
+        } else if (event.error === 'audio-capture') {
+          toast({
+            title: "Microphone Error",
+            description: "No microphone was found. Please connect a microphone and try again.",
+            variant: "destructive"
+          });
+          setIsEnabled(false);
+          return;
         }
         
         // Auto-restart on recoverable errors
         if (isEnabled && (event.error === 'network' || event.error === 'aborted' || event.error === 'no-speech')) {
           restartTimeoutRef.current = setTimeout(() => {
             if (isEnabled) {
-              console.log('Restarting speech recognition after error');
-              startListening();
-            }
-          }, 2000);
-        }
-      };
-
-      recognition.onend = () => {
-        console.log('Speech recognition ended');
-        setIsListening(false);
-        
-        // Auto-restart if still enabled
-        if (isEnabled && !restartTimeoutRef.current) {
-          restartTimeoutRef.current = setTimeout(() => {
-            if (isEnabled) {
-              console.log('Restarting speech recognition');
+              console.log('Restarting speech recognition after error:', event.error);
               startListening();
             }
           }, 1000);
         }
       };
 
+      recognition.onend = () => {
+        console.log('Speech recognition ended');
+        setIsListening(false);
+        setCurrentTranscript('');
+        
+        // Auto-restart if still enabled
+        if (isEnabled && !restartTimeoutRef.current) {
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isEnabled) {
+              console.log('Auto-restarting speech recognition');
+              startListening();
+            }
+          }, 500);
+        }
+      };
+
       recognitionRef.current = recognition;
       recognition.start();
-      console.log('Starting speech recognition...');
+      console.log('Starting speech recognition for participant:', participantId);
     } catch (error) {
       console.error('Error starting speech recognition:', error);
       setIsListening(false);
+      toast({
+        title: "Recognition Error",
+        description: "Failed to start speech recognition. Please try again.",
+        variant: "destructive"
+      });
     }
   }, [meetingId, participantId, isEnabled, toast]);
 
@@ -193,6 +235,8 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       recognitionRef.current = null;
     }
     setIsListening(false);
+    setCurrentTranscript('');
+    lastTranscriptRef.current = '';
   }, []);
 
   const toggleCaptions = useCallback(() => {
@@ -201,12 +245,25 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     setIsEnabled(newEnabled);
     
     if (newEnabled) {
-      if (participantId) {
-        startListening();
-        toast({
-          title: "Captions Enabled",
-          description: "Live captions are now active. Start speaking to see transcriptions."
-        });
+      if (participantId && meetingId) {
+        // Request microphone permissions first
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            startListening();
+            toast({
+              title: "Captions Enabled",
+              description: "Live captions are now active. Speak clearly into your microphone."
+            });
+          })
+          .catch((error) => {
+            console.error('Microphone permission denied:', error);
+            setIsEnabled(false);
+            toast({
+              title: "Microphone Access Required", 
+              description: "Please allow microphone access to use live captions.",
+              variant: "destructive"
+            });
+          });
       } else {
         toast({
           title: "Cannot Enable Captions",
@@ -222,7 +279,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         description: "Live captions have been turned off"
       });
     }
-  }, [isEnabled, startListening, stopListening, toast, participantId]);
+  }, [isEnabled, startListening, stopListening, toast, participantId, meetingId]);
 
   const fetchCaptions = useCallback(async () => {
     if (!meetingId) return;
@@ -283,6 +340,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     captions,
     isEnabled,
     isListening,
+    currentTranscript,
     toggleCaptions
   };
 };

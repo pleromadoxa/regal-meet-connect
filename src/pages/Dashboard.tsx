@@ -372,7 +372,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                           value={newMeetingTitle}
                           onChange={(e) => setNewMeetingTitle(e.target.value)}
                           placeholder="Enter meeting title"
-                          className="bg-white/20 border-white/30 text-white placeholder-white/60"
+                          className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50"
                         />
                       </div>
                       <div>
@@ -381,20 +381,21 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                           value={newMeetingDescription}
                           onChange={(e) => setNewMeetingDescription(e.target.value)}
                           placeholder="Enter meeting description"
-                          className="bg-white/20 border-white/30 text-white placeholder-white/60"
+                          className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 resize-none"
+                          rows={3}
                         />
                       </div>
                       <div className="flex space-x-2">
                         <Button
                           onClick={() => setIsCreateDialogOpen(false)}
                           variant="outline"
-                          className="flex-1 border-white/30 text-white hover:bg-white/10"
+                          className="flex-1 border-white/30 text-white hover:bg-white/10 bg-white/5"
                         >
                           Cancel
                         </Button>
                         <Button
                           onClick={handleCreateMeeting}
-                          className="flex-1 bg-orange-600 hover:bg-orange-700"
+                          className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
                         >
                           Create Meeting
                         </Button>

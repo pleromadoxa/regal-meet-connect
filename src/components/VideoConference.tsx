@@ -4,6 +4,8 @@ import { VideoControls } from '@/components/VideoControls';
 import { ParticipantGrid } from '@/components/ParticipantGrid';
 import { ParticipantsList } from '@/components/ParticipantsList';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
+import { MeetingFeatures } from '@/components/MeetingFeatures';
+import { ParticipantReactions } from '@/components/ParticipantReactions';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
@@ -36,6 +38,8 @@ export const VideoConference = ({
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
   const [currentMeeting, setCurrentMeeting] = useState<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [meetingStartTime] = useState(new Date());
+  const [connectionQuality, setConnectionQuality] = useState<'good' | 'poor' | 'offline'>('good');
 
   const {
     localStream,
@@ -68,6 +72,7 @@ export const VideoConference = ({
   const { 
     captions, 
     isEnabled: captionsEnabled, 
+    currentTranscript,
     toggleCaptions 
   } = useCaptions(meetingId, currentParticipantId);
 
@@ -239,6 +244,29 @@ export const VideoConference = ({
     navigate('/settings');
   };
 
+  // Monitor connection quality
+  useEffect(() => {
+    const checkConnection = () => {
+      if (navigator.onLine) {
+        // Simple connection quality check based on connected peers
+        if (connectedPeers.length === participants.length - 1) {
+          setConnectionQuality('good');
+        } else if (connectedPeers.length > 0) {
+          setConnectionQuality('poor');
+        } else {
+          setConnectionQuality('offline');
+        }
+      } else {
+        setConnectionQuality('offline');
+      }
+    };
+
+    const interval = setInterval(checkConnection, 5000);
+    checkConnection();
+
+    return () => clearInterval(interval);
+  }, [connectedPeers.length, participants.length]);
+
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
   const totalParticipantCount = connectedPeers.length + 1;
 
@@ -321,6 +349,14 @@ export const VideoConference = ({
         </div>
       </div>
 
+      {/* Meeting Features */}
+      <MeetingFeatures
+        participantCount={totalParticipantCount}
+        isHost={isCurrentUserHost}
+        meetingStartTime={meetingStartTime}
+        connectionQuality={connectionQuality}
+      />
+
       <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] sm:h-[calc(100vh-240px)]">
         {/* Video Area */}
         <div className="flex-1 min-w-0 relative">
@@ -354,6 +390,18 @@ export const VideoConference = ({
         captions={captions}
         participants={participants}
         isVisible={captionsEnabled}
+        currentTranscript={currentTranscript}
+      />
+
+      {/* Participant Reactions */}
+      <ParticipantReactions
+        participants={participants}
+        onSendReaction={(type) => {
+          // Broadcast reaction to other participants
+          window.dispatchEvent(new CustomEvent('send-reaction', { 
+            detail: { type, participantId: currentParticipantId, participantName: userName } 
+          }));
+        }}
       />
 
       {/* Controls */}
