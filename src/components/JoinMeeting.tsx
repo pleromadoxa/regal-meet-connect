@@ -68,7 +68,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your full name"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
+                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
                 />
               </div>
               <div>
@@ -79,7 +79,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value.toUpperCase())}
                   placeholder="Enter meeting ID"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
+                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
                 />
               </div>
               <Button
@@ -115,7 +115,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
                   placeholder="Enter your full name"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
+                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
                 />
               </div>
               <div>
@@ -127,7 +127,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                     value={hostRoomId}
                     onChange={(e) => setHostRoomId(e.target.value.toUpperCase())}
                     placeholder="Auto-generated ID"
-                    className="bg-white/20 border-white/30 text-white placeholder-white/60 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all flex-1"
+                    className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all flex-1"
                   />
                   <Button
                     onClick={generateRoomId}
