@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -47,7 +48,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
             .from('profiles')
             .select('display_name')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
           
           if (error && error.code !== 'PGRST116') {
             console.error('Error fetching profile:', error);
@@ -263,7 +264,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-                Regal Meet Dashboard
+                Regal Meetings Dashboard
               </h1>
               <p className="text-blue-200">Welcome back, {displayName || user?.email || 'User'}!</p>
             </div>
@@ -374,9 +375,9 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                 </div>
                 <Button
                   onClick={handleJoinMeetingById}
-                  className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0"
+                  className="w-full h-16 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0"
                 >
-                  <Video className="h-6 w-6 mr-3" />
+                  <Video className="h-8 w-8 mr-4" />
                   Join Meeting Now
                 </Button>
               </CardContent>
@@ -393,8 +394,8 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               <CardContent>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0">
-                      <Plus className="h-6 w-6 mr-3" />
+                    <Button className="w-full h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0">
+                      <Plus className="h-8 w-8 mr-4" />
                       Create New Meeting
                     </Button>
                   </DialogTrigger>

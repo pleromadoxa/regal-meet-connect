@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
-import { ParticipantGrid } from '@/components/ParticipantGrid';
+import { ResponsiveParticipantGrid } from '@/components/ResponsiveParticipantGrid';
 import { ParticipantsList } from '@/components/ParticipantsList';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingFeatures } from '@/components/MeetingFeatures';
@@ -244,6 +245,30 @@ export const VideoConference = ({
     navigate('/settings');
   };
 
+  // Enhanced reaction handling with real-time broadcast
+  const handleSendReaction = (type: string) => {
+    console.log('Sending reaction:', type);
+    
+    // Broadcast reaction to all participants via Supabase realtime
+    const channel = supabase.channel(`meeting-reactions-${meetingId}`);
+    
+    channel.send({
+      type: 'broadcast',
+      event: 'reaction',
+      payload: {
+        type,
+        participantId: currentParticipantId,
+        participantName: userName,
+        timestamp: Date.now()
+      }
+    });
+    
+    // Also trigger local reaction
+    window.dispatchEvent(new CustomEvent('remote-reaction', { 
+      detail: { type, participantId: currentParticipantId, participantName: userName } 
+    }));
+  };
+
   // Monitor connection quality
   useEffect(() => {
     const checkConnection = () => {
@@ -271,158 +296,163 @@ export const VideoConference = ({
   const totalParticipantCount = connectedPeers.length + 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4 pb-28 sm:pb-32 relative">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gradient-to-r from-orange-400 to-orange-600 rounded-lg shadow-lg">
-            <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
-              Regal Meet
-              {isCurrentUserHost && (
-                <span className="inline-flex items-center ml-2 px-2 py-1 bg-yellow-500/20 border border-yellow-400/40 rounded-full text-yellow-300 text-xs font-medium">
-                  <Crown className="h-3 w-3 mr-1" />
-                  HOST
-                </span>
-              )}
-            </h1>
-            <p className="text-blue-200 font-medium text-sm sm:text-base">Meeting: {meetingId}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <Button
-            onClick={copyMeetingId}
-            variant="outline"
-            size="sm"
-            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
-          >
-            <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            Copy ID
-          </Button>
-          
-          <div className="flex items-center space-x-2 bg-white/20 px-2 sm:px-3 py-1 sm:py-2 rounded-lg backdrop-blur-sm border border-white/30">
-            <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            <span className="text-white font-medium text-sm sm:text-base">{totalParticipantCount}</span>
-          </div>
-
-          <Button
-            onClick={toggleFullscreen}
-            variant="outline"
-            size="sm"
-            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
-          >
-            <Maximize className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Fullscreen</span>
-          </Button>
-
-          <Button
-            onClick={() => setShowParticipants(!showParticipants)}
-            variant="outline"
-            size="sm"
-            className="lg:hidden bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200"
-          >
-            {showParticipants ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </Button>
-
-          <Button
-            onClick={navigateToSettings}
-            variant="outline"
-            size="sm"
-            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
-          >
-            <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Settings</span>
-          </Button>
-
-          <Button
-            onClick={handleSignOut}
-            variant="outline"
-            size="sm"
-            className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 hover:border-red-400/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
-          >
-            <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Sign Out</span>
-          </Button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+      {/* Enhanced Background Elements */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-20 h-20 bg-orange-400 rounded-full blur-xl"></div>
+        <div className="absolute bottom-20 right-20 w-32 h-32 bg-blue-500 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-purple-500 rounded-full blur-lg"></div>
       </div>
 
-      {/* Meeting Features */}
-      <MeetingFeatures
-        participantCount={totalParticipantCount}
-        isHost={isCurrentUserHost}
-        meetingStartTime={meetingStartTime}
-        connectionQuality={connectionQuality}
-      />
+      <div className="relative z-10 flex flex-col h-screen">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 bg-black/20 backdrop-blur-xl border-b border-white/10">
+          <div className="flex items-center space-x-3 mb-4 sm:mb-0">
+            <div className="p-2 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-lg">
+              <Crown className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
+                Regal Meetings
+                {isCurrentUserHost && (
+                  <span className="inline-flex items-center ml-2 px-2 py-1 bg-yellow-500/20 border border-yellow-400/40 rounded-full text-yellow-300 text-xs font-medium">
+                    <Crown className="h-3 w-3 mr-1" />
+                    HOST
+                  </span>
+                )}
+              </h1>
+              <p className="text-blue-200 font-medium text-sm">ID: {meetingId}</p>
+            </div>
+          </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] sm:h-[calc(100vh-240px)]">
-        {/* Video Area */}
-        <div className="flex-1 min-w-0 relative">
-          <ParticipantGrid
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            userName={userName}
-            isVideoEnabled={isVideoEnabled}
-            selectedVideoId={selectedVideoId}
-            onVideoSelect={handleVideoSelect}
-          />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Button
+              onClick={copyMeetingId}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy ID
+            </Button>
+            
+            <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20">
+              <Users className="h-4 w-4 text-white" />
+              <span className="text-white font-medium">{totalParticipantCount}</span>
+            </div>
+
+            <Button
+              onClick={toggleFullscreen}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
+            >
+              <Maximize className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Fullscreen</span>
+            </Button>
+
+            <Button
+              onClick={() => setShowParticipants(!showParticipants)}
+              variant="outline"
+              size="sm"
+              className="lg:hidden bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
+            >
+              {showParticipants ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+
+            <Button
+              onClick={navigateToSettings}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              size="sm"
+              className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 hover:border-red-400/60 backdrop-blur-sm"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Participants Panel */}
-        <div className={`w-full lg:w-80 ${showParticipants ? 'block' : 'hidden lg:block'}`}>
-          <ParticipantsList
-            participants={participants}
-            remoteStreams={remoteStreams}
-            localStream={localStream}
-            currentUserId={user?.id || ''}
-            isHost={isCurrentUserHost}
-            onToggleMute={handleToggleMute}
-            onSelectVideo={handleVideoSelect}
-            selectedVideoId={selectedVideoId}
-          />
+        {/* Meeting Features */}
+        <MeetingFeatures
+          participantCount={totalParticipantCount}
+          isHost={isCurrentUserHost}
+          meetingStartTime={meetingStartTime}
+          connectionQuality={connectionQuality}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+          {/* Video Area */}
+          <div className="flex-1 min-w-0 relative">
+            <ResponsiveParticipantGrid
+              localStream={localStream}
+              remoteStreams={remoteStreams}
+              userName={userName}
+              isVideoEnabled={isVideoEnabled}
+              selectedVideoId={selectedVideoId}
+              onVideoSelect={handleVideoSelect}
+            />
+          </div>
+
+          {/* Participants Panel */}
+          <div className={`w-full lg:w-80 ${showParticipants ? 'block' : 'hidden lg:block'}`}>
+            <ParticipantsList
+              participants={participants}
+              remoteStreams={remoteStreams}
+              localStream={localStream}
+              currentUserId={user?.id || ''}
+              isHost={isCurrentUserHost}
+              onToggleMute={handleToggleMute}
+              onSelectVideo={handleVideoSelect}
+              selectedVideoId={selectedVideoId}
+            />
+          </div>
         </div>
+
+        {/* Captions Display */}
+        <CaptionsDisplay
+          captions={captions}
+          participants={participants}
+          isVisible={captionsEnabled}
+          currentTranscript={currentTranscript}
+        />
+
+        {/* Participant Reactions */}
+        <ParticipantReactions
+          participants={participants}
+          onSendReaction={handleSendReaction}
+        />
+
+        {/* Controls */}
+        <VideoControls
+          isVideoEnabled={isVideoEnabled}
+          isAudioEnabled={isAudioEnabled}
+          isScreenSharing={isScreenSharing}
+          currentFacingMode={currentFacingMode}
+          currentAudioDevice={currentAudioDevice}
+          currentVideoDevice={currentVideoDevice}
+          onToggleVideo={toggleVideo}
+          onToggleAudio={toggleAudio}
+          onToggleScreenShare={toggleScreenShare}
+          onSwitchCamera={switchCamera}
+          onLeaveMeeting={handleLeaveMeeting}
+          onDeviceChange={handleDeviceChange}
+          onToggleCaptions={toggleCaptions}
+          captionsEnabled={captionsEnabled}
+          userName={userName}
+          onNavigateToDashboard={onNavigateToDashboard}
+        />
       </div>
-
-      {/* Captions Display */}
-      <CaptionsDisplay
-        captions={captions}
-        participants={participants}
-        isVisible={captionsEnabled}
-        currentTranscript={currentTranscript}
-      />
-
-      {/* Participant Reactions */}
-      <ParticipantReactions
-        participants={participants}
-        onSendReaction={(type) => {
-          // Broadcast reaction to other participants
-          window.dispatchEvent(new CustomEvent('send-reaction', { 
-            detail: { type, participantId: currentParticipantId, participantName: userName } 
-          }));
-        }}
-      />
-
-      {/* Controls */}
-      <VideoControls
-        isVideoEnabled={isVideoEnabled}
-        isAudioEnabled={isAudioEnabled}
-        isScreenSharing={isScreenSharing}
-        currentFacingMode={currentFacingMode}
-        currentAudioDevice={currentAudioDevice}
-        currentVideoDevice={currentVideoDevice}
-        onToggleVideo={toggleVideo}
-        onToggleAudio={toggleAudio}
-        onToggleScreenShare={toggleScreenShare}
-        onSwitchCamera={switchCamera}
-        onLeaveMeeting={handleLeaveMeeting}
-        onDeviceChange={handleDeviceChange}
-        onToggleCaptions={toggleCaptions}
-        captionsEnabled={captionsEnabled}
-        userName={userName}
-        onNavigateToDashboard={onNavigateToDashboard}
-      />
     </div>
   );
 };
