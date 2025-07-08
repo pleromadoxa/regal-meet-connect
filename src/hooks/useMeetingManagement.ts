@@ -1,8 +1,8 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useMeetingActions } from './useMeetingActions';
 
 interface Meeting {
   id: string;
@@ -31,6 +31,7 @@ export const useMeetingManagement = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { createMeeting: createMeetingAction, removeMeeting: removeMeetingAction } = useMeetingActions();
 
   const fetchMeetings = useCallback(async () => {
     if (!user?.id) {
@@ -89,6 +90,19 @@ export const useMeetingManagement = () => {
     }
   }, [user?.id, toast]);
 
+  const createMeeting = useCallback(async (meetingId: string, title: string, description?: string) => {
+    const result = await createMeetingAction(meetingId, title, description);
+    if (result) {
+      await fetchMeetings();
+    }
+    return result;
+  }, [createMeetingAction, fetchMeetings]);
+
+  const removeMeeting = useCallback(async (meetingId: string) => {
+    await removeMeetingAction(meetingId);
+    await fetchMeetings();
+  }, [removeMeetingAction, fetchMeetings]);
+
   const fetchParticipants = useCallback(async (meetingId: string) => {
     try {
       console.log('Fetching participants for meeting:', meetingId);
@@ -106,7 +120,6 @@ export const useMeetingManagement = () => {
       console.log('Fetched participants:', data);
       setParticipants(data || []);
       
-      // Set up real-time subscription for participants
       const channel = supabase
         .channel(`participants-${meetingId}`)
         .on(
@@ -119,7 +132,6 @@ export const useMeetingManagement = () => {
           },
           (payload) => {
             console.log('Participant change:', payload);
-            // Refresh participants when changes occur
             fetchParticipants(meetingId);
           }
         )
@@ -138,50 +150,12 @@ export const useMeetingManagement = () => {
     }
   }, [toast]);
 
-  const createMeeting = async (meetingId: string, title: string, description?: string) => {
-    if (!user?.id) return null;
-
-    try {
-      console.log('Creating meeting:', { meetingId, title, description, hostId: user.id });
-      
-      const { data, error } = await supabase
-        .from('meetings')
-        .insert({
-          meeting_id: meetingId,
-          host_id: user.id,
-          title,
-          description,
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating meeting:', error);
-        throw error;
-      }
-      
-      console.log('Meeting created successfully:', data);
-      await fetchMeetings();
-      return data;
-    } catch (error) {
-      console.error('Error in createMeeting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create meeting. Please try again.",
-        variant: "destructive"
-      });
-      return null;
-    }
-  };
-
   const joinMeeting = async (meetingId: string, userName: string) => {
     if (!user?.id) return null;
 
     try {
       console.log('Joining meeting:', { meetingId, userName, userId: user.id });
       
-      // First check if meeting exists
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('id, host_id')
@@ -198,7 +172,6 @@ export const useMeetingManagement = () => {
         return null;
       }
 
-      // Check if user is already a participant
       const { data: existingParticipant } = await supabase
         .from('meeting_participants')
         .select('id')
@@ -211,7 +184,6 @@ export const useMeetingManagement = () => {
         return existingParticipant;
       }
 
-      // Join as participant
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -248,7 +220,6 @@ export const useMeetingManagement = () => {
     try {
       console.log('Joining as host:', { meetingId, userName, userId: user.id });
       
-      // Get the meeting and verify user is the host
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('*')
@@ -266,7 +237,6 @@ export const useMeetingManagement = () => {
         return null;
       }
 
-      // Check if host is already a participant
       const { data: existingParticipant } = await supabase
         .from('meeting_participants')
         .select('id')
@@ -279,7 +249,6 @@ export const useMeetingManagement = () => {
         return { meeting, participant: existingParticipant };
       }
 
-      // Join as host
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -341,49 +310,9 @@ export const useMeetingManagement = () => {
     }
   };
 
-  const removeMeeting = async (meetingId: string) => {
-    if (!user?.id) return;
-
-    try {
-      console.log('Deleting meeting:', meetingId);
-      
-      const { error } = await supabase
-        .from('meetings')
-        .delete()
-        .eq('id', meetingId)
-        .eq('host_id', user.id); // Ensure only host can delete
-
-      if (error) {
-        console.error('Error deleting meeting:', error);
-        throw error;
-      }
-      
-      await fetchMeetings();
-      toast({
-        title: "Success",
-        description: "Meeting deleted successfully"
-      });
-      
-      console.log('Meeting deleted successfully');
-    } catch (error) {
-      console.error('Error in removeMeeting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete meeting. You may not have permission.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const isUserHost = (meeting: Meeting) => {
     return meeting.host_id === user?.id;
   };
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchMeetings();
-    }
-  }, [fetchMeetings, user?.id]);
 
   return {
     meetings,
