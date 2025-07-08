@@ -312,23 +312,63 @@ export const VideoConference = ({
 
   useEffect(() => {
     const checkConnection = () => {
-      if (navigator.onLine) {
-        if (connectedPeers.length === participants.length - 1) {
-          setConnectionQuality('good');
-        } else if (connectedPeers.length > 0) {
-          setConnectionQuality('poor');
-        } else {
-          setConnectionQuality('offline');
-        }
-      } else {
+      // Check if browser is online
+      if (!navigator.onLine) {
         setConnectionQuality('offline');
+        return;
+      }
+
+      // Check WebRTC connection status
+      const totalExpectedPeers = participants.length > 0 ? participants.length - 1 : 0;
+      const connectedPeerCount = connectedPeers.length;
+      
+      console.log('Connection check:', { 
+        totalExpectedPeers, 
+        connectedPeerCount, 
+        participantsLength: participants.length,
+        isOnline: navigator.onLine 
+      });
+
+      if (totalExpectedPeers === 0) {
+        // Only user in meeting or no participants data yet
+        setConnectionQuality('good');
+      } else if (connectedPeerCount === totalExpectedPeers) {
+        // All expected peers connected
+        setConnectionQuality('good');
+      } else if (connectedPeerCount > 0) {
+        // Some peers connected but not all
+        setConnectionQuality('poor');
+      } else {
+        // No peers connected but there should be
+        setConnectionQuality('poor');
       }
     };
 
-    const interval = setInterval(checkConnection, 5000);
+    // Initial check
     checkConnection();
 
-    return () => clearInterval(interval);
+    // Check connection every 3 seconds
+    const interval = setInterval(checkConnection, 3000);
+
+    // Listen for online/offline events
+    const handleOnline = () => {
+      console.log('Browser back online');
+      setConnectionQuality('good');
+    };
+    
+    const handleOffline = () => {
+      console.log('Browser went offline');
+      setConnectionQuality('offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [connectedPeers.length, participants.length]);
 
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));

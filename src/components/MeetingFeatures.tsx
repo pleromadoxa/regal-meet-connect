@@ -56,8 +56,16 @@ export const MeetingFeatures = ({
     }
   };
 
+  const getConnectionText = () => {
+    switch (connectionQuality) {
+      case 'good': return 'Good';
+      case 'poor': return 'Poor';
+      case 'offline': return 'Offline';
+    }
+  };
+
   return (
-    <Card className="fixed top-4 right-4 bg-black/80 backdrop-blur-xl border-white/20 p-3 z-30">
+    <Card className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-xl border-white/20 p-3 z-30 rounded-xl">
       <div className="flex items-center space-x-4 text-sm">
         <div className="flex items-center space-x-1">
           <Clock className="h-4 w-4 text-blue-400" />
@@ -71,8 +79,8 @@ export const MeetingFeatures = ({
         
         <div className="flex items-center space-x-1">
           {getConnectionIcon()}
-          <span className={`capitalize ${getConnectionColor()}`}>
-            {connectionQuality}
+          <span className={`${getConnectionColor()}`}>
+            {getConnectionText()}
           </span>
         </div>
 
