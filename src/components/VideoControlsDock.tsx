@@ -23,7 +23,8 @@ interface DockItem {
   onClick: () => void;
   isActive?: boolean;
   variant?: 'default' | 'danger' | 'success' | 'warning';
-  priority?: 'high' | 'medium' | 'low'; // For mobile display priority
+  priority?: 'high' | 'medium' | 'low';
+  isSpecial?: boolean; // For the leave meeting button
 }
 
 interface VideoControlsDockProps {
@@ -67,6 +68,13 @@ const DockItemComponent = ({
     return 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20';
   };
 
+  // Special styling for leave meeting button
+  const buttonSize = item.isSpecial 
+    ? 'w-14 h-14 sm:w-16 sm:h-16' 
+    : 'w-10 h-10 sm:w-11 sm:h-11';
+  
+  const iconSize = item.isSpecial ? 24 : 18;
+
   return (
     <div
       className="relative group"
@@ -76,7 +84,7 @@ const DockItemComponent = ({
       <div
         className={`
           relative flex items-center justify-center
-          w-10 h-10 sm:w-11 sm:h-11 rounded-lg
+          ${buttonSize} rounded-lg
           backdrop-blur-[2px]
           border
           transition-all duration-300 ease-out
@@ -100,7 +108,7 @@ const DockItemComponent = ({
           transition-all duration-300
           ${isHovered ? 'scale-105 drop-shadow-[0_1px_4px_rgba(255,255,255,0.10)]' : ''}
         `}>
-          {item.icon}
+          {React.cloneElement(item.icon as React.ReactElement, { size: iconSize })}
         </div>
       </div>
       
@@ -154,7 +162,7 @@ export const VideoControlsDock = ({
   const allDockItems: DockItem[] = [
     {
       id: 'audio',
-      icon: isAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />,
+      icon: <Mic />,
       label: isAudioEnabled ? 'Mute' : 'Unmute',
       onClick: onToggleAudio,
       isActive: isAudioEnabled,
@@ -163,7 +171,7 @@ export const VideoControlsDock = ({
     },
     {
       id: 'video',
-      icon: isVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />,
+      icon: isVideoEnabled ? <Video /> : <VideoOff />,
       label: isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera',
       onClick: onToggleVideo,
       isActive: isVideoEnabled,
@@ -172,7 +180,7 @@ export const VideoControlsDock = ({
     },
     {
       id: 'screen',
-      icon: isScreenSharing ? <MonitorOff size={18} /> : <Monitor size={18} />,
+      icon: isScreenSharing ? <MonitorOff /> : <Monitor />,
       label: isScreenSharing ? 'Stop Sharing' : 'Share Screen',
       onClick: onToggleScreenShare,
       isActive: isScreenSharing,
@@ -180,14 +188,14 @@ export const VideoControlsDock = ({
     },
     {
       id: 'camera-switch',
-      icon: <RotateCcw size={18} />,
+      icon: <RotateCcw />,
       label: 'Switch Camera',
       onClick: onSwitchCamera,
       priority: 'low'
     },
     {
       id: 'hand',
-      icon: <Hand size={18} />,
+      icon: <Hand />,
       label: handRaised ? 'Lower Hand' : 'Raise Hand',
       onClick: onToggleHand,
       isActive: handRaised,
@@ -196,7 +204,7 @@ export const VideoControlsDock = ({
     },
     {
       id: 'chat',
-      icon: <MessageSquare size={18} />,
+      icon: <MessageSquare />,
       label: 'Chat',
       onClick: onToggleChat,
       isActive: showChat,
@@ -204,7 +212,7 @@ export const VideoControlsDock = ({
     },
     {
       id: 'captions',
-      icon: <Captions size={18} />,
+      icon: <Captions />,
       label: captionsEnabled ? 'Hide Captions' : 'Show Captions',
       onClick: onToggleCaptions,
       isActive: captionsEnabled,
@@ -212,7 +220,7 @@ export const VideoControlsDock = ({
     },
     {
       id: 'settings',
-      icon: <Settings size={18} />,
+      icon: <Settings />,
       label: 'Settings',
       onClick: onToggleSettings,
       isActive: showSettings,
@@ -223,20 +231,22 @@ export const VideoControlsDock = ({
   if (onNavigateToDashboard) {
     allDockItems.push({
       id: 'dashboard',
-      icon: <LayoutDashboard size={18} />,
+      icon: <LayoutDashboard />,
       label: 'Dashboard',
       onClick: onNavigateToDashboard,
       priority: 'low'
     });
   }
 
+  // Special leave meeting button with larger size and centered position
   allDockItems.push({
     id: 'leave',
-    icon: <Phone size={18} className="rotate-135" />,
+    icon: <Phone className="rotate-135" />,
     label: 'Leave Meeting',
     onClick: onLeaveMeeting,
     variant: 'danger',
-    priority: 'high'
+    priority: 'high',
+    isSpecial: true
   });
 
   // For mobile, show only high priority items first, then medium
@@ -248,7 +258,7 @@ export const VideoControlsDock = ({
       <div className="relative">
         {/* Mobile Dock - Show only essential controls */}
         <div className={`
-          sm:hidden flex items-end gap-2 px-4 py-3
+          sm:hidden flex items-center justify-center gap-3 px-4 py-3
           rounded-2xl
           bg-black/40 backdrop-blur-xl
           border border-white/10
@@ -268,7 +278,7 @@ export const VideoControlsDock = ({
 
         {/* Tablet Dock - Show more controls */}
         <div className={`
-          hidden sm:flex md:hidden items-end gap-2 px-5 py-3
+          hidden sm:flex md:hidden items-center justify-center gap-3 px-5 py-3
           rounded-2xl
           bg-black/40 backdrop-blur-xl
           border border-white/10
@@ -288,7 +298,7 @@ export const VideoControlsDock = ({
 
         {/* Desktop Dock - Show all controls */}
         <div className={`
-          hidden md:flex items-end gap-3 px-6 py-4
+          hidden md:flex items-center justify-center gap-4 px-6 py-4
           rounded-2xl
           bg-black/40 backdrop-blur-xl
           border border-white/10
@@ -309,7 +319,7 @@ export const VideoControlsDock = ({
         {/* Reflection Effect */}
         <div className="absolute top-full left-0 right-0 h-6 sm:h-8 overflow-hidden opacity-30">
           <div className={`
-            flex items-start gap-2 sm:gap-3 px-4 sm:px-6 py-2
+            flex items-start justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-2
             rounded-2xl
             bg-black/20 backdrop-blur-xl
             border border-white/5
@@ -322,7 +332,7 @@ export const VideoControlsDock = ({
                 key={`reflection-${item.id}`}
                 className={`
                   flex items-center justify-center
-                  w-10 h-10 sm:w-11 sm:h-11 rounded-lg
+                  ${item.isSpecial ? 'w-14 h-14 sm:w-16 sm:h-16' : 'w-10 h-10 sm:w-11 sm:h-11'} rounded-lg
                   bg-white/5
                   transition-all duration-300 ease-out
                   ${hoveredItem === item.id 
@@ -332,7 +342,9 @@ export const VideoControlsDock = ({
                 `}
               >
                 <div className="text-white/30">
-                  {item.icon}
+                  {React.cloneElement(item.icon as React.ReactElement, { 
+                    size: item.isSpecial ? 24 : 18 
+                  })}
                 </div>
               </div>
             ))}

@@ -87,17 +87,47 @@ export const ResponsiveParticipantGrid = ({
     isLocal?: boolean;
     isHost?: boolean;
   }) => {
-    const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+    const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const isSelected = selectedVideoId === streamId;
     const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
 
     useEffect(() => {
-      if (videoRef && stream) {
-        videoRef.srcObject = stream;
-        videoRef.play().catch(console.error);
+      if (videoElement && stream) {
+        // Prevent video glitching by properly handling stream assignment
+        if (videoElement.srcObject !== stream) {
+          videoElement.srcObject = stream;
+          
+          // Handle video play with proper error handling
+          const playVideo = async () => {
+            try {
+              await videoElement.play();
+            } catch (error) {
+              console.log('Video play failed, retrying...', error);
+              // Retry once after a short delay
+              setTimeout(async () => {
+                try {
+                  await videoElement.play();
+                } catch (retryError) {
+                  console.warn('Video play retry failed:', retryError);
+                }
+              }, 100);
+            }
+          };
+          
+          playVideo();
+        }
       }
-    }, [videoRef, stream]);
+    }, [videoElement, stream]);
+
+    // Clean up video element when component unmounts or stream changes
+    useEffect(() => {
+      return () => {
+        if (videoElement) {
+          videoElement.srcObject = null;
+        }
+      };
+    }, [videoElement]);
 
     return (
       <Card 
@@ -111,11 +141,20 @@ export const ResponsiveParticipantGrid = ({
         <div className="relative w-full h-full min-h-[120px] sm:min-h-[180px] md:min-h-[240px]">
           {hasVideo ? (
             <video
-              ref={setVideoRef}
+              ref={setVideoElement}
               autoPlay
               playsInline
               muted={isLocal}
               className="w-full h-full object-cover rounded-lg"
+              style={{
+                imageRendering: 'auto',
+                objectFit: 'cover'
+              }}
+              onLoadedMetadata={(e) => {
+                // Ensure video plays when metadata is loaded
+                const video = e.target as HTMLVideoElement;
+                video.play().catch(console.warn);
+              }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
