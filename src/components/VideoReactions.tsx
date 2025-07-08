@@ -22,8 +22,8 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
     const newReaction: Reaction = {
       id: Math.random().toString(36).substring(7),
       type,
-      x: Math.random() * 70 + 15, // Keep reactions within main video area
-      y: Math.random() * 60 + 20, // Keep reactions within main video area
+      x: Math.random() * 70 + 15,
+      y: Math.random() * 60 + 20,
       timestamp: Date.now(),
     };
 
@@ -81,31 +81,7 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
         </div>
       </div>
 
-      {/* Reactions Overlay - positioned over the MAIN VIDEO AREA */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-[55]">
-        {reactions.map((reaction) => (
-          <div
-            key={reaction.id}
-            className="absolute"
-            style={{
-              left: `${reaction.x}%`,
-              top: `${reaction.y}%`,
-              animation: 'reaction-float 3s ease-out forwards',
-            }}
-          >
-            {reaction.type === 'heart' && (
-              <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-red-400 drop-shadow-lg animate-pulse" fill="currentColor" />
-            )}
-            {reaction.type === 'like' && (
-              <ThumbsUp className="h-6 w-6 sm:h-8 sm:w-8 text-blue-400 drop-shadow-lg animate-pulse" fill="currentColor" />
-            )}
-            {reaction.type === 'celebration' && (
-              <Settings className="h-6 w-6 sm:h-8 sm:w-8 text-purple-400 drop-shadow-lg animate-pulse" fill="currentColor" />
-            )}
-          </div>
-        ))}
-      </div>
-
+      {/* Reactions Overlay - removed from video area */}
       <style>{`
         @keyframes reaction-float {
           0% {

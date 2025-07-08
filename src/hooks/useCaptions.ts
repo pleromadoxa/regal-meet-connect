@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -83,7 +82,7 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       const recognition = new SpeechRecognition() as SpeechRecognitionInterface;
       
       recognition.continuous = true;
-      recognition.interimResults = true;
+      recognition.interimResults = false;
       recognition.lang = 'en-US';
 
       recognition.onstart = () => {
@@ -96,46 +95,39 @@ export const useCaptions = (meetingId: string, participantId: string) => {
       };
 
       recognition.onresult = async (event: SpeechRecognitionEvent) => {
-        console.log('Speech recognition result:', event);
-        let finalTranscript = '';
-        let interimTranscript = '';
+        console.log('Speech recognition result received');
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
-        }
+            const transcript = event.results[i][0].transcript.trim();
+            console.log('Final transcript:', transcript);
 
-        console.log('Final transcript:', finalTranscript);
-        console.log('Interim transcript:', interimTranscript);
+            if (transcript && participantId && meetingId) {
+              try {
+                console.log('Saving caption to database:', {
+                  meeting_id: meetingId,
+                  participant_id: participantId,
+                  content: transcript
+                });
 
-        if (finalTranscript.trim() && participantId && meetingId) {
-          try {
-            console.log('Saving caption to database:', {
-              meeting_id: meetingId,
-              participant_id: participantId,
-              content: finalTranscript.trim()
-            });
+                const { data, error } = await supabase
+                  .from('meeting_captions')
+                  .insert({
+                    meeting_id: meetingId,
+                    participant_id: participantId,
+                    content: transcript
+                  })
+                  .select();
 
-            const { data, error } = await supabase
-              .from('meeting_captions')
-              .insert({
-                meeting_id: meetingId,
-                participant_id: participantId,
-                content: finalTranscript.trim()
-              })
-              .select();
-
-            if (error) {
-              console.error('Error saving caption:', error);
-            } else {
-              console.log('Caption saved successfully:', data);
+                if (error) {
+                  console.error('Error saving caption:', error);
+                } else {
+                  console.log('Caption saved successfully:', data);
+                }
+              } catch (error) {
+                console.error('Error saving caption:', error);
+              }
             }
-          } catch (error) {
-            console.error('Error saving caption:', error);
           }
         }
       };
@@ -144,7 +136,6 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
         
-        // Only show error toast for critical errors
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           toast({
             title: "Microphone Access Denied",
@@ -154,13 +145,13 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         }
         
         // Auto-restart on recoverable errors
-        if (isEnabled && (event.error === 'network' || event.error === 'aborted')) {
+        if (isEnabled && (event.error === 'network' || event.error === 'aborted' || event.error === 'no-speech')) {
           restartTimeoutRef.current = setTimeout(() => {
             if (isEnabled) {
               console.log('Restarting speech recognition after error');
               startListening();
             }
-          }, 1000);
+          }, 2000);
         }
       };
 
@@ -168,14 +159,14 @@ export const useCaptions = (meetingId: string, participantId: string) => {
         console.log('Speech recognition ended');
         setIsListening(false);
         
-        // Auto-restart if still enabled and no restart timeout is set
+        // Auto-restart if still enabled
         if (isEnabled && !restartTimeoutRef.current) {
           restartTimeoutRef.current = setTimeout(() => {
             if (isEnabled) {
               console.log('Restarting speech recognition');
               startListening();
             }
-          }, 100);
+          }, 1000);
         }
       };
 
