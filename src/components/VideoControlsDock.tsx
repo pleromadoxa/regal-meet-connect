@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Mic, 
@@ -8,16 +8,14 @@ import {
   VideoOff, 
   Monitor, 
   MonitorOff, 
-  Phone, 
+  SwitchCamera, 
   Settings, 
   MessageSquare, 
   Hand, 
-  MoreHorizontal,
-  SwitchCamera,
-  Subtitles,
-  SubtitlesOff,
-  Home,
-  Palette
+  Palette, 
+  LogOut,
+  LayoutDashboard,
+  Subtitles
 } from 'lucide-react';
 
 interface VideoControlsDockProps {
@@ -36,7 +34,7 @@ interface VideoControlsDockProps {
   onToggleSettings: () => void;
   onToggleChat: () => void;
   onToggleHand: () => void;
-  onToggleEffects?: () => void;
+  onToggleEffects: () => void;
   onNavigateToDashboard?: () => void;
   onLeaveMeeting: () => void;
 }
@@ -61,185 +59,148 @@ export const VideoControlsDock = ({
   onNavigateToDashboard,
   onLeaveMeeting
 }: VideoControlsDockProps) => {
-  const [showMore, setShowMore] = useState(false);
-
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30">
-      <div className="bg-black/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl p-4">
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 p-4 shadow-2xl">
         <div className="flex items-center space-x-3">
-          {/* Primary Controls */}
+          {/* Audio Control */}
           <Button
             onClick={onToggleAudio}
             variant={isAudioEnabled ? "default" : "destructive"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            className={`rounded-xl transition-all duration-300 ${
               isAudioEnabled 
-                ? "bg-white/20 hover:bg-white/30 text-white border-white/30" 
-                : "bg-red-500/80 hover:bg-red-500 text-white animate-pulse"
-            }`}
+                ? "bg-green-600 hover:bg-green-700 shadow-green-500/20" 
+                : "bg-red-600 hover:bg-red-700 shadow-red-500/20"
+            } shadow-lg`}
           >
-            {isAudioEnabled ? (
-              <Mic className="h-5 w-5 drop-shadow-lg" />
-            ) : (
-              <MicOff className="h-5 w-5 drop-shadow-lg" />
-            )}
+            {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
           </Button>
 
+          {/* Video Control */}
           <Button
             onClick={onToggleVideo}
             variant={isVideoEnabled ? "default" : "destructive"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            className={`rounded-xl transition-all duration-300 ${
               isVideoEnabled 
-                ? "bg-white/20 hover:bg-white/30 text-white border-white/30" 
-                : "bg-red-500/80 hover:bg-red-500 text-white animate-pulse"
-            }`}
+                ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20" 
+                : "bg-red-600 hover:bg-red-700 shadow-red-500/20"
+            } shadow-lg`}
           >
-            {isVideoEnabled ? (
-              <Video className="h-5 w-5 drop-shadow-lg" />
-            ) : (
-              <VideoOff className="h-5 w-5 drop-shadow-lg" />
-            )}
+            {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
           </Button>
 
+          {/* Screen Share */}
           <Button
             onClick={onToggleScreenShare}
             variant={isScreenSharing ? "default" : "outline"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            className={`rounded-xl transition-all duration-300 ${
               isScreenSharing 
-                ? "bg-orange-500/80 hover:bg-orange-500 text-white border-orange-400 animate-pulse" 
-                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-            }`}
+                ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20" 
+                : "bg-white/10 hover:bg-white/20 border-white/30"
+            } shadow-lg`}
           >
-            {isScreenSharing ? (
-              <MonitorOff className="h-5 w-5 drop-shadow-lg" />
-            ) : (
-              <Monitor className="h-5 w-5 drop-shadow-lg" />
-            )}
+            {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
           </Button>
 
-          {/* Secondary Controls */}
-          <div className="h-8 w-px bg-white/20"></div>
-
+          {/* Switch Camera */}
           <Button
             onClick={onSwitchCamera}
             variant="outline"
             size="lg"
-            className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95 hover:rotate-180"
+            className="rounded-xl bg-white/10 hover:bg-white/20 border-white/30 shadow-lg transition-all duration-300"
           >
-            <SwitchCamera className="h-5 w-5 drop-shadow-lg transition-transform duration-300" />
+            <SwitchCamera className="h-5 w-5" />
           </Button>
 
+          {/* Captions */}
+          <Button
+            onClick={onToggleCaptions}
+            variant={captionsEnabled ? "default" : "outline"}
+            size="lg"
+            className={`rounded-xl transition-all duration-300 ${
+              captionsEnabled 
+                ? "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20" 
+                : "bg-white/10 hover:bg-white/20 border-white/30"
+            } shadow-lg`}
+          >
+            <Subtitles className="h-5 w-5" />
+          </Button>
+
+          {/* Video Effects */}
+          <Button
+            onClick={onToggleEffects}
+            variant="outline"
+            size="lg"
+            className="rounded-xl bg-white/10 hover:bg-white/20 border-white/30 shadow-lg transition-all duration-300"
+          >
+            <Palette className="h-5 w-5" />
+          </Button>
+
+          {/* Hand Raise */}
           <Button
             onClick={onToggleHand}
             variant={handRaised ? "default" : "outline"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            className={`rounded-xl transition-all duration-300 ${
               handRaised 
-                ? "bg-yellow-500/80 hover:bg-yellow-500 text-yellow-900 border-yellow-400 animate-bounce" 
-                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-            }`}
+                ? "bg-yellow-600 hover:bg-yellow-700 shadow-yellow-500/20 animate-pulse" 
+                : "bg-white/10 hover:bg-white/20 border-white/30"
+            } shadow-lg`}
           >
-            <Hand className="h-5 w-5 drop-shadow-lg" />
+            <Hand className="h-5 w-5" />
           </Button>
 
+          {/* Chat */}
           <Button
             onClick={onToggleChat}
             variant={showChat ? "default" : "outline"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            className={`rounded-xl transition-all duration-300 ${
               showChat 
-                ? "bg-blue-500/80 hover:bg-blue-500 text-white border-blue-400" 
-                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-            }`}
+                ? "bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/20" 
+                : "bg-white/10 hover:bg-white/20 border-white/30"
+            } shadow-lg`}
           >
-            <MessageSquare className="h-5 w-5 drop-shadow-lg" />
+            <MessageSquare className="h-5 w-5" />
           </Button>
 
-          {/* More Options Toggle */}
+          {/* Settings */}
           <Button
-            onClick={() => setShowMore(!showMore)}
-            variant="outline"
+            onClick={onToggleSettings}
+            variant={showSettings ? "default" : "outline"}
             size="lg"
-            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
-              showMore 
-                ? "bg-white/20 hover:bg-white/30 text-white border-white/40" 
-                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-            }`}
+            className={`rounded-xl transition-all duration-300 ${
+              showSettings 
+                ? "bg-gray-600 hover:bg-gray-700 shadow-gray-500/20" 
+                : "bg-white/10 hover:bg-white/20 border-white/30"
+            } shadow-lg`}
           >
-            <MoreHorizontal className={`h-5 w-5 drop-shadow-lg transition-transform duration-300 ${showMore ? 'rotate-90' : ''}`} />
+            <Settings className="h-5 w-5" />
           </Button>
 
-          {/* Additional Controls (when expanded) */}
-          {showMore && (
-            <>
-              <div className="h-8 w-px bg-white/20"></div>
-              
-              <Button
-                onClick={onToggleCaptions}
-                variant={captionsEnabled ? "default" : "outline"}
-                size="lg"
-                className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
-                  captionsEnabled 
-                    ? "bg-green-500/80 hover:bg-green-500 text-white border-green-400" 
-                    : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-                }`}
-              >
-                {captionsEnabled ? (
-                  <Subtitles className="h-5 w-5 drop-shadow-lg" />
-                ) : (
-                  <SubtitlesOff className="h-5 w-5 drop-shadow-lg" />
-                )}
-              </Button>
-
-              {onToggleEffects && (
-                <Button
-                  onClick={onToggleEffects}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95"
-                >
-                  <Palette className="h-5 w-5 drop-shadow-lg" />
-                </Button>
-              )}
-
-              <Button
-                onClick={onToggleSettings}
-                variant={showSettings ? "default" : "outline"}
-                size="lg"
-                className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 hover:rotate-45 ${
-                  showSettings 
-                    ? "bg-purple-500/80 hover:bg-purple-500 text-white border-purple-400" 
-                    : "bg-white/10 hover:bg-white/20 text-white border-white/30"
-                }`}
-              >
-                <Settings className="h-5 w-5 drop-shadow-lg transition-transform duration-300" />
-              </Button>
-
-              {onNavigateToDashboard && (
-                <Button
-                  onClick={onNavigateToDashboard}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95"
-                >
-                  <Home className="h-5 w-5 drop-shadow-lg" />
-                </Button>
-              )}
-            </>
+          {/* Dashboard */}
+          {onNavigateToDashboard && (
+            <Button
+              onClick={onNavigateToDashboard}
+              variant="outline"
+              size="lg"
+              className="rounded-xl bg-white/10 hover:bg-white/20 border-white/30 shadow-lg transition-all duration-300"
+            >
+              <LayoutDashboard className="h-5 w-5" />
+            </Button>
           )}
 
           {/* Leave Meeting */}
-          <div className="h-8 w-px bg-white/20"></div>
-          
           <Button
             onClick={onLeaveMeeting}
             variant="destructive"
             size="lg"
-            className="rounded-xl bg-red-600/80 hover:bg-red-600 text-white border-red-500 transition-all duration-300 transform hover:scale-110 active:scale-95 animate-pulse hover:animate-none"
+            className="rounded-xl bg-red-600 hover:bg-red-700 shadow-red-500/20 shadow-lg transition-all duration-300"
           >
-            <Phone className="h-5 w-5 drop-shadow-lg rotate-[135deg]" />
+            <LogOut className="h-5 w-5" />
           </Button>
         </div>
       </div>
