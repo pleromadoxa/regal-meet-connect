@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,14 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
     
     fetchProfile();
   }, [user]);
+
+  // Fetch meetings on component mount and when user changes
+  useEffect(() => {
+    if (user?.id) {
+      console.log('Fetching meetings for user:', user.id);
+      fetchMeetings();
+    }
+  }, [user?.id, fetchMeetings]);
 
   const generateMeetingId = () => {
     return Math.random().toString(36).substring(2, 12).toUpperCase();
@@ -259,26 +268,26 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
             <Button
               onClick={handleRefreshMeetings}
               disabled={isRefreshing}
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 backdrop-blur-sm"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 backdrop-blur-sm"
             >
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
             <Button
               onClick={handleSignOut}
-              variant="outline"
+              variant="destructive"
               size="sm"
-              className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 hover:border-red-400/60"
+              className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 hover:border-red-400/60 backdrop-blur-sm"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
