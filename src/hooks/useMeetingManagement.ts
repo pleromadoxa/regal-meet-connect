@@ -41,7 +41,6 @@ export const useMeetingManagement = () => {
     try {
       console.log('Fetching meetings for user:', user.id);
       
-      // Fetch meetings where user is host
       const { data: hostedMeetings, error: hostedError } = await supabase
         .from('meetings')
         .select('*')
@@ -53,7 +52,6 @@ export const useMeetingManagement = () => {
         throw hostedError;
       }
 
-      // Fetch meetings where user is participant
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants')
         .select(`
@@ -64,10 +62,8 @@ export const useMeetingManagement = () => {
 
       if (participantError) {
         console.error('Error fetching participant meetings:', participantError);
-        // Don't throw here, just log the error
       }
 
-      // Combine and deduplicate meetings
       const allMeetings = [...(hostedMeetings || [])];
       
       if (participantMeetings) {
@@ -109,6 +105,29 @@ export const useMeetingManagement = () => {
       
       console.log('Fetched participants:', data);
       setParticipants(data || []);
+      
+      // Set up real-time subscription for participants
+      const channel = supabase
+        .channel(`participants-${meetingId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'meeting_participants',
+            filter: `meeting_id=eq.${meetingId}`
+          },
+          (payload) => {
+            console.log('Participant change:', payload);
+            // Refresh participants when changes occur
+            fetchParticipants(meetingId);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error) {
       console.error('Error in fetchParticipants:', error);
       toast({
@@ -307,7 +326,6 @@ export const useMeetingManagement = () => {
         throw error;
       }
       
-      // Update local state
       setParticipants(prev => 
         prev.map(p => p.id === participantId ? { ...p, is_muted: isMuted } : p)
       );

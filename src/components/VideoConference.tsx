@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VideoControls } from '@/components/VideoControls';
@@ -70,12 +69,26 @@ export const VideoConference = ({
     toggleCaptions 
   } = useCaptions(meetingId, currentParticipantId);
 
+  // Store meeting state in localStorage for session persistence
+  useEffect(() => {
+    if (meetingId && userName && user?.id) {
+      localStorage.setItem('currentMeeting', JSON.stringify({
+        meetingId,
+        userName,
+        isHost,
+        userId: user.id,
+        timestamp: Date.now()
+      }));
+    }
+  }, [meetingId, userName, isHost, user?.id]);
+
   useEffect(() => {
     if (user?.id) {
       initialize();
       
       const joinMeetingDb = async () => {
         try {
+          console.log('Joining meeting:', { meetingId, userName, isHost });
           const result = isHost 
             ? await joinAsHost(meetingId, userName)
             : await joinMeeting(meetingId, userName);
@@ -87,28 +100,38 @@ export const VideoConference = ({
             if (isHost && 'participant' in result) {
               participantId = result.participant.id;
               meeting = result.meeting;
-              fetchParticipants(result.meeting.id);
+              setCurrentMeeting(meeting);
+              console.log('Host joined successfully, fetching participants');
+              fetchParticipants(meeting.id);
             } else if (!isHost && 'id' in result) {
               participantId = result.id;
-              // For non-host participants, we need to create a mock participant ID
-              // since captions require a participant ID to function
               setCurrentParticipantId(participantId);
+              console.log('Participant joined successfully, finding meeting');
+              // For non-host participants, we need to find the meeting
+              const { data: meetingData } = await supabase
+                .from('meetings')
+                .select('*')
+                .eq('meeting_id', meetingId)
+                .single();
+              
+              if (meetingData) {
+                setCurrentMeeting(meetingData);
+                fetchParticipants(meetingData.id);
+              }
             } else {
               console.error('Unexpected result structure:', result);
-              // Create a fallback participant ID for captions to work
               setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
               return;
             }
             
             setCurrentParticipantId(participantId);
-            setCurrentMeeting(meeting);
+            console.log('Meeting join completed, participant ID:', participantId);
           } else {
-            // If joining fails, still set a participant ID for captions to work
+            console.warn('Failed to join meeting, using fallback participant ID');
             setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
           }
         } catch (error) {
           console.error('Error joining meeting:', error);
-          // Set a fallback participant ID even if joining fails
           setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
         }
       };
@@ -117,6 +140,18 @@ export const VideoConference = ({
     }
     return () => cleanup();
   }, [meetingId, user?.id, isHost]);
+
+  // Auto-refresh participants every 5 seconds to ensure visibility
+  useEffect(() => {
+    if (currentMeeting?.id) {
+      const interval = setInterval(() => {
+        console.log('Auto-refreshing participants');
+        fetchParticipants(currentMeeting.id);
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [currentMeeting?.id, fetchParticipants]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -138,11 +173,13 @@ export const VideoConference = ({
   };
 
   const handleLeaveMeeting = () => {
+    localStorage.removeItem('currentMeeting');
     cleanup();
     onLeaveMeeting();
   };
 
   const handleSignOut = async () => {
+    localStorage.removeItem('currentMeeting');
     cleanup();
     await signOut();
   };
@@ -152,7 +189,6 @@ export const VideoConference = ({
   };
 
   const handleToggleMute = (participantId: string, isMuted: boolean) => {
-    // Only hosts can mute/unmute other participants
     if (isHost || (currentMeeting && isUserHost(currentMeeting))) {
       toggleMuteParticipant(participantId, isMuted);
       toast({
@@ -172,10 +208,7 @@ export const VideoConference = ({
     navigate('/settings');
   };
 
-  // Check if current user is the actual host
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
-
-  // Calculate total participant count (including local user)
   const totalParticipantCount = connectedPeers.length + 1;
 
   return (
