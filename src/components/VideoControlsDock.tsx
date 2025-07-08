@@ -1,7 +1,6 @@
 
-import React from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { 
   Mic, 
   MicOff, 
@@ -9,14 +8,16 @@ import {
   VideoOff, 
   Monitor, 
   MonitorOff, 
+  Phone, 
   Settings, 
   MessageSquare, 
   Hand, 
-  Phone, 
-  RotateCcw, 
-  Captions,
-  CaptionsOff,
-  LayoutDashboard
+  MoreHorizontal,
+  SwitchCamera,
+  Subtitles,
+  SubtitlesOff,
+  Home,
+  Palette
 } from 'lucide-react';
 
 interface VideoControlsDockProps {
@@ -35,6 +36,7 @@ interface VideoControlsDockProps {
   onToggleSettings: () => void;
   onToggleChat: () => void;
   onToggleHand: () => void;
+  onToggleEffects?: () => void;
   onNavigateToDashboard?: () => void;
   onLeaveMeeting: () => void;
 }
@@ -55,154 +57,192 @@ export const VideoControlsDock = ({
   onToggleSettings,
   onToggleChat,
   onToggleHand,
+  onToggleEffects,
   onNavigateToDashboard,
   onLeaveMeeting
 }: VideoControlsDockProps) => {
+  const [showMore, setShowMore] = useState(false);
+
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-      <Card className="bg-black/90 backdrop-blur-xl border-white/20 shadow-2xl">
-        <div className="flex items-center justify-center space-x-2 p-4">
-          {/* Microphone */}
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30">
+      <div className="bg-black/80 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl p-4">
+        <div className="flex items-center space-x-3">
+          {/* Primary Controls */}
           <Button
             onClick={onToggleAudio}
-            variant="ghost"
+            variant={isAudioEnabled ? "default" : "destructive"}
             size="lg"
-            className={`h-14 w-14 rounded-full ${
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
               isAudioEnabled 
-                ? 'bg-white/20 hover:bg-white/30 text-white hover:scale-110' 
-                : 'bg-red-500/80 hover:bg-red-600/80 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+                ? "bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                : "bg-red-500/80 hover:bg-red-500 text-white animate-pulse"
+            }`}
           >
             {isAudioEnabled ? (
-              <Mic className="h-6 w-6 transition-transform duration-200" />
+              <Mic className="h-5 w-5 drop-shadow-lg" />
             ) : (
-              <MicOff className="h-6 w-6 transition-transform duration-200 animate-pulse" />
+              <MicOff className="h-5 w-5 drop-shadow-lg" />
             )}
           </Button>
 
-          {/* Video */}
           <Button
             onClick={onToggleVideo}
-            variant="ghost"
+            variant={isVideoEnabled ? "default" : "destructive"}
             size="lg"
-            className={`h-14 w-14 rounded-full ${
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
               isVideoEnabled 
-                ? 'bg-white/20 hover:bg-white/30 text-white hover:scale-110' 
-                : 'bg-red-500/80 hover:bg-red-600/80 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+                ? "bg-white/20 hover:bg-white/30 text-white border-white/30" 
+                : "bg-red-500/80 hover:bg-red-500 text-white animate-pulse"
+            }`}
           >
             {isVideoEnabled ? (
-              <Video className="h-6 w-6 transition-transform duration-200" />
+              <Video className="h-5 w-5 drop-shadow-lg" />
             ) : (
-              <VideoOff className="h-6 w-6 transition-transform duration-200 animate-pulse" />
+              <VideoOff className="h-5 w-5 drop-shadow-lg" />
             )}
           </Button>
 
-          {/* Switch Camera */}
-          <Button
-            onClick={onSwitchCamera}
-            variant="ghost"
-            size="lg"
-            className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg transform hover:scale-110 hover:shadow-xl active:scale-95 hover:rotate-180"
-          >
-            <RotateCcw className="h-6 w-6 transition-transform duration-300" />
-          </Button>
-
-          {/* Screen Share */}
           <Button
             onClick={onToggleScreenShare}
-            variant="ghost"
+            variant={isScreenSharing ? "default" : "outline"}
             size="lg"
-            className={`h-14 w-14 rounded-full ${
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
               isScreenSharing 
-                ? 'bg-orange-500/80 hover:bg-orange-600/80 text-white hover:scale-110 animate-pulse' 
-                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+                ? "bg-orange-500/80 hover:bg-orange-500 text-white border-orange-400 animate-pulse" 
+                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+            }`}
           >
-            {isScreenSharing ? <MonitorOff className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
+            {isScreenSharing ? (
+              <MonitorOff className="h-5 w-5 drop-shadow-lg" />
+            ) : (
+              <Monitor className="h-5 w-5 drop-shadow-lg" />
+            )}
           </Button>
 
-          {/* Captions */}
+          {/* Secondary Controls */}
+          <div className="h-8 w-px bg-white/20"></div>
+
           <Button
-            onClick={onToggleCaptions}
-            variant="ghost"
+            onClick={onSwitchCamera}
+            variant="outline"
             size="lg"
-            className={`h-14 w-14 rounded-full ${
-              captionsEnabled 
-                ? 'bg-blue-500/80 hover:bg-blue-600/80 text-white hover:scale-110' 
-                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+            className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95 hover:rotate-180"
           >
-            {captionsEnabled ? <Captions className="h-6 w-6" /> : <CaptionsOff className="h-6 w-6" />}
+            <SwitchCamera className="h-5 w-5 drop-shadow-lg transition-transform duration-300" />
           </Button>
 
-          {/* Raise Hand */}
           <Button
             onClick={onToggleHand}
-            variant="ghost"
+            variant={handRaised ? "default" : "outline"}
             size="lg"
-            className={`h-14 w-14 rounded-full ${
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
               handRaised 
-                ? 'bg-yellow-500/80 hover:bg-yellow-600/80 text-white hover:scale-110 animate-bounce' 
-                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+                ? "bg-yellow-500/80 hover:bg-yellow-500 text-yellow-900 border-yellow-400 animate-bounce" 
+                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+            }`}
           >
-            <Hand className={`h-6 w-6 ${handRaised ? 'animate-pulse' : ''} transition-transform duration-200`} />
+            <Hand className="h-5 w-5 drop-shadow-lg" />
           </Button>
 
-          {/* Chat */}
           <Button
             onClick={onToggleChat}
-            variant="ghost"
+            variant={showChat ? "default" : "outline"}
             size="lg"
-            className={`h-14 w-14 rounded-full ${
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
               showChat 
-                ? 'bg-green-500/80 hover:bg-green-600/80 text-white hover:scale-110' 
-                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+                ? "bg-blue-500/80 hover:bg-blue-500 text-white border-blue-400" 
+                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+            }`}
           >
-            <MessageSquare className="h-6 w-6 transition-transform duration-200 hover:rotate-12" />
+            <MessageSquare className="h-5 w-5 drop-shadow-lg" />
           </Button>
 
-          {/* Settings */}
+          {/* More Options Toggle */}
           <Button
-            onClick={onToggleSettings}
-            variant="ghost"
+            onClick={() => setShowMore(!showMore)}
+            variant="outline"
             size="lg"
-            className={`h-14 w-14 rounded-full ${
-              showSettings 
-                ? 'bg-gray-500/80 hover:bg-gray-600/80 text-white hover:scale-110' 
-                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
-            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
+            className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+              showMore 
+                ? "bg-white/20 hover:bg-white/30 text-white border-white/40" 
+                : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+            }`}
           >
-            <Settings className="h-6 w-6 transition-transform duration-300 hover:rotate-90" />
+            <MoreHorizontal className={`h-5 w-5 drop-shadow-lg transition-transform duration-300 ${showMore ? 'rotate-90' : ''}`} />
           </Button>
 
-          {/* Dashboard */}
-          {onNavigateToDashboard && (
-            <Button
-              onClick={onNavigateToDashboard}
-              variant="ghost"
-              size="lg"
-              className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg transform hover:scale-110 hover:shadow-xl active:scale-95"
-            >
-              <LayoutDashboard className="h-6 w-6 transition-transform duration-200 hover:rotate-12" />
-            </Button>
+          {/* Additional Controls (when expanded) */}
+          {showMore && (
+            <>
+              <div className="h-8 w-px bg-white/20"></div>
+              
+              <Button
+                onClick={onToggleCaptions}
+                variant={captionsEnabled ? "default" : "outline"}
+                size="lg"
+                className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+                  captionsEnabled 
+                    ? "bg-green-500/80 hover:bg-green-500 text-white border-green-400" 
+                    : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+                }`}
+              >
+                {captionsEnabled ? (
+                  <Subtitles className="h-5 w-5 drop-shadow-lg" />
+                ) : (
+                  <SubtitlesOff className="h-5 w-5 drop-shadow-lg" />
+                )}
+              </Button>
+
+              {onToggleEffects && (
+                <Button
+                  onClick={onToggleEffects}
+                  variant="outline"
+                  size="lg"
+                  className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95"
+                >
+                  <Palette className="h-5 w-5 drop-shadow-lg" />
+                </Button>
+              )}
+
+              <Button
+                onClick={onToggleSettings}
+                variant={showSettings ? "default" : "outline"}
+                size="lg"
+                className={`rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 hover:rotate-45 ${
+                  showSettings 
+                    ? "bg-purple-500/80 hover:bg-purple-500 text-white border-purple-400" 
+                    : "bg-white/10 hover:bg-white/20 text-white border-white/30"
+                }`}
+              >
+                <Settings className="h-5 w-5 drop-shadow-lg transition-transform duration-300" />
+              </Button>
+
+              {onNavigateToDashboard && (
+                <Button
+                  onClick={onNavigateToDashboard}
+                  variant="outline"
+                  size="lg"
+                  className="rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/30 transition-all duration-300 transform hover:scale-110 active:scale-95"
+                >
+                  <Home className="h-5 w-5 drop-shadow-lg" />
+                </Button>
+              )}
+            </>
           )}
 
-          {/* Leave Meeting - Larger and centered */}
-          <div className="ml-4 pl-4 border-l border-white/20">
-            <Button
-              onClick={onLeaveMeeting}
-              variant="ghost"
-              size="lg"
-              className="h-16 w-16 rounded-full bg-red-500/80 hover:bg-red-600/80 text-white transition-all duration-300 shadow-lg flex items-center justify-center transform hover:scale-110 hover:shadow-xl active:scale-95"
-            >
-              <Phone className="h-8 w-8 rotate-135 transition-transform duration-200 hover:animate-pulse" />
-            </Button>
-          </div>
+          {/* Leave Meeting */}
+          <div className="h-8 w-px bg-white/20"></div>
+          
+          <Button
+            onClick={onLeaveMeeting}
+            variant="destructive"
+            size="lg"
+            className="rounded-xl bg-red-600/80 hover:bg-red-600 text-white border-red-500 transition-all duration-300 transform hover:scale-110 active:scale-95 animate-pulse hover:animate-none"
+          >
+            <Phone className="h-5 w-5 drop-shadow-lg rotate-[135deg]" />
+          </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

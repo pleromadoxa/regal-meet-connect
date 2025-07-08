@@ -184,13 +184,13 @@ export const ResponsiveParticipantGrid = ({
               <div className="flex items-center space-x-2">
                 <Badge 
                   variant={isParticipantHostUser ? "default" : "secondary"}
-                  className={`text-xs ${
+                  className={`text-xs flex items-center ${
                     isParticipantHostUser 
-                      ? "bg-yellow-500/90 text-yellow-900" 
-                      : "bg-white/20 text-white"
+                      ? "bg-yellow-500/90 text-yellow-900 border-yellow-400" 
+                      : "bg-white/20 text-white border-white/30"
                   }`}
                 >
-                  {isParticipantHostUser && <Crown className="h-3 w-3 mr-1" />}
+                  {isParticipantHostUser && <Crown className="h-3 w-3 mr-1 text-yellow-900" />}
                   {participantName}
                   {isLocal && " (You)"}
                   {isParticipantHostUser && !isLocal && " (HOST)"}

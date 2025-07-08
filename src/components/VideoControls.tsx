@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
 import { InMeetingChat } from '@/components/InMeetingChat';
 import { RaiseHand } from '@/components/RaiseHand';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
+import { VideoEffectsPanel } from '@/components/VideoEffectsPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -50,7 +51,9 @@ export const VideoControls = ({
 }: VideoControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const { toast } = useToast();
 
   const handleHandRaise = () => {
@@ -82,6 +85,18 @@ export const VideoControls = ({
     }
   };
 
+  // Get reference to local video element for effects
+  const getLocalVideoRef = () => {
+    const videoElements = document.querySelectorAll('video');
+    for (const video of videoElements) {
+      if (video.muted) { // Local video is muted
+        localVideoRef.current = video;
+        return video;
+      }
+    }
+    return null;
+  };
+
   return (
     <>
       {/* Main Controls Dock */}
@@ -101,6 +116,7 @@ export const VideoControls = ({
         onToggleSettings={() => setShowSettings(!showSettings)}
         onToggleChat={() => setShowChat(!showChat)}
         onToggleHand={handleHandRaise}
+        onToggleEffects={() => setShowEffects(true)}
         onNavigateToDashboard={onNavigateToDashboard}
         onLeaveMeeting={onLeaveMeeting}
       />
@@ -126,6 +142,14 @@ export const VideoControls = ({
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Video Effects Panel */}
+      {showEffects && (
+        <VideoEffectsPanel
+          onClose={() => setShowEffects(false)}
+          localVideoRef={getLocalVideoRef()}
+        />
       )}
 
       {/* In-Meeting Chat */}
