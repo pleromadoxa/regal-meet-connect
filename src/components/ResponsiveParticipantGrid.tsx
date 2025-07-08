@@ -17,6 +17,8 @@ interface ResponsiveParticipantGridProps {
   isVideoEnabled: boolean;
   selectedVideoId: string;
   onVideoSelect: (streamId: string) => void;
+  isHost?: boolean;
+  participants?: any[];
 }
 
 export const ResponsiveParticipantGrid = ({
@@ -25,7 +27,9 @@ export const ResponsiveParticipantGrid = ({
   userName,
   isVideoEnabled,
   selectedVideoId,
-  onVideoSelect
+  onVideoSelect,
+  isHost = false,
+  participants = []
 }: ResponsiveParticipantGridProps) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -63,6 +67,12 @@ export const ResponsiveParticipantGrid = ({
     }
   };
 
+  // Helper function to determine if a participant is host
+  const isParticipantHost = (participantName: string) => {
+    const participant = participants.find(p => p.user_name === participantName);
+    return participant?.is_host || false;
+  };
+
   const gridLayout = getGridLayout(totalParticipants);
   
   const gridClasses = isMobile 
@@ -79,13 +89,13 @@ export const ResponsiveParticipantGrid = ({
     streamId, 
     participantName, 
     isLocal = false, 
-    isHost = false 
+    isParticipantHostUser = false 
   }: {
     stream: MediaStream | null;
     streamId: string;
     participantName: string;
     isLocal?: boolean;
-    isHost?: boolean;
+    isParticipantHostUser?: boolean;
   }) => {
     const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const isSelected = selectedVideoId === streamId;
@@ -160,7 +170,10 @@ export const ResponsiveParticipantGrid = ({
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
               <div className="text-center">
                 <User className="h-12 w-12 sm:h-16 sm:w-16 text-white/70 mx-auto mb-2" />
-                <p className="text-white/90 font-medium text-sm sm:text-base">{participantName}</p>
+                <p className="text-white/90 font-medium text-sm sm:text-base">
+                  {participantName}
+                  {isParticipantHostUser && " (HOST)"}
+                </p>
               </div>
             </div>
           )}
@@ -170,16 +183,17 @@ export const ResponsiveParticipantGrid = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Badge 
-                  variant={isHost ? "default" : "secondary"}
+                  variant={isParticipantHostUser ? "default" : "secondary"}
                   className={`text-xs ${
-                    isHost 
+                    isParticipantHostUser 
                       ? "bg-yellow-500/90 text-yellow-900" 
                       : "bg-white/20 text-white"
                   }`}
                 >
-                  {isHost && <Crown className="h-3 w-3 mr-1" />}
+                  {isParticipantHostUser && <Crown className="h-3 w-3 mr-1" />}
                   {participantName}
                   {isLocal && " (You)"}
+                  {isParticipantHostUser && !isLocal && " (HOST)"}
                 </Badge>
               </div>
               
@@ -217,7 +231,7 @@ export const ResponsiveParticipantGrid = ({
         streamId="local"
         participantName={userName}
         isLocal={true}
-        isHost={true}
+        isParticipantHostUser={isHost}
       />
       
       {/* Remote Videos */}
@@ -227,6 +241,7 @@ export const ResponsiveParticipantGrid = ({
           stream={remoteStream.stream}
           streamId={remoteStream.id}
           participantName={remoteStream.userName}
+          isParticipantHostUser={isParticipantHost(remoteStream.userName)}
         />
       ))}
     </div>

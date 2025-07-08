@@ -485,6 +485,8 @@ export const VideoConference = ({
               isVideoEnabled={isVideoEnabled}
               selectedVideoId={selectedVideoId}
               onVideoSelect={handleVideoSelect}
+              isHost={isCurrentUserHost}
+              participants={participants}
             />
           </div>
 
