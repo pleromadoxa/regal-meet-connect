@@ -1,7 +1,5 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Heart, ThumbsUp, Settings } from 'lucide-react';
 
 interface Reaction {
   id: string;
@@ -35,10 +33,6 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
     }, 3000);
   }, [onSendReaction]);
 
-  const handleReaction = (type: 'heart' | 'like' | 'celebration') => {
-    addReaction(type);
-  };
-
   useEffect(() => {
     const handleRemoteReaction = (event: CustomEvent) => {
       const { type } = event.detail;
@@ -49,39 +43,36 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
     return () => window.removeEventListener('remote-reaction', handleRemoteReaction as EventListener);
   }, [addReaction]);
 
+  // Expose the addReaction function globally so other components can trigger reactions
+  useEffect(() => {
+    (window as any).triggerReaction = addReaction;
+    return () => {
+      delete (window as any).triggerReaction;
+    };
+  }, [addReaction]);
+
   return (
     <>
-      {/* Reaction Controls - positioned on the side */}
-      <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
-        <div className="flex flex-col items-center space-y-1 sm:space-y-2">
-          <Button
-            onClick={() => handleReaction('heart')}
-            variant="outline"
-            size="sm"
-            className="bg-red-500/20 border-red-400/40 text-red-300 hover:bg-red-500/30 hover:border-red-400/60 shadow-lg backdrop-blur-sm transition-all duration-200 px-2 sm:px-3"
+      {/* Floating Reactions Display */}
+      <div className="fixed inset-0 pointer-events-none z-50">
+        {reactions.map((reaction) => (
+          <div
+            key={reaction.id}
+            className="absolute text-2xl animate-bounce"
+            style={{
+              left: `${reaction.x}%`,
+              top: `${reaction.y}%`,
+              animation: 'reaction-float 3s ease-out forwards',
+            }}
           >
-            <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-          <Button
-            onClick={() => handleReaction('like')}
-            variant="outline"
-            size="sm"
-            className="bg-blue-500/20 border-blue-400/40 text-blue-300 hover:bg-blue-500/30 hover:border-blue-400/60 shadow-lg backdrop-blur-sm transition-all duration-200 px-2 sm:px-3"
-          >
-            <ThumbsUp className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-          <Button
-            onClick={() => handleReaction('celebration')}
-            variant="outline"
-            size="sm"
-            className="bg-purple-500/20 border-purple-400/40 text-purple-300 hover:bg-purple-500/30 hover:border-purple-400/60 shadow-lg backdrop-blur-sm transition-all duration-200 px-2 sm:px-3"
-          >
-            <Settings className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-        </div>
+            {reaction.type === 'heart' && '❤️'}
+            {reaction.type === 'like' && '👍'}
+            {reaction.type === 'celebration' && '🎉'}
+          </div>
+        ))}
       </div>
 
-      {/* Reactions Overlay - removed from video area */}
+      {/* Animation styles */}
       <style>{`
         @keyframes reaction-float {
           0% {

@@ -9,7 +9,7 @@ import { MeetingList } from '@/components/MeetingList';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Plus, Settings, Video, LogOut, User, Edit } from 'lucide-react';
+import { Crown, Plus, Settings, Video, LogOut, User, Edit, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardProps {
@@ -26,6 +26,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
     meetings,
@@ -38,15 +39,27 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (user?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile?.display_name) {
-          setUserName(profile.display_name);
-          setDisplayName(profile.display_name);
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', user.id)
+            .single();
+          
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching profile:', error);
+          }
+          
+          if (profile?.display_name) {
+            setUserName(profile.display_name);
+            setDisplayName(profile.display_name);
+          } else {
+            // Use email as fallback if no display name
+            setUserName(user.email?.split('@')[0] || 'User');
+            setDisplayName(user.email?.split('@')[0] || 'User');
+          }
+        } catch (error) {
+          console.error('Error in fetchProfile:', error);
         }
       }
     };
@@ -68,16 +81,30 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
       return;
     }
 
-    const generatedId = generateMeetingId();
-    const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
-    
-    if (result) {
-      setIsCreateDialogOpen(false);
-      setNewMeetingTitle('');
-      setNewMeetingDescription('');
+    try {
+      const generatedId = generateMeetingId();
+      console.log('Creating meeting with ID:', generatedId);
+      
+      const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
+      
+      if (result) {
+        setIsCreateDialogOpen(false);
+        setNewMeetingTitle('');
+        setNewMeetingDescription('');
+        toast({
+          title: "Meeting Created",
+          description: `Meeting "${newMeetingTitle}" has been created successfully`
+        });
+        
+        // Refresh meetings list
+        await fetchMeetings();
+      }
+    } catch (error) {
+      console.error('Error creating meeting:', error);
       toast({
-        title: "Meeting Created",
-        description: `Meeting "${newMeetingTitle}" has been created successfully`
+        title: "Error",
+        description: "Failed to create meeting. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -119,7 +146,13 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   };
 
   const handleDeleteMeeting = async (meetingId: string) => {
-    await removeMeeting(meetingId);
+    try {
+      await removeMeeting(meetingId);
+      // Refresh meetings list after deletion
+      await fetchMeetings();
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+    }
   };
 
   const handleSignOut = async () => {
@@ -141,7 +174,8 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
         .from('profiles')
         .upsert({
           id: user?.id,
-          display_name: displayName.trim()
+          display_name: displayName.trim(),
+          updated_at: new Date().toISOString()
         });
 
       if (error) throw error;
@@ -159,6 +193,26 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
         description: "Failed to update your profile. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleRefreshMeetings = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchMeetings();
+      toast({
+        title: "Refreshed",
+        description: "Meetings list has been updated"
+      });
+    } catch (error) {
+      console.error('Error refreshing meetings:', error);
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh meetings list",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -180,6 +234,16 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
           </div>
 
           <div className="flex items-center space-x-4">
+            <Button
+              onClick={handleRefreshMeetings}
+              disabled={isRefreshing}
+              variant="outline"
+              size="sm"
+              className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
             <Button
               variant="outline"
               size="sm"

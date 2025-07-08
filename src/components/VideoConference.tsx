@@ -8,9 +8,10 @@ import { useWebRTC } from '@/hooks/useWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Copy, Users, LogOut, Menu, X, Settings } from 'lucide-react';
+import { Crown, Copy, Users, LogOut, Menu, X, Settings, Maximize } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VideoConferenceProps {
   meetingId: string;
@@ -34,6 +35,7 @@ export const VideoConference = ({
   const [showParticipants, setShowParticipants] = useState(false);
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
   const [currentMeeting, setCurrentMeeting] = useState<any>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const {
     localStream,
@@ -164,6 +166,35 @@ export const VideoConference = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Fullscreen functionality
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Error toggling fullscreen:', error);
+      toast({
+        title: "Fullscreen Error",
+        description: "Unable to toggle fullscreen mode",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
     toast({
@@ -248,6 +279,16 @@ export const VideoConference = ({
             <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             <span className="text-white font-medium text-sm sm:text-base">{totalParticipantCount}</span>
           </div>
+
+          <Button
+            onClick={toggleFullscreen}
+            variant="outline"
+            size="sm"
+            className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 shadow-lg backdrop-blur-sm transition-all duration-200 text-xs sm:text-sm"
+          >
+            <Maximize className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Fullscreen</span>
+          </Button>
 
           <Button
             onClick={() => setShowParticipants(!showParticipants)}
