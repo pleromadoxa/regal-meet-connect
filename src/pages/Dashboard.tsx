@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ interface DashboardProps {
 const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [userName, setUserName] = useState('');
   const [meetingId, setMeetingId] = useState('');
   const [newMeetingTitle, setNewMeetingTitle] = useState('');
@@ -247,6 +248,10 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
     }
   };
 
+  const handleNavigateToSettings = () => {
+    navigate('/settings');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
       <div className="max-w-6xl mx-auto">
@@ -276,6 +281,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               Refresh
             </Button>
             <Button
+              onClick={handleNavigateToSettings}
               variant="secondary"
               size="sm"
               className="bg-white/20 border-white/40 text-white hover:bg-white/30 hover:border-white/60 backdrop-blur-sm"
@@ -348,91 +354,101 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               </CardContent>
             </Card>
 
-            {/* Quick Join */}
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Video className="h-5 w-5 mr-2" />
-                  Quick Join
+            {/* Quick Join - Enhanced UI */}
+            <Card className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border-blue-400/30 shadow-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white flex items-center text-lg">
+                  <Video className="h-6 w-6 mr-3 text-blue-300" />
+                  Quick Join Meeting
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div>
-                  <label className="text-sm font-medium text-white/90">Meeting ID</label>
+                  <label className="text-sm font-medium text-white/90 mb-2 block">Meeting ID</label>
                   <Input
                     value={meetingId}
                     onChange={(e) => setMeetingId(e.target.value)}
-                    placeholder="Enter meeting ID"
-                    className="bg-white/20 border-white/30 text-white placeholder-white/60"
+                    placeholder="Enter meeting ID..."
+                    className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200"
                   />
                 </div>
                 <Button
                   onClick={handleJoinMeetingById}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-14 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0"
                 >
-                  <Video className="h-4 w-4 mr-2" />
-                  Join Meeting
+                  <Video className="h-6 w-6 mr-3" />
+                  Join Meeting Now
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Create Meeting */}
-            <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Crown className="h-5 w-5 mr-2" />
-                  Host Meeting
+            {/* Create Meeting - Enhanced UI */}
+            <Card className="bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-xl border-orange-400/30 shadow-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-white flex items-center text-lg">
+                  <Crown className="h-6 w-6 mr-3 text-orange-300" />
+                  Host New Meeting
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700">
-                      <Plus className="h-4 w-4 mr-2" />
+                    <Button className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0">
+                      <Plus className="h-6 w-6 mr-3" />
                       Create New Meeting
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-slate-800 border-white/20">
+                  <DialogContent className="bg-slate-800 border-white/20 max-w-md">
                     <DialogHeader>
-                      <DialogTitle className="text-white">Create New Meeting</DialogTitle>
+                      <DialogTitle className="text-white text-xl">Create New Meeting</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-6 pt-4">
                       <div>
-                        <label className="text-sm font-medium text-white/90">Meeting Title</label>
+                        <label className="text-sm font-medium text-white/90 mb-2 block">Meeting Title</label>
                         <Input
                           value={newMeetingTitle}
                           onChange={(e) => setNewMeetingTitle(e.target.value)}
-                          placeholder="Enter meeting title"
-                          className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50"
+                          placeholder="Enter meeting title..."
+                          className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 h-12"
                           disabled={isCreatingMeeting}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-white/90">Description (Optional)</label>
+                        <label className="text-sm font-medium text-white/90 mb-2 block">Description (Optional)</label>
                         <Textarea
                           value={newMeetingDescription}
                           onChange={(e) => setNewMeetingDescription(e.target.value)}
-                          placeholder="Enter meeting description"
+                          placeholder="Enter meeting description..."
                           className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 resize-none"
                           rows={3}
                           disabled={isCreatingMeeting}
                         />
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-3 pt-4">
                         <Button
                           onClick={() => setIsCreateDialogOpen(false)}
                           variant="outline"
-                          className="flex-1 border-white/30 text-white hover:bg-white/10 bg-white/5"
+                          className="flex-1 border-white/30 text-white hover:bg-white/10 bg-white/5 h-12"
                           disabled={isCreatingMeeting}
                         >
                           Cancel
                         </Button>
                         <Button
                           onClick={handleCreateMeeting}
-                          className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                          className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold h-12 shadow-lg"
                           disabled={isCreatingMeeting}
                         >
-                          {isCreatingMeeting ? 'Creating...' : 'Create Meeting'}
+                          {isCreatingMeeting ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              <Crown className="h-4 w-4 mr-2" />
+                              Create Meeting
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
