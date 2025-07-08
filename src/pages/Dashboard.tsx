@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +26,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
 
   const {
     meetings,
@@ -40,6 +40,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
     const fetchProfile = async () => {
       if (user?.id) {
         try {
+          console.log('Fetching profile for user:', user.id);
           const { data: profile, error } = await supabase
             .from('profiles')
             .select('display_name')
@@ -55,8 +56,9 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
             setDisplayName(profile.display_name);
           } else {
             // Use email as fallback if no display name
-            setUserName(user.email?.split('@')[0] || 'User');
-            setDisplayName(user.email?.split('@')[0] || 'User');
+            const fallbackName = user.email?.split('@')[0] || 'User';
+            setUserName(fallbackName);
+            setDisplayName(fallbackName);
           }
         } catch (error) {
           console.error('Error in fetchProfile:', error);
@@ -81,9 +83,25 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
       return;
     }
 
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a meeting",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingMeeting(true);
+    
     try {
       const generatedId = generateMeetingId();
-      console.log('Creating meeting with ID:', generatedId);
+      console.log('Creating meeting with details:', {
+        id: generatedId,
+        title: newMeetingTitle.trim(),
+        description: newMeetingDescription.trim(),
+        hostId: user.id
+      });
       
       const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
       
@@ -98,14 +116,18 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
         
         // Refresh meetings list
         await fetchMeetings();
+      } else {
+        throw new Error('Failed to create meeting - no result returned');
       }
     } catch (error) {
       console.error('Error creating meeting:', error);
       toast({
         title: "Error",
-        description: "Failed to create meeting. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create meeting. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsCreatingMeeting(false);
     }
   };
 
@@ -373,6 +395,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                           onChange={(e) => setNewMeetingTitle(e.target.value)}
                           placeholder="Enter meeting title"
                           className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50"
+                          disabled={isCreatingMeeting}
                         />
                       </div>
                       <div>
@@ -383,6 +406,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                           placeholder="Enter meeting description"
                           className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 resize-none"
                           rows={3}
+                          disabled={isCreatingMeeting}
                         />
                       </div>
                       <div className="flex space-x-2">
@@ -390,14 +414,16 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
                           onClick={() => setIsCreateDialogOpen(false)}
                           variant="outline"
                           className="flex-1 border-white/30 text-white hover:bg-white/10 bg-white/5"
+                          disabled={isCreatingMeeting}
                         >
                           Cancel
                         </Button>
                         <Button
                           onClick={handleCreateMeeting}
                           className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                          disabled={isCreatingMeeting}
                         >
-                          Create Meeting
+                          {isCreatingMeeting ? 'Creating...' : 'Create Meeting'}
                         </Button>
                       </div>
                     </div>
