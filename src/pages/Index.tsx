@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { JoinMeeting } from '@/components/JoinMeeting';
 import { AuthPage } from '@/components/AuthPage';
@@ -15,8 +16,43 @@ const Index = () => {
   const [userName, setUserName] = useState('');
   const [isHost, setIsHost] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const { toast } = useToast();
+
+  // Check for active meeting on component mount
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      const storedMeeting = localStorage.getItem('currentMeeting');
+      
+      if (storedMeeting) {
+        try {
+          const meetingData = JSON.parse(storedMeeting);
+          const timeElapsed = Date.now() - meetingData.timestamp;
+          const sessionTimeout = 4 * 60 * 60 * 1000; // 4 hours
+          
+          // Check if session is still valid and user matches
+          if (timeElapsed < sessionTimeout && meetingData.userId === user.id) {
+            console.log('Resuming previous meeting session:', meetingData);
+            setMeetingId(meetingData.meetingId);
+            setUserName(meetingData.userName);
+            setIsHost(meetingData.isHost);
+            setIsInMeeting(true);
+            
+            toast({
+              title: "Rejoining Meeting",
+              description: `Returning to meeting: ${meetingData.meetingId}`
+            });
+          } else {
+            // Clear expired session
+            localStorage.removeItem('currentMeeting');
+          }
+        } catch (error) {
+          console.error('Error parsing stored meeting data:', error);
+          localStorage.removeItem('currentMeeting');
+        }
+      }
+    }
+  }, [isAuthenticated, user?.id, toast]);
 
   const handleJoinMeeting = (name: string, roomId: string, hostStatus: boolean = false) => {
     if (!name.trim() || !roomId.trim()) {

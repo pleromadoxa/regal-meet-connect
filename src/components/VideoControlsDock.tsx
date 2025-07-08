@@ -69,11 +69,15 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               isAudioEnabled 
-                ? 'bg-white/20 hover:bg-white/30 text-white' 
-                : 'bg-red-500/80 hover:bg-red-600/80 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-white/20 hover:bg-white/30 text-white hover:scale-110' 
+                : 'bg-red-500/80 hover:bg-red-600/80 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
-            {isAudioEnabled ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+            {isAudioEnabled ? (
+              <Mic className="h-6 w-6 transition-transform duration-200" />
+            ) : (
+              <MicOff className="h-6 w-6 transition-transform duration-200 animate-pulse" />
+            )}
           </Button>
 
           {/* Video */}
@@ -83,11 +87,15 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               isVideoEnabled 
-                ? 'bg-white/20 hover:bg-white/30 text-white' 
-                : 'bg-red-500/80 hover:bg-red-600/80 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-white/20 hover:bg-white/30 text-white hover:scale-110' 
+                : 'bg-red-500/80 hover:bg-red-600/80 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
-            {isVideoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+            {isVideoEnabled ? (
+              <Video className="h-6 w-6 transition-transform duration-200" />
+            ) : (
+              <VideoOff className="h-6 w-6 transition-transform duration-200 animate-pulse" />
+            )}
           </Button>
 
           {/* Switch Camera */}
@@ -95,9 +103,9 @@ export const VideoControlsDock = ({
             onClick={onSwitchCamera}
             variant="ghost"
             size="lg"
-            className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg"
+            className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg transform hover:scale-110 hover:shadow-xl active:scale-95 hover:rotate-180"
           >
-            <RotateCcw className="h-6 w-6" />
+            <RotateCcw className="h-6 w-6 transition-transform duration-300" />
           </Button>
 
           {/* Screen Share */}
@@ -107,9 +115,9 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               isScreenSharing 
-                ? 'bg-orange-500/80 hover:bg-orange-600/80 text-white' 
-                : 'bg-white/20 hover:bg-white/30 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-orange-500/80 hover:bg-orange-600/80 text-white hover:scale-110 animate-pulse' 
+                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
             {isScreenSharing ? <MonitorOff className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
           </Button>
@@ -121,9 +129,9 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               captionsEnabled 
-                ? 'bg-blue-500/80 hover:bg-blue-600/80 text-white' 
-                : 'bg-white/20 hover:bg-white/30 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-blue-500/80 hover:bg-blue-600/80 text-white hover:scale-110' 
+                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
             {captionsEnabled ? <Captions className="h-6 w-6" /> : <CaptionsOff className="h-6 w-6" />}
           </Button>
@@ -135,11 +143,11 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               handRaised 
-                ? 'bg-yellow-500/80 hover:bg-yellow-600/80 text-white' 
-                : 'bg-white/20 hover:bg-white/30 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-yellow-500/80 hover:bg-yellow-600/80 text-white hover:scale-110 animate-bounce' 
+                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
-            <Hand className="h-6 w-6" />
+            <Hand className={`h-6 w-6 ${handRaised ? 'animate-pulse' : ''} transition-transform duration-200`} />
           </Button>
 
           {/* Chat */}
@@ -149,11 +157,11 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               showChat 
-                ? 'bg-green-500/80 hover:bg-green-600/80 text-white' 
-                : 'bg-white/20 hover:bg-white/30 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-green-500/80 hover:bg-green-600/80 text-white hover:scale-110' 
+                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
-            <MessageSquare className="h-6 w-6" />
+            <MessageSquare className="h-6 w-6 transition-transform duration-200 hover:rotate-12" />
           </Button>
 
           {/* Settings */}
@@ -163,11 +171,11 @@ export const VideoControlsDock = ({
             size="lg"
             className={`h-14 w-14 rounded-full ${
               showSettings 
-                ? 'bg-gray-500/80 hover:bg-gray-600/80 text-white' 
-                : 'bg-white/20 hover:bg-white/30 text-white'
-            } transition-all duration-300 shadow-lg`}
+                ? 'bg-gray-500/80 hover:bg-gray-600/80 text-white hover:scale-110' 
+                : 'bg-white/20 hover:bg-white/30 text-white hover:scale-110'
+            } transition-all duration-300 shadow-lg transform hover:shadow-xl active:scale-95`}
           >
-            <Settings className="h-6 w-6" />
+            <Settings className="h-6 w-6 transition-transform duration-300 hover:rotate-90" />
           </Button>
 
           {/* Dashboard */}
@@ -176,9 +184,9 @@ export const VideoControlsDock = ({
               onClick={onNavigateToDashboard}
               variant="ghost"
               size="lg"
-              className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg"
+              className="h-14 w-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-300 shadow-lg transform hover:scale-110 hover:shadow-xl active:scale-95"
             >
-              <LayoutDashboard className="h-6 w-6" />
+              <LayoutDashboard className="h-6 w-6 transition-transform duration-200 hover:rotate-12" />
             </Button>
           )}
 
@@ -188,9 +196,9 @@ export const VideoControlsDock = ({
               onClick={onLeaveMeeting}
               variant="ghost"
               size="lg"
-              className="h-16 w-16 rounded-full bg-red-500/80 hover:bg-red-600/80 text-white transition-all duration-300 shadow-lg flex items-center justify-center"
+              className="h-16 w-16 rounded-full bg-red-500/80 hover:bg-red-600/80 text-white transition-all duration-300 shadow-lg flex items-center justify-center transform hover:scale-110 hover:shadow-xl active:scale-95"
             >
-              <Phone className="h-8 w-8 rotate-135" />
+              <Phone className="h-8 w-8 rotate-135 transition-transform duration-200 hover:animate-pulse" />
             </Button>
           </div>
         </div>

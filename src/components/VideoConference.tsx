@@ -10,7 +10,7 @@ import { useWebRTC } from '@/hooks/useWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Copy, Users, LogOut, Menu, X, Settings, Maximize } from 'lucide-react';
+import { Crown, Copy, Users, LogOut, Menu, X, Settings, Maximize, Hand } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +40,7 @@ export const VideoConference = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [meetingStartTime] = useState(new Date());
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'poor' | 'offline'>('good');
+  const [handNotifications, setHandNotifications] = useState<{[key: string]: boolean}>({});
 
   const {
     localStream,
@@ -75,6 +76,53 @@ export const VideoConference = ({
     currentTranscript,
     toggleCaptions 
   } = useCaptions(meetingId, currentParticipantId);
+
+  // Listen for hand raise notifications
+  useEffect(() => {
+    if (!meetingId) return;
+
+    const channel = supabase.channel(`meeting-hands-${meetingId}`);
+    
+    channel
+      .on('broadcast', { event: 'hand-raised' }, (payload) => {
+        const { userName: participantName, handRaised, timestamp } = payload.payload;
+        
+        if (participantName !== userName) {
+          setHandNotifications(prev => ({
+            ...prev,
+            [participantName]: handRaised
+          }));
+
+          if (handRaised) {
+            toast({
+              title: "Hand Raised",
+              description: `${participantName} has raised their hand`,
+              duration: 5000,
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHandNotifications(prev => ({
+                      ...prev,
+                      [participantName]: false
+                    }));
+                  }}
+                  className="ml-2"
+                >
+                  Dismiss
+                </Button>
+              )
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [meetingId, userName, toast]);
 
   useEffect(() => {
     if (meetingId && userName && user?.id) {
@@ -330,6 +378,16 @@ export const VideoConference = ({
               <span className="text-white font-medium">{totalParticipantCount}</span>
             </div>
 
+            {/* Hand Raised Notifications */}
+            {Object.entries(handNotifications).some(([_, raised]) => raised) && (
+              <div className="flex items-center space-x-2 bg-yellow-500/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-yellow-400/40">
+                <Hand className="h-4 w-4 text-yellow-300 animate-bounce" />
+                <span className="text-yellow-300 font-medium text-sm">
+                  {Object.entries(handNotifications).filter(([_, raised]) => raised).length} hand(s) raised
+                </span>
+              </div>
+            )}
+
             <Button
               onClick={toggleFullscreen}
               variant="outline"
@@ -432,6 +490,7 @@ export const VideoConference = ({
           onToggleCaptions={toggleCaptions}
           captionsEnabled={captionsEnabled}
           userName={userName}
+          meetingId={meetingId}
           onNavigateToDashboard={onNavigateToDashboard}
         />
       </div>

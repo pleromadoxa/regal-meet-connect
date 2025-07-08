@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
@@ -5,6 +6,8 @@ import { InMeetingChat } from '@/components/InMeetingChat';
 import { RaiseHand } from '@/components/RaiseHand';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -22,6 +25,7 @@ interface VideoControlsProps {
   onToggleCaptions: () => void;
   captionsEnabled: boolean;
   userName: string;
+  meetingId?: string;
   onNavigateToDashboard?: () => void;
 }
 
@@ -41,16 +45,41 @@ export const VideoControls = ({
   onToggleCaptions,
   captionsEnabled,
   userName,
+  meetingId,
   onNavigateToDashboard
 }: VideoControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
+  const { toast } = useToast();
 
   const handleHandRaise = () => {
     const newHandRaised = !handRaised;
     setHandRaised(newHandRaised);
-    // Here you could broadcast the hand raise status to other participants
+    
+    // Broadcast hand raise status to other participants
+    if (meetingId) {
+      const channel = supabase.channel(`meeting-hands-${meetingId}`);
+      
+      channel.send({
+        type: 'broadcast',
+        event: 'hand-raised',
+        payload: {
+          userName: userName,
+          handRaised: newHandRaised,
+          timestamp: Date.now()
+        }
+      });
+
+      // Show toast notification
+      toast({
+        title: newHandRaised ? "Hand Raised" : "Hand Lowered",
+        description: newHandRaised 
+          ? "Your hand has been raised. Other participants will be notified." 
+          : "Your hand has been lowered.",
+        duration: 3000
+      });
+    }
   };
 
   return (
@@ -79,7 +108,7 @@ export const VideoControls = ({
       {/* Settings Panel */}
       {showSettings && (
         <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-40 w-80 max-w-[90vw]">
-          <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-4">
+          <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-4 animate-fade-in">
             <div className="space-y-4">
               <h3 className="text-white font-semibold mb-4">Device Settings</h3>
               
