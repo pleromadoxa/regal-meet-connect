@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -103,13 +104,14 @@ export const useMeetingManagement = () => {
     await fetchMeetings();
   }, [removeMeetingAction, fetchMeetings]);
 
-  const fetchParticipants = useCallback(async (meetingId: string) => {
+  const fetchParticipants = useCallback(async (meetingUuid: string) => {
     try {
-      console.log('Fetching participants for meeting:', meetingId);
+      console.log('Fetching participants for meeting UUID:', meetingUuid);
+      
       const { data, error } = await supabase
         .from('meeting_participants')
         .select('*')
-        .eq('meeting_id', meetingId)
+        .eq('meeting_id', meetingUuid)
         .order('joined_at', { ascending: true });
 
       if (error) {
@@ -121,18 +123,18 @@ export const useMeetingManagement = () => {
       setParticipants(data || []);
       
       const channel = supabase
-        .channel(`participants-${meetingId}`)
+        .channel(`participants-${meetingUuid}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'meeting_participants',
-            filter: `meeting_id=eq.${meetingId}`
+            filter: `meeting_id=eq.${meetingUuid}`
           },
           (payload) => {
             console.log('Participant change:', payload);
-            fetchParticipants(meetingId);
+            fetchParticipants(meetingUuid);
           }
         )
         .subscribe();
