@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { VideoControls } from '@/components/VideoControls';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
