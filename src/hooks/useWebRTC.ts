@@ -307,20 +307,23 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     }
   }, [currentFacingMode, toast]);
 
-  const toggleVideo = useCallback(() => {
+  const toggleVideo = useCallback(async (): Promise<boolean> => {
     if (localStreamRef.current) {
       const videoTracks = localStreamRef.current.getVideoTracks();
+      let newEnabled = false;
       videoTracks.forEach(track => {
-        const newEnabled = !track.enabled;
+        newEnabled = !track.enabled;
         track.enabled = newEnabled;
         setIsVideoEnabled(newEnabled);
         
         console.log('Video toggled:', newEnabled);
       });
+      return newEnabled;
     }
-  }, []);
+    return isVideoEnabled;
+  }, [isVideoEnabled]);
 
-  const toggleAudio = useCallback(() => {
+  const toggleAudio = useCallback(async (): Promise<boolean> => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
@@ -342,9 +345,12 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           title: newEnabled ? "Microphone On" : "Microphone Off",
           description: newEnabled ? "You are now unmuted" : "You are now muted"
         });
+        
+        return newEnabled;
       }
     }
-  }, [toast]);
+    return isAudioEnabled;
+  }, [isAudioEnabled, toast]);
 
   const switchCamera = useCallback(() => {
     const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';

@@ -116,20 +116,34 @@ export const VideoConference = ({
   const { toggleFullscreen } = useFullscreenHandler(setIsFullscreen);
   useConnectionQuality(connectedPeers, dbParticipants, setConnectionQuality);
 
-  // Enhanced toggle functions that broadcast state
-  const enhancedToggleVideo = async () => {
+  // Enhanced toggle functions that broadcast state and return the new state
+  const enhancedToggleVideo = async (): Promise<boolean> => {
     const newState = await toggleVideo();
+    const actualNewState = typeof newState === 'boolean' ? newState : !isVideoEnabled;
     if (currentParticipantId) {
-      updateParticipantVideoState(currentParticipantId, newState);
+      updateParticipantVideoState(currentParticipantId, actualNewState);
     }
+    return actualNewState;
   };
 
-  const enhancedToggleAudio = async () => {
+  const enhancedToggleAudio = async (): Promise<boolean> => {
     const newState = await toggleAudio();
+    const actualNewState = typeof newState === 'boolean' ? newState : !isAudioEnabled;
     if (currentParticipantId) {
-      updateParticipantAudioState(currentParticipantId, newState);
+      updateParticipantAudioState(currentParticipantId, actualNewState);
     }
+    return actualNewState;
   };
+
+  // Convert ParticipantState to database participant format
+  const convertToDbParticipant = (participant: any) => ({
+    id: participant.id,
+    user_id: participant.userId || participant.user_id,
+    user_name: participant.userName || participant.user_name,
+    is_host: participant.isHost || participant.is_host,
+    is_muted: participant.isMuted || participant.is_muted,
+    joined_at: participant.joinedAt || participant.joined_at
+  });
 
   // Sync participants from database with state
   useEffect(() => {
@@ -346,13 +360,13 @@ export const VideoConference = ({
 
         <CaptionsDisplay
           captions={captions}
-          participants={stateParticipants}
+          participants={stateParticipants.map(convertToDbParticipant)}
           isVisible={captionsEnabled}
           currentTranscript={currentTranscript}
         />
 
         <ParticipantReactions
-          participants={stateParticipants}
+          participants={stateParticipants.map(convertToDbParticipant)}
           onSendReaction={handleSendReaction}
         />
 
@@ -380,7 +394,7 @@ export const VideoConference = ({
       {/* Participants List Modal */}
       {showParticipantsList && (
         <ParticipantsList
-          participants={stateParticipants}
+          participants={stateParticipants.map(convertToDbParticipant)}
           isCurrentUserHost={isCurrentUserHost}
           currentUserId={user?.id || ''}
           userName={userName}
