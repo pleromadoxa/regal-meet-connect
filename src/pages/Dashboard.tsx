@@ -287,6 +287,7 @@ const Dashboard = ({ onJoinMeeting }: DashboardProps) => {
               onSetNewMeetingTitle={setNewMeetingTitle}
               onSetNewMeetingDescription={setNewMeetingDescription}
               onCreateMeeting={handleCreateMeeting}
+              onRefreshMeetings={handleRefreshMeetings}
             />
           </div>
 

@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { VideoConference } from '@/components/VideoConference';
-import { JoinMeeting } from '@/components/JoinMeeting';
 import { AuthPage } from '@/components/AuthPage';
 import { AdminAccessButton } from '@/components/AdminAccessButton';
+import { QuickJoinSection } from '@/components/landing/QuickJoinSection';
+import { CreateMeetingSection } from '@/components/landing/CreateMeetingSection';
 import Dashboard from './Dashboard';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -130,7 +131,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
-      <div className="relative">
+      {/* Background Effects */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-10 left-10 w-20 h-20 bg-orange-400 rounded-full blur-xl"></div>
+        <div className="absolute bottom-20 right-20 w-32 h-32 bg-blue-500 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-purple-500 rounded-full blur-lg"></div>
+      </div>
+
+      <div className="relative z-10">
+        {/* Header */}
         <div className="absolute top-6 right-6 z-10 flex space-x-2">
           <Button
             onClick={() => setShowDashboard(true)}
@@ -143,7 +152,47 @@ const Index = () => {
           </Button>
           <AdminAccessButton />
         </div>
-        <JoinMeeting onJoinMeeting={handleJoinMeeting} />
+
+        {/* Main Content */}
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="w-full max-w-6xl space-y-8">
+            {/* Hero Section */}
+            <div className="text-center mb-12">
+              <h1 className="text-6xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-orange-400 bg-clip-text text-transparent">
+                Regal Meet
+              </h1>
+              <p className="text-xl text-blue-200 mb-2">Connect with anyone, anywhere</p>
+              <p className="text-lg text-white/70">Professional video conferencing made simple</p>
+            </div>
+
+            {/* Meeting Options */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              <QuickJoinSection onJoinMeeting={handleJoinMeeting} />
+              <CreateMeetingSection onJoinMeeting={handleJoinMeeting} />
+            </div>
+
+            {/* Features */}
+            <div className="text-center mt-16">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                <div className="text-white/80 p-4">
+                  <div className="text-3xl mb-2">🎥</div>
+                  <h3 className="font-semibold mb-1">HD Video</h3>
+                  <p className="text-sm">Crystal clear video calls</p>
+                </div>
+                <div className="text-white/80 p-4">
+                  <div className="text-3xl mb-2">🔒</div>
+                  <h3 className="font-semibold mb-1">Secure</h3>
+                  <p className="text-sm">End-to-end encrypted</p>
+                </div>
+                <div className="text-white/80 p-4">
+                  <div className="text-3xl mb-2">⚡</div>
+                  <h3 className="font-semibold mb-1">Fast</h3>
+                  <p className="text-sm">Join meetings instantly</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
