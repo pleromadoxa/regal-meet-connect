@@ -6,12 +6,14 @@ import { ParticipantReactions } from '@/components/ParticipantReactions';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
 import { NewMeetingLayout } from '@/components/meeting/NewMeetingLayout';
 import { ParticipantsList } from '@/components/meeting/ParticipantsList';
+import { ReactionsOverlay } from '@/components/meeting/ReactionsOverlay';
 import { 
-  useMeetingState, 
+  useMeetingState as useMeetingHooks, 
   useHandRaiseNotifications, 
   useFullscreenHandler,
   useConnectionQuality 
 } from '@/components/meeting/MeetingHooks';
+import { useMeetingState } from '@/hooks/useMeetingState';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
@@ -56,7 +58,7 @@ export const VideoConference = ({
     setConnectionQuality,
     handNotifications,
     setHandNotifications
-  } = useMeetingState(meetingId, userName);
+  } = useMeetingHooks(meetingId, userName);
 
   const {
     localStream,
@@ -77,15 +79,25 @@ export const VideoConference = ({
     connectedPeers
   } = useWebRTC(meetingId, userName, user?.id || '');
 
+  // Meeting state management for synchronization
+  const {
+    participants: stateParticipants,
+    setParticipants: setStateParticipants,
+    reactions,
+    updateParticipantVideoState,
+    updateParticipantAudioState,
+    sendReaction
+  } = useMeetingState(meetingId, user?.id || '');
+
   // Convert Map to RemoteStream array for components
   const remoteStreamsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({
     id,
     stream,
-    userName: `User ${id.slice(0, 8)}` // Fallback name
+    userName: stateParticipants.find(p => p.userId === id)?.userName || `User ${id.slice(0, 8)}`
   }));
 
   const { 
-    participants, 
+    participants: dbParticipants, 
     fetchParticipants, 
     toggleMuteParticipant,
     joinMeeting,
@@ -102,7 +114,38 @@ export const VideoConference = ({
 
   useHandRaiseNotifications(meetingId, userName, setHandNotifications);
   const { toggleFullscreen } = useFullscreenHandler(setIsFullscreen);
-  useConnectionQuality(connectedPeers, participants, setConnectionQuality);
+  useConnectionQuality(connectedPeers, dbParticipants, setConnectionQuality);
+
+  // Enhanced toggle functions that broadcast state
+  const enhancedToggleVideo = async () => {
+    const newState = await toggleVideo();
+    if (currentParticipantId) {
+      updateParticipantVideoState(currentParticipantId, newState);
+    }
+  };
+
+  const enhancedToggleAudio = async () => {
+    const newState = await toggleAudio();
+    if (currentParticipantId) {
+      updateParticipantAudioState(currentParticipantId, newState);
+    }
+  };
+
+  // Sync participants from database with state
+  useEffect(() => {
+    if (dbParticipants.length > 0) {
+      setStateParticipants(dbParticipants.map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        userName: p.user_name,
+        isVideoEnabled: true, // Default to true, will be updated by broadcasts
+        isAudioEnabled: !p.is_muted,
+        isHost: p.is_host,
+        isMuted: p.is_muted,
+        joinedAt: p.joined_at
+      })));
+    }
+  }, [dbParticipants, setStateParticipants]);
 
   useEffect(() => {
     if (meetingId && userName && user?.id) {
@@ -243,23 +286,7 @@ export const VideoConference = ({
 
   const handleSendReaction = (type: string) => {
     console.log('Sending reaction:', type);
-    
-    const channel = supabase.channel(`meeting-reactions-${meetingId}`);
-    
-    channel.send({
-      type: 'broadcast',
-      event: 'reaction',
-      payload: {
-        type,
-        participantId: currentParticipantId,
-        participantName: userName,
-        timestamp: Date.now()
-      }
-    });
-    
-    window.dispatchEvent(new CustomEvent('remote-reaction', { 
-      detail: { type, participantId: currentParticipantId, participantName: userName } 
-    }));
+    sendReaction(type, userName);
   };
 
   const handleToggleParticipantsList = () => {
@@ -299,29 +326,33 @@ export const VideoConference = ({
           connectionQuality={connectionQuality}
         />
 
-        <NewMeetingLayout
-          localStream={localStream}
-          remoteStreams={remoteStreamsArray}
-          userName={userName}
-          isVideoEnabled={isVideoEnabled}
-          selectedVideoId={selectedVideoId}
-          onVideoSelect={handleVideoSelect}
-          isCurrentUserHost={isCurrentUserHost}
-          participants={participants}
-          showParticipants={showParticipants}
-          currentUserId={user?.id || ''}
-          onToggleMute={handleToggleMute}
-        />
+        <div className="relative flex-1">
+          <NewMeetingLayout
+            localStream={localStream}
+            remoteStreams={remoteStreamsArray}
+            userName={userName}
+            isVideoEnabled={isVideoEnabled}
+            selectedVideoId={selectedVideoId}
+            onVideoSelect={handleVideoSelect}
+            isCurrentUserHost={isCurrentUserHost}
+            participants={stateParticipants}
+            showParticipants={showParticipants}
+            currentUserId={user?.id || ''}
+            onToggleMute={handleToggleMute}
+          />
+          
+          <ReactionsOverlay reactions={reactions} />
+        </div>
 
         <CaptionsDisplay
           captions={captions}
-          participants={participants}
+          participants={stateParticipants}
           isVisible={captionsEnabled}
           currentTranscript={currentTranscript}
         />
 
         <ParticipantReactions
-          participants={participants}
+          participants={stateParticipants}
           onSendReaction={handleSendReaction}
         />
 
@@ -332,8 +363,8 @@ export const VideoConference = ({
           currentFacingMode={currentFacingMode as "user" | "environment"}
           currentAudioDevice={currentAudioDevice}
           currentVideoDevice={currentVideoDevice}
-          onToggleVideo={toggleVideo}
-          onToggleAudio={toggleAudio}
+          onToggleVideo={enhancedToggleVideo}
+          onToggleAudio={enhancedToggleAudio}
           onToggleScreenShare={toggleScreenShare}
           onSwitchCamera={switchCamera}
           onLeaveMeeting={handleLeaveMeeting}
@@ -349,7 +380,7 @@ export const VideoConference = ({
       {/* Participants List Modal */}
       {showParticipantsList && (
         <ParticipantsList
-          participants={participants}
+          participants={stateParticipants}
           isCurrentUserHost={isCurrentUserHost}
           currentUserId={user?.id || ''}
           userName={userName}

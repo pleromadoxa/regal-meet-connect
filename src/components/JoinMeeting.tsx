@@ -1,9 +1,10 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Crown, Video, UserPlus } from 'lucide-react';
+import { Video, Users } from 'lucide-react';
+import { useMeetingValidation } from '@/hooks/useMeetingValidation';
 
 interface JoinMeetingProps {
   onJoinMeeting: (name: string, roomId: string, isHost: boolean) => void;
@@ -12,143 +13,87 @@ interface JoinMeetingProps {
 export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState('');
-  const [hostName, setHostName] = useState('');
-  const [hostRoomId, setHostRoomId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { validateMeetingId } = useMeetingValidation();
+
+  const handleJoin = async () => {
+    if (!name.trim()) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const isValid = await validateMeetingId(roomId);
+      if (isValid) {
+        onJoinMeeting(name.trim(), roomId.trim(), false);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const generateRoomId = () => {
-    const id = Math.random().toString(36).substring(2, 12).toUpperCase();
-    setHostRoomId(id);
-  };
-
-  const handleJoinMeeting = () => {
-    onJoinMeeting(name, roomId, false);
-  };
-
-  const handleStartMeeting = () => {
-    onJoinMeeting(hostName, hostRoomId, true);
+    const newRoomId = Math.random().toString(36).substring(2, 12).toUpperCase();
+    setRoomId(newRoomId);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-6">
-            <div className="p-4 bg-gradient-to-r from-orange-400 to-orange-600 rounded-2xl shadow-2xl">
-              <Crown className="h-12 w-12 text-white" />
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"></div>
+      
+      <div className="relative z-10 w-full max-w-md space-y-6">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Regal Meet</h1>
+          <p className="text-blue-200">Connect with anyone, anywhere</p>
+        </div>
+
+        <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl">
+          <CardHeader>
+            <CardTitle className="text-white text-center text-xl">Join Meeting</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <label className="text-sm font-medium text-white/90 mb-2 block">Your Name</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name..."
+                className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
+                onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+              />
             </div>
-          </div>
-          <h1 className="text-5xl font-bold text-white drop-shadow-2xl mb-4">
-            Regal Meet
-          </h1>
-          <p className="text-xl text-blue-200 font-medium">
-            Professional video conferencing made simple
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Join Meeting Card */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl">
-            <CardHeader className="text-center pb-4">
-              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Video className="h-8 w-8 text-blue-300" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-white mb-2">
-                Join Meeting
-              </CardTitle>
-              <p className="text-blue-200 font-medium">
-                Enter an existing meeting
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-white font-semibold mb-3 text-lg">
-                  Your Name
-                </label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your full name"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-white font-semibold mb-3 text-lg">
-                  Meeting ID
-                </label>
-                <Input
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                  placeholder="Enter meeting ID"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
-                />
-              </div>
+            
+            <div>
+              <label className="text-sm font-medium text-white/90 mb-2 block">Meeting ID</label>
+              <Input
+                value={roomId}
+                onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+                placeholder="Enter meeting ID..."
+                className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
+                onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+              />
+            </div>
+            
+            <div className="space-y-3">
               <Button
-                onClick={handleJoinMeeting}
-                disabled={!name.trim() || !roomId.trim()}
-                className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleJoin}
+                disabled={!name.trim() || !roomId.trim() || isLoading}
+                className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
               >
-                <UserPlus className="h-5 w-5 mr-3" />
-                Join Meeting
+                <Video className="h-5 w-5 mr-2" />
+                {isLoading ? 'Validating...' : 'Join Meeting'}
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Host Meeting Card */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl">
-            <CardHeader className="text-center pb-4">
-              <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Crown className="h-8 w-8 text-orange-300" />
-              </div>
-              <CardTitle className="text-2xl font-bold text-white mb-2">
-                Host Meeting
-              </CardTitle>
-              <p className="text-orange-200 font-medium">
-                Start your own meeting
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <label className="block text-white font-semibold mb-3 text-lg">
-                  Your Name
-                </label>
-                <Input
-                  value={hostName}
-                  onChange={(e) => setHostName(e.target.value)}
-                  placeholder="Enter your full name"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-white font-semibold mb-3 text-lg">
-                  Meeting ID
-                </label>
-                <div className="flex space-x-3">
-                  <Input
-                    value={hostRoomId}
-                    onChange={(e) => setHostRoomId(e.target.value.toUpperCase())}
-                    placeholder="Auto-generated ID"
-                    className="bg-white/20 border-white/30 text-white placeholder-white/80 h-14 text-lg font-medium rounded-xl focus:bg-white/25 focus:border-white/50 transition-all flex-1"
-                  />
-                  <Button
-                    onClick={generateRoomId}
-                    variant="outline"
-                    className="h-14 px-6 bg-white/20 border-white/30 text-white hover:bg-white/30 hover:border-white/50 font-semibold rounded-xl transition-all"
-                  >
-                    Generate
-                  </Button>
-                </div>
-              </div>
+              
               <Button
-                onClick={handleStartMeeting}
-                disabled={!hostName.trim() || !hostRoomId.trim()}
-                className="w-full h-14 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={generateRoomId}
+                variant="outline"
+                className="w-full h-12 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold"
               >
-                <Crown className="h-5 w-5 mr-3" />
-                Start Meeting
+                <Users className="h-5 w-5 mr-2" />
+                Generate Meeting ID
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
