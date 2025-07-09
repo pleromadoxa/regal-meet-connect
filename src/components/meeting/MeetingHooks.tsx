@@ -4,6 +4,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 
+interface HandNotification {
+  id: string;
+  userName: string;
+  timestamp: number;
+}
+
 export const useMeetingState = (meetingId: string, userName: string) => {
   const [selectedVideoId, setSelectedVideoId] = useState<string>('local');
   const [showParticipants, setShowParticipants] = useState(false);
@@ -12,7 +18,7 @@ export const useMeetingState = (meetingId: string, userName: string) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [meetingStartTime] = useState(new Date());
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'poor' | 'offline'>('good');
-  const [handNotifications, setHandNotifications] = useState<{[key: string]: boolean}>({});
+  const [handNotifications, setHandNotifications] = useState<HandNotification[]>([]);
 
   return {
     selectedVideoId,
@@ -36,7 +42,7 @@ export const useMeetingState = (meetingId: string, userName: string) => {
 export const useHandRaiseNotifications = (
   meetingId: string,
   userName: string,
-  setHandNotifications: (fn: (prev: {[key: string]: boolean}) => {[key: string]: boolean}) => void
+  setHandNotifications: (fn: (prev: HandNotification[]) => HandNotification[]) => void
 ) => {
   const { toast } = useToast();
 
@@ -50,12 +56,16 @@ export const useHandRaiseNotifications = (
         const { userName: participantName, handRaised, timestamp } = payload.payload;
         
         if (participantName !== userName) {
-          setHandNotifications(prev => ({
-            ...prev,
-            [participantName]: handRaised
-          }));
-
           if (handRaised) {
+            // Add new notification
+            const newNotification: HandNotification = {
+              id: `${participantName}-${timestamp}`,
+              userName: participantName,
+              timestamp
+            };
+            
+            setHandNotifications(prev => [...prev, newNotification]);
+
             toast({
               title: "Hand Raised",
               description: `${participantName} has raised their hand`,
@@ -65,10 +75,9 @@ export const useHandRaiseNotifications = (
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setHandNotifications(prev => ({
-                      ...prev,
-                      [participantName]: false
-                    }));
+                    setHandNotifications(prev => 
+                      prev.filter(n => n.id !== newNotification.id)
+                    );
                   }}
                   className="ml-2"
                 >
@@ -76,6 +85,11 @@ export const useHandRaiseNotifications = (
                 </Button>
               )
             });
+          } else {
+            // Remove notification when hand is lowered
+            setHandNotifications(prev => 
+              prev.filter(n => n.userName !== participantName)
+            );
           }
         }
       })
