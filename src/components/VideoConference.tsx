@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { VideoControls } from '@/components/VideoControls';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingFeatures } from '@/components/MeetingFeatures';
 import { ParticipantReactions } from '@/components/ParticipantReactions';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
 import { NewMeetingLayout } from '@/components/meeting/NewMeetingLayout';
+import { ParticipantsList } from '@/components/meeting/ParticipantsList';
 import { 
   useMeetingState, 
   useHandRaiseNotifications, 
@@ -37,6 +38,7 @@ export const VideoConference = ({
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [showParticipantsList, setShowParticipantsList] = useState(false);
 
   const {
     selectedVideoId,
@@ -253,6 +255,10 @@ export const VideoConference = ({
     }));
   };
 
+  const handleToggleParticipantsList = () => {
+    setShowParticipantsList(!showParticipantsList);
+  };
+
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
   const totalParticipantCount = connectedPeers.length + 1;
 
@@ -274,7 +280,7 @@ export const VideoConference = ({
           showParticipants={showParticipants}
           onCopyMeetingId={copyMeetingId}
           onToggleFullscreen={toggleFullscreen}
-          onToggleParticipants={() => setShowParticipants(!showParticipants)}
+          onToggleParticipants={handleToggleParticipantsList}
           onNavigateToSettings={navigateToSettings}
           onSignOut={handleSignOut}
         />
@@ -332,6 +338,18 @@ export const VideoConference = ({
           onNavigateToDashboard={onNavigateToDashboard}
         />
       </div>
+
+      {/* Participants List Modal */}
+      {showParticipantsList && (
+        <ParticipantsList
+          participants={participants}
+          isCurrentUserHost={isCurrentUserHost}
+          currentUserId={user?.id || ''}
+          userName={userName}
+          onClose={() => setShowParticipantsList(false)}
+          onToggleMute={handleToggleMute}
+        />
+      )}
     </div>
   );
 };

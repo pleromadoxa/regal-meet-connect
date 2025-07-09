@@ -30,6 +30,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
   const reconnectTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const streamUpdateInProgress = useRef<boolean>(false);
   const { toast } = useToast();
 
   const { initializeSignaling, sendSignalingMessage, connectedPeers, peerUserNames, cleanup: cleanupSignaling } = 
@@ -62,14 +63,25 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   });
 
   const requestMediaPermissions = async (facingMode: 'user' | 'environment' = 'user', audioDeviceId?: string, videoDeviceId?: string) => {
+    if (streamUpdateInProgress.current) {
+      console.log('Stream update already in progress, skipping...');
+      return localStreamRef.current;
+    }
+
+    streamUpdateInProgress.current = true;
+
     try {
       const constraints = getMediaConstraints(facingMode, audioDeviceId, videoDeviceId);
       console.log('Requesting media permissions with constraints:', constraints);
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
+      // Stop previous stream tracks properly
       if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
+        localStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log(`Stopped ${track.kind} track`);
+        });
       }
       
       localStreamRef.current = stream;
@@ -78,13 +90,16 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       
       const videoTrack = stream.getVideoTracks()[0];
       const audioTrack = stream.getAudioTracks()[0];
+      
       if (videoTrack) {
         const settings = videoTrack.getSettings();
         setCurrentVideoDevice(settings.deviceId || '');
+        setIsVideoEnabled(videoTrack.enabled);
       }
       if (audioTrack) {
         const settings = audioTrack.getSettings();
         setCurrentAudioDevice(settings.deviceId || '');
+        setIsAudioEnabled(audioTrack.enabled);
       }
       
       console.log('Media permissions granted:', {
@@ -94,26 +109,40 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         audioSettings: audioTrack?.getSettings()
       });
       
-      // Update all peer connections with new stream
-      peerConnections.current.forEach(async (pc, peerId) => {
-        if (pc.connectionState === 'connected' || pc.connectionState === 'connecting') {
-          console.log('Updating peer connection with new stream for:', peerId);
-          
-          // Replace tracks instead of removing/adding to prevent glitching
-          const senders = pc.getSenders();
-          stream.getTracks().forEach(track => {
-            const sender = senders.find(s => s.track?.kind === track.kind);
-            if (sender && sender.track) {
-              sender.replaceTrack(track).catch(console.warn);
-            } else {
-              pc.addTrack(track, stream);
+      // Update all peer connections with new stream - avoid duplicate streams
+      await Promise.all(
+        Array.from(peerConnections.current.entries()).map(async ([peerId, pc]) => {
+          if (pc.connectionState === 'connected' || pc.connectionState === 'connecting') {
+            console.log('Updating peer connection with new stream for:', peerId);
+            
+            // Get current senders
+            const senders = pc.getSenders();
+            
+            // Replace tracks instead of removing/adding to prevent glitching
+            for (const track of stream.getTracks()) {
+              const sender = senders.find(s => s.track?.kind === track.kind);
+              if (sender) {
+                try {
+                  await sender.replaceTrack(track);
+                  console.log(`Replaced ${track.kind} track for peer ${peerId}`);
+                } catch (error) {
+                  console.warn(`Failed to replace ${track.kind} track:`, error);
+                  // Fallback: add track if replace fails
+                  pc.addTrack(track, stream);
+                }
+              } else {
+                pc.addTrack(track, stream);
+                console.log(`Added new ${track.kind} track for peer ${peerId}`);
+              }
             }
-          });
-        }
-      });
+          }
+        })
+      );
       
+      streamUpdateInProgress.current = false;
       return stream;
     } catch (error: any) {
+      streamUpdateInProgress.current = false;
       console.error('Error accessing media devices:', error);
       
       let errorMessage = "Unable to access camera/microphone.";
@@ -154,6 +183,13 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   const createPeerConnection = useCallback((remotePeerId: string) => {
     console.log('Creating peer connection for:', remotePeerId);
+    
+    // Prevent duplicate connections
+    if (peerConnections.current.has(remotePeerId)) {
+      console.log('Peer connection already exists for:', remotePeerId);
+      return peerConnections.current.get(remotePeerId)!;
+    }
+
     const peerConnection = new RTCPeerConnection({ 
       iceServers: ICE_SERVERS,
       iceCandidatePoolSize: 10,
@@ -174,7 +210,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           }
           params.encodings[0] = {
             ...params.encodings[0],
-            maxBitrate: isMobile() ? 1000000 : 2500000, // Lower bitrate for mobile
+            maxBitrate: isMobile() ? 1000000 : 2500000,
             scaleResolutionDownBy: isMobile() ? 2 : 1
           };
           sender.setParameters(params).catch(console.warn);
@@ -189,13 +225,14 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       if (remoteStream && remoteStream.getTracks().length > 0) {
         console.log('Remote stream tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
         
-        // Debounce stream updates to prevent glitching
-        setTimeout(() => {
-          setRemoteStreams(prev => {
-            const existing = prev.find(s => s.id === remotePeerId);
-            const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
-            
-            if (existing) {
+        // Prevent adding duplicate streams and reduce glitching
+        setRemoteStreams(prev => {
+          const existing = prev.find(s => s.id === remotePeerId);
+          const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
+          
+          if (existing) {
+            // Only update if the stream is actually different
+            if (existing.stream.id !== remoteStream.id) {
               console.log('Updating existing remote stream for:', remotePeerId);
               return prev.map(s => 
                 s.id === remotePeerId 
@@ -203,15 +240,16 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
                   : s
               );
             }
-            
-            console.log('Adding new remote stream for:', remotePeerId);
-            return [...prev, { 
-              id: remotePeerId, 
-              stream: remoteStream, 
-              userName: peerName
-            }];
-          });
-        }, 100);
+            return prev; // No change needed
+          }
+          
+          console.log('Adding new remote stream for:', remotePeerId);
+          return [...prev, { 
+            id: remotePeerId, 
+            stream: remoteStream, 
+            userName: peerName
+          }];
+        });
       } else {
         console.warn('Received empty or invalid remote stream from:', remotePeerId);
       }
@@ -237,13 +275,11 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         handleReconnection(remotePeerId);
       } else if (state === 'connected') {
         console.log('Peer connected successfully');
-        // Reset retry count on successful connection
         setConnectionRetries(prev => {
           const newMap = new Map(prev);
           newMap.delete(remotePeerId);
           return newMap;
         });
-        // Clear any existing reconnect timeout
         const timeout = reconnectTimeouts.current.get(remotePeerId);
         if (timeout) {
           clearTimeout(timeout);
@@ -272,19 +308,17 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       return newMap;
     });
 
-    // Close existing connection
     const existingPc = peerConnections.current.get(peerId);
     if (existingPc) {
       existingPc.close();
       peerConnections.current.delete(peerId);
     }
 
-    // Wait before attempting reconnection
     const timeout = setTimeout(() => {
       console.log(`Attempting reconnection ${currentRetries + 1}/${maxRetries} for ${peerId}`);
       initiateCallToPeer(peerId);
       reconnectTimeouts.current.delete(peerId);
-    }, 2000 * (currentRetries + 1)); // Exponential backoff
+    }, 2000 * (currentRetries + 1));
 
     reconnectTimeouts.current.set(peerId, timeout);
   }, [connectionRetries]);
@@ -425,6 +459,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoEnabled(videoTrack.enabled);
         
+        console.log('Video toggled:', videoTrack.enabled);
+        
         toast({
           title: videoTrack.enabled ? "Camera On" : "Camera Off",
           description: `Video ${videoTrack.enabled ? 'enabled' : 'disabled'}`
@@ -439,6 +475,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsAudioEnabled(audioTrack.enabled);
+        
+        console.log('Audio toggled:', audioTrack.enabled);
         
         toast({
           title: audioTrack.enabled ? "Microphone On" : "Microphone Off",
@@ -486,7 +524,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           description: "Switched back to camera"
         });
       } else {
-        // Check if screen sharing is supported
         if (!navigator.mediaDevices.getDisplayMedia) {
           toast({
             title: "Not Supported",
@@ -496,7 +533,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           return;
         }
 
-        // On mobile, show a warning about limited support
         if (isMobile()) {
           toast({
             title: "Limited Support",
@@ -521,7 +557,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           requestMediaPermissions(currentFacingMode, currentAudioDevice, currentVideoDevice);
         };
         
-        // Replace video track in all peer connections
         peerConnections.current.forEach(pc => {
           const sender = pc.getSenders().find(s => 
             s.track && s.track.kind === 'video'
@@ -560,7 +595,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const cleanup = useCallback(() => {
     console.log('Cleaning up WebRTC...');
     
-    // Clear all reconnection timeouts
+    streamUpdateInProgress.current = false;
+    
     reconnectTimeouts.current.forEach(timeout => clearTimeout(timeout));
     reconnectTimeouts.current.clear();
     
