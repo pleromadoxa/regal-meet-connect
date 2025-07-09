@@ -28,6 +28,8 @@ export const CreateMeetingSection = ({ onJoinMeeting, userName }: CreateMeetingS
   };
 
   const handleCreateMeeting = async () => {
+    console.log('Starting meeting creation process...');
+    
     if (!newMeetingTitle.trim()) {
       toast({
         title: "Missing Information",
@@ -50,32 +52,40 @@ export const CreateMeetingSection = ({ onJoinMeeting, userName }: CreateMeetingS
     
     try {
       const generatedId = generateMeetingId();
-      console.log('Creating meeting with details:', {
+      console.log('Generated meeting ID:', generatedId);
+      console.log('Creating meeting with:', {
         id: generatedId,
         title: newMeetingTitle.trim(),
-        description: newMeetingDescription.trim()
+        description: newMeetingDescription.trim(),
+        hostName: hostName.trim()
       });
       
       const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
+      console.log('Create meeting result:', result);
       
-      if (result) {
+      if (result && result.meeting_id) {
+        console.log('Meeting created successfully, joining as host...');
         setIsCreateDialogOpen(false);
         setNewMeetingTitle('');
         setNewMeetingDescription('');
+        
         toast({
           title: "Meeting Created",
-          description: `Meeting "${newMeetingTitle}" has been created successfully`
+          description: `Meeting "${newMeetingTitle}" created successfully!`
         });
         
-        // Join the meeting as host
-        onJoinMeeting(hostName.trim(), generatedId, true);
+        // Small delay to ensure toast is shown before navigation
+        setTimeout(() => {
+          onJoinMeeting(hostName.trim(), result.meeting_id, true);
+        }, 500);
       } else {
-        throw new Error('Failed to create meeting - no result returned');
+        console.error('Meeting creation failed - no valid result:', result);
+        throw new Error('Meeting creation failed - invalid response from server');
       }
     } catch (error) {
       console.error('Error creating meeting:', error);
       toast({
-        title: "Error",
+        title: "Creation Failed",
         description: error instanceof Error ? error.message : "Failed to create meeting. Please try again.",
         variant: "destructive"
       });

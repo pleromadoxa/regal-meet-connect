@@ -39,6 +39,8 @@ export const CreateMeetingCard = ({
   };
 
   const handleCreateMeeting = async () => {
+    console.log('Dashboard: Starting meeting creation...');
+    
     if (!newMeetingTitle.trim()) {
       toast({
         title: "Missing Information",
@@ -50,18 +52,22 @@ export const CreateMeetingCard = ({
 
     try {
       const generatedId = generateMeetingId();
-      console.log('Creating meeting with details:', {
+      console.log('Dashboard: Generated meeting ID:', generatedId);
+      console.log('Dashboard: Creating meeting with details:', {
         id: generatedId,
         title: newMeetingTitle.trim(),
         description: newMeetingDescription.trim()
       });
       
       const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
+      console.log('Dashboard: Create meeting result:', result);
       
-      if (result) {
+      if (result && result.meeting_id) {
+        console.log('Dashboard: Meeting created successfully');
         onSetIsCreateDialogOpen(false);
         onSetNewMeetingTitle('');
         onSetNewMeetingDescription('');
+        
         toast({
           title: "Meeting Created",
           description: `Meeting "${newMeetingTitle}" has been created successfully with ID: ${generatedId}`
@@ -75,12 +81,13 @@ export const CreateMeetingCard = ({
         // Call the original onCreateMeeting for any additional logic
         onCreateMeeting();
       } else {
-        throw new Error('Failed to create meeting - no result returned');
+        console.error('Dashboard: Meeting creation failed - no valid result:', result);
+        throw new Error('Meeting creation failed - invalid response from server');
       }
     } catch (error) {
-      console.error('Error creating meeting:', error);
+      console.error('Dashboard: Error creating meeting:', error);
       toast({
-        title: "Error",
+        title: "Creation Failed",
         description: error instanceof Error ? error.message : "Failed to create meeting. Please try again.",
         variant: "destructive"
       });
