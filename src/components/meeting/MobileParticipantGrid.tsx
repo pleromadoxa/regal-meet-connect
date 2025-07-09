@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { User, Mic, MicOff, Crown } from 'lucide-react';
 
 interface RemoteStream {
@@ -29,32 +28,34 @@ export const MobileParticipantGrid = ({
   isCurrentUserHost,
   participants
 }: MobileParticipantGridProps) => {
-  const totalParticipants = remoteStreams.length + 1;
-  
-  // Calculate grid layout for mobile
-  const getGridCols = (count: number) => {
-    if (count === 1) return 'grid-cols-1';
-    if (count === 2) return 'grid-cols-1';
-    if (count <= 4) return 'grid-cols-2';
-    return 'grid-cols-2';
-  };
-
   // Check if participant is host
   const isParticipantHost = (participantName: string) => {
     const participant = participants.find(p => p.user_name === participantName);
     return participant?.is_host || false;
   };
 
+  // Get all streams for easier management
+  const allStreams = [
+    { id: 'local', stream: localStream, userName, isLocal: true },
+    ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
+  ];
+
+  // Find selected stream or default to first available
+  const selectedStream = allStreams.find(s => s.id === selectedVideoId) || allStreams[0];
+  const otherStreams = allStreams.filter(s => s.id !== selectedStream?.id);
+
   const ParticipantCard = ({ 
     stream, 
     streamId, 
     participantName, 
-    isLocal = false 
+    isLocal = false,
+    isMainVideo = false
   }: {
     stream: MediaStream | null;
     streamId: string;
     participantName: string;
     isLocal?: boolean;
+    isMainVideo?: boolean;
   }) => {
     const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const isSelected = selectedVideoId === streamId;
@@ -65,7 +66,6 @@ export const MobileParticipantGrid = ({
     // Handle video stream assignment with proper cleanup
     useEffect(() => {
       if (videoElement && stream && hasVideo) {
-        // Only update if stream has changed
         if (videoElement.srcObject !== stream) {
           videoElement.srcObject = stream;
           
@@ -74,7 +74,6 @@ export const MobileParticipantGrid = ({
               await videoElement.play();
             } catch (error) {
               console.warn('Video play failed:', error);
-              // Retry once after a short delay
               setTimeout(async () => {
                 try {
                   if (videoElement.srcObject === stream) {
@@ -92,7 +91,6 @@ export const MobileParticipantGrid = ({
       }
     }, [videoElement, stream, hasVideo]);
 
-    // Cleanup on unmount
     useEffect(() => {
       return () => {
         if (videoElement) {
@@ -101,97 +99,134 @@ export const MobileParticipantGrid = ({
       };
     }, [videoElement]);
 
-    return (
-      <Card 
-        className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
-          isSelected 
-            ? 'ring-2 ring-orange-400 bg-orange-500/10 border-orange-400/40' 
-            : 'bg-slate-800/80 border-slate-700/60 hover:bg-slate-700/80'
-        } backdrop-blur-sm`}
-        onClick={() => onVideoSelect(streamId)}
-      >
-        <div className="aspect-video relative min-h-[140px]">
+    if (isMainVideo) {
+      return (
+        <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-800 border-2 border-orange-400">
           {hasVideo ? (
             <video
               ref={setVideoElement}
               autoPlay
               playsInline
               muted={isLocal}
-              className="w-full h-full object-cover rounded-lg"
-              style={{
-                imageRendering: 'auto',
-                objectFit: 'cover'
-              }}
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
-              <div className="text-center">
-                <User className="h-12 w-12 text-slate-400 mx-auto mb-2" />
-                <p className="text-slate-300 text-sm font-medium">
-                  {participantName}
-                  {isLocal && " (You)"}
-                </p>
+            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-700">
+              <div className="w-20 h-20 bg-slate-600 rounded-full flex items-center justify-center mb-4">
+                <User className="h-10 w-10 text-slate-300" />
               </div>
             </div>
           )}
 
+          {/* Orange dot indicator */}
+          <div className="absolute top-4 left-4 w-3 h-3 bg-orange-400 rounded-full"></div>
+
           {/* Status indicators */}
-          <div className="absolute top-2 right-2 flex space-x-1">
+          <div className="absolute top-4 right-4 flex space-x-2">
             {!hasAudio && (
-              <div className="p-1.5 bg-red-500/90 rounded-full shadow-lg">
+              <div className="p-1.5 bg-red-500/90 rounded-full">
                 <MicOff className="h-3 w-3 text-white" />
               </div>
             )}
             {isHost && (
-              <div className="p-1.5 bg-yellow-500/90 rounded-full shadow-lg">
+              <div className="p-1.5 bg-yellow-500/90 rounded-full">
                 <Crown className="h-3 w-3 text-white" />
               </div>
             )}
           </div>
 
           {/* Name overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-3">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
             <div className="flex items-center justify-between">
-              <p className="text-white text-sm font-medium truncate">
+              <p className="text-white text-lg font-medium">
                 {participantName}
                 {isLocal && " (You)"}
               </p>
               {hasAudio && (
-                <Mic className="h-4 w-4 text-green-400 flex-shrink-0 ml-2" />
+                <div className="flex items-center space-x-1">
+                  <Mic className="h-4 w-4 text-green-400" />
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
               )}
             </div>
           </div>
+        </div>
+      );
+    }
 
-          {/* Selection indicator */}
-          {isSelected && (
-            <div className="absolute top-2 left-2">
-              <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse shadow-lg"></div>
+    return (
+      <Card 
+        className="relative overflow-hidden cursor-pointer transition-all duration-200 bg-slate-800/90 border border-slate-600 hover:border-orange-400 rounded-xl"
+        onClick={() => onVideoSelect(streamId)}
+      >
+        <div className="aspect-video relative min-h-[80px]">
+          {hasVideo ? (
+            <video
+              ref={setVideoElement}
+              autoPlay
+              playsInline
+              muted={isLocal}
+              className="w-full h-full object-cover rounded-xl"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-slate-700 rounded-xl">
+              <User className="h-6 w-6 text-slate-400" />
             </div>
           )}
+
+          {/* Status indicators */}
+          <div className="absolute top-1 right-1 flex space-x-1">
+            {!hasAudio && (
+              <div className="p-1 bg-red-500/90 rounded-full">
+                <MicOff className="h-2 w-2 text-white" />
+              </div>
+            )}
+            {isHost && (
+              <div className="p-1 bg-yellow-500/90 rounded-full">
+                <Crown className="h-2 w-2 text-white" />
+              </div>
+            )}
+          </div>
+
+          {/* Emoji reaction overlay */}
+          <div className="absolute bottom-1 right-1">
+            <div className="text-xl">😊</div>
+          </div>
         </div>
       </Card>
     );
   };
 
   return (
-    <div className={`grid ${getGridCols(totalParticipants)} gap-3 p-3 h-full overflow-y-auto pb-24`}>
-      {/* Local user */}
-      <ParticipantCard
-        stream={localStream}
-        streamId="local"
-        participantName={userName}
-        isLocal={true}
-      />
+    <div className="flex flex-col h-full p-4 pb-24 space-y-4">
+      {/* Main video */}
+      <div className="flex-1 min-h-0">
+        {selectedStream && (
+          <ParticipantCard
+            stream={selectedStream.stream}
+            streamId={selectedStream.id}
+            participantName={selectedStream.userName}
+            isLocal={selectedStream.isLocal}
+            isMainVideo={true}
+          />
+        )}
+      </div>
 
-      {/* Remote participants */}
-      {remoteStreams.map((remoteStream) => (
-        <ParticipantCard
-          key={remoteStream.id}
-          stream={remoteStream.stream}
-          streamId={remoteStream.id}
-          participantName={remoteStream.userName}
-        />
-      ))}
+      {/* Thumbnail videos */}
+      {otherStreams.length > 0 && (
+        <div className="flex space-x-3 overflow-x-auto pb-2">
+          {otherStreams.map((stream) => (
+            <div key={stream.id} className="flex-shrink-0 w-24">
+              <ParticipantCard
+                stream={stream.stream}
+                streamId={stream.id}
+                participantName={stream.userName}
+                isLocal={stream.isLocal}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

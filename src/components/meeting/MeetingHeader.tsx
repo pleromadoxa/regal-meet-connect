@@ -1,13 +1,22 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Crown, Copy, Users, LogOut, Menu, X, Settings, Maximize, Hand } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Copy, 
+  Users, 
+  Hand, 
+  Maximize, 
+  Settings, 
+  Menu,
+  LogOut
+} from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MeetingHeaderProps {
   meetingId: string;
   isCurrentUserHost: boolean;
   totalParticipantCount: number;
-  handNotifications: {[key: string]: boolean};
+  handNotifications: any[];
   isFullscreen: boolean;
   showParticipants: boolean;
   onCopyMeetingId: () => void;
@@ -30,91 +39,155 @@ export const MeetingHeader = ({
   onNavigateToSettings,
   onSignOut
 }: MeetingHeaderProps) => {
-  const raisedHandsCount = Object.entries(handNotifications).filter(([_, raised]) => raised).length;
+  const isMobile = useIsMobile();
 
-  return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 bg-black/20 backdrop-blur-xl border-b border-white/10">
-      <div className="flex items-center space-x-3 mb-4 sm:mb-0">
-        <div className="p-2 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-lg">
-          <Crown className="h-6 w-6 text-white" />
+  if (isMobile) {
+    return (
+      <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 p-4">
+        {/* Top row with logo and main info */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">R</span>
+            </div>
+            <div>
+              <h1 className="text-white font-semibold text-lg">Regal Meetings</h1>
+              <p className="text-slate-400 text-sm">ID: {meetingId}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={onNavigateToSettings}
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-slate-700/50"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button
+              onClick={onSignOut}
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:bg-red-500/10"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
-            Regal Meetings
-            {isCurrentUserHost && (
-              <span className="inline-flex items-center ml-2 px-2 py-1 bg-yellow-500/20 border border-yellow-400/40 rounded-full text-yellow-300 text-xs font-medium">
-                <Crown className="h-3 w-3 mr-1" />
-                HOST
-              </span>
-            )}
-          </h1>
-          <p className="text-blue-200 font-medium text-sm">ID: {meetingId}</p>
+
+        {/* Bottom row with meeting info and controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-white text-sm font-medium">02:10</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
+              <Users className="h-4 w-4 text-slate-300" />
+              <span className="text-white text-sm font-medium">{totalParticipantCount}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2 bg-green-500/20 rounded-full px-3 py-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-green-400 text-sm font-medium">Good</span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={onCopyMeetingId}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:bg-slate-700/50 px-3 py-2 rounded-lg"
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              <span className="text-sm">Copy ID</span>
+            </Button>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <Button
-          onClick={onCopyMeetingId}
-          variant="outline"
-          size="sm"
-          className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
-        >
-          <Copy className="h-4 w-4 mr-2" />
-          Copy ID
-        </Button>
-        
-        <div className="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg backdrop-blur-sm border border-white/20">
-          <Users className="h-4 w-4 text-white" />
-          <span className="text-white font-medium">{totalParticipantCount}</span>
+  return (
+    <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold">R</span>
+            </div>
+            <div>
+              <h1 className="text-white font-semibold">Regal Meetings</h1>
+              <p className="text-slate-400 text-sm">ID: {meetingId}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <Badge variant="secondary" className="bg-slate-800/80 text-slate-300 border-slate-600">
+              <Users className="h-3 w-3 mr-1" />
+              {totalParticipantCount} participants
+            </Badge>
+            
+            {handNotifications.length > 0 && (
+              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40 animate-pulse">
+                <Hand className="h-3 w-3 mr-1" />
+                {handNotifications.length} raised
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {raisedHandsCount > 0 && (
-          <div className="flex items-center space-x-2 bg-yellow-500/20 px-3 py-2 rounded-lg backdrop-blur-sm border border-yellow-400/40">
-            <Hand className="h-4 w-4 text-yellow-300 animate-bounce" />
-            <span className="text-yellow-300 font-medium text-sm">
-              {raisedHandsCount} hand(s) raised
-            </span>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          <Button
+            onClick={onCopyMeetingId}
+            size="sm"
+            variant="ghost"
+            className="text-slate-300 hover:bg-slate-700/50"
+          >
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Meeting ID
+          </Button>
 
-        <Button
-          onClick={onToggleFullscreen}
-          variant="outline"
-          size="sm"
-          className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
-        >
-          <Maximize className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Fullscreen</span>
-        </Button>
+          <Button
+            onClick={onToggleParticipants}
+            size="sm"
+            variant={showParticipants ? "secondary" : "ghost"}
+            className={showParticipants ? "bg-orange-500/20 text-orange-300 border-orange-500/40" : "text-slate-300 hover:bg-slate-700/50"}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Participants
+          </Button>
 
-        <Button
-          onClick={onToggleParticipants}
-          variant="outline"
-          size="sm"
-          className="lg:hidden bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
-        >
-          {showParticipants ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
+          <Button
+            onClick={onToggleFullscreen}
+            size="sm"
+            variant="ghost"
+            className="text-slate-300 hover:bg-slate-700/50"
+          >
+            <Maximize className="h-4 w-4" />
+          </Button>
 
-        <Button
-          onClick={onNavigateToSettings}
-          variant="outline"
-          size="sm"
-          className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 backdrop-blur-sm"
-        >
-          <Settings className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Settings</span>
-        </Button>
+          <Button
+            onClick={onNavigateToSettings}
+            size="sm"
+            variant="ghost"
+            className="text-slate-300 hover:bg-slate-700/50"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
 
-        <Button
-          onClick={onSignOut}
-          variant="outline"
-          size="sm"
-          className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 hover:border-red-400/60 backdrop-blur-sm"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          <span className="hidden sm:inline">Sign Out</span>
-        </Button>
+          <Button
+            onClick={onSignOut}
+            size="sm"
+            variant="ghost"
+            className="text-red-400 hover:bg-red-500/10"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
