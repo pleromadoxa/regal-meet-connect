@@ -1,8 +1,7 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Video, VideoOff, Crown, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ParticipantGrid } from '@/components/ParticipantGrid';
+import { ParticipantsList } from '@/components/ParticipantsList';
 
 interface RemoteStream {
   id: string;
@@ -10,15 +9,27 @@ interface RemoteStream {
   userName: string;
 }
 
+interface Participant {
+  id: string;
+  user_id: string;
+  user_name: string;
+  is_host: boolean;
+  is_muted: boolean;
+  joined_at: string;
+}
+
 interface ResponsiveParticipantGridProps {
   localStream: MediaStream | null;
   remoteStreams: RemoteStream[];
   userName: string;
   isVideoEnabled: boolean;
-  selectedVideoId: string;
-  onVideoSelect: (streamId: string) => void;
-  isHost?: boolean;
-  participants?: any[];
+  selectedVideoId?: string;
+  onVideoSelect?: (streamId: string) => void;
+  showParticipants: boolean;
+  participants: Participant[];
+  currentUserId: string;
+  isHost: boolean;
+  onToggleMute: (participantId: string, isMuted: boolean) => void;
 }
 
 export const ResponsiveParticipantGrid = ({
@@ -28,259 +39,83 @@ export const ResponsiveParticipantGrid = ({
   isVideoEnabled,
   selectedVideoId,
   onVideoSelect,
-  isHost = false,
-  participants = []
+  showParticipants,
+  participants,
+  currentUserId,
+  isHost,
+  onToggleMute
 }: ResponsiveParticipantGridProps) => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
     };
 
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const totalParticipants = remoteStreams.length + 1;
-  const isMobile = dimensions.width < 768;
-  
-  // Calculate optimal grid layout
-  const getGridLayout = (count: number) => {
-    if (isMobile) {
-      if (count === 1) return { cols: 1, rows: 1 };
-      if (count === 2) return { cols: 1, rows: 2 };
-      if (count <= 4) return { cols: 2, rows: 2 };
-      if (count <= 6) return { cols: 2, rows: 3 };
-      return { cols: 2, rows: Math.ceil(count / 2) };
-    } else {
-      if (count === 1) return { cols: 1, rows: 1 };
-      if (count === 2) return { cols: 2, rows: 1 };
-      if (count <= 4) return { cols: 2, rows: 2 };
-      if (count <= 6) return { cols: 3, rows: 2 };
-      if (count <= 9) return { cols: 3, rows: 3 };
-      return { cols: 4, rows: Math.ceil(count / 4) };
-    }
-  };
-
-  // Helper function to determine if a participant is host
-  const isParticipantHost = (participantName: string) => {
-    const participant = participants.find(p => p.user_name === participantName);
-    return participant?.is_host || false;
-  };
-
-  const gridLayout = getGridLayout(totalParticipants);
-  
-  const gridClasses = isMobile 
-    ? `grid gap-2 p-2 h-full pb-24`
-    : `grid gap-4 p-4 h-full`;
-
-  const gridStyle = {
-    gridTemplateColumns: `repeat(${gridLayout.cols}, 1fr)`,
-    gridTemplateRows: `repeat(${gridLayout.rows}, 1fr)`
-  };
-
-  const VideoCard = ({ 
-    stream, 
-    streamId, 
-    participantName, 
-    isLocal = false, 
-    isParticipantHostUser = false 
-  }: {
-    stream: MediaStream | null;
-    streamId: string;
-    participantName: string;
-    isLocal?: boolean;
-    isParticipantHostUser?: boolean;
-  }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-    const isSelected = selectedVideoId === streamId;
-    
-    // Check stream tracks
-    const hasVideo = stream && stream.getVideoTracks().length > 0 && 
-      (isLocal ? isVideoEnabled && stream.getVideoTracks()[0].enabled : stream.getVideoTracks()[0].enabled);
-    const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
-
-    useEffect(() => {
-      const videoElement = videoRef.current;
-      if (!videoElement || !stream || !hasVideo) {
-        setIsVideoLoaded(false);
-        return;
-      }
-
-      // Prevent glitching by checking if stream is already set
-      if (videoElement.srcObject !== stream) {
-        console.log(`Setting stream for ${participantName}:`, {
-          streamId: stream.id,
-          videoTracks: stream.getVideoTracks().length,
-          audioTracks: stream.getAudioTracks().length
-        });
-
-        videoElement.srcObject = stream;
-        setIsVideoLoaded(false);
-
-        const handleLoadedMetadata = () => {
-          setIsVideoLoaded(true);
-          console.log(`Video loaded for ${participantName}`);
-        };
-
-        const handleError = (error: any) => {
-          console.error(`Video error for ${participantName}:`, error);
-          setIsVideoLoaded(false);
-        };
-
-        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoElement.addEventListener('error', handleError);
-
-        // Auto-play with error handling
-        const playVideo = async () => {
-          try {
-            await videoElement.play();
-          } catch (error: any) {
-            console.log(`Auto-play failed for ${participantName}, user interaction required:`, error);
-          }
-        };
-
-        playVideo();
-
-        return () => {
-          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-          videoElement.removeEventListener('error', handleError);
-        };
-      }
-    }, [stream, hasVideo, participantName]);
-
-    // Clean up on unmount
-    useEffect(() => {
-      return () => {
-        const videoElement = videoRef.current;
-        if (videoElement) {
-          videoElement.srcObject = null;
-        }
-      };
-    }, []);
-
+  if (isMobile) {
     return (
-      <Card 
-        className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
-          isSelected 
-            ? 'ring-4 ring-orange-400 ring-opacity-75 shadow-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20' 
-            : 'bg-slate-800/80 hover:bg-slate-700/80 shadow-lg'
-        } backdrop-blur-lg border-white/20`}
-        onClick={() => onVideoSelect(streamId)}
-      >
-        <div className="relative w-full h-full min-h-[120px] sm:min-h-[180px] md:min-h-[240px]">
-          {hasVideo && isVideoLoaded ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted={isLocal}
-              className="w-full h-full object-cover rounded-lg"
-              style={{
-                imageRendering: 'auto',
-                objectFit: 'cover',
-                transform: isLocal && currentFacingMode === 'user' ? 'scaleX(-1)' : 'none'
-              }}
-            />
-          ) : hasVideo && !isVideoLoaded ? (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
-              <div className="text-center">
-                <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p className="text-white/70 text-sm">Loading video...</p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
-              <div className="text-center">
-                <User className="h-12 w-12 sm:h-16 sm:w-16 text-white/70 mx-auto mb-2" />
-                <p className="text-white/90 font-medium text-sm sm:text-base">
-                  {participantName}
-                  {isParticipantHostUser && " (HOST)"}
-                </p>
-                {!hasVideo && <VideoOff className="h-4 w-4 text-red-400 mx-auto mt-1" />}
-              </div>
-            </div>
-          )}
-          
-          {/* Participant Info Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 sm:p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Badge 
-                  variant={isParticipantHostUser ? "default" : "secondary"}
-                  className={`text-xs flex items-center ${
-                    isParticipantHostUser 
-                      ? "bg-yellow-500/90 text-yellow-900 border-yellow-400" 
-                      : "bg-white/20 text-white border-white/30"
-                  }`}
-                >
-                  {isParticipantHostUser && <Crown className="h-3 w-3 mr-1 text-yellow-900" />}
-                  {participantName}
-                  {isLocal && " (You)"}
-                  {isParticipantHostUser && !isLocal && " (HOST)"}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center space-x-1">
-                {hasAudio ? (
-                  <Mic className="h-4 w-4 text-green-400" />
-                ) : (
-                  <MicOff className="h-4 w-4 text-red-400" />
-                )}
-                {hasVideo ? (
-                  <Video className="h-4 w-4 text-green-400" />
-                ) : (
-                  <VideoOff className="h-4 w-4 text-red-400" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Selection Indicator */}
-          {isSelected && (
-            <div className="absolute top-2 right-2">
-              <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
-            </div>
-          )}
-
-          {/* Audio Indicator for non-video participants */}
-          {!hasVideo && hasAudio && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 bg-green-400 rounded-full animate-pulse"></div>
-            </div>
-          )}
+      <div className="flex flex-col h-full">
+        <div className="flex-1">
+          <ParticipantGrid
+            localStream={localStream}
+            remoteStreams={remoteStreams}
+            userName={userName}
+            isVideoEnabled={isVideoEnabled}
+            selectedVideoId={selectedVideoId}
+            onVideoSelect={onVideoSelect}
+          />
         </div>
-      </Card>
+        
+        {showParticipants && (
+          <div className="h-1/3 border-t border-white/20">
+            <ParticipantsList
+              participants={participants}
+              remoteStreams={remoteStreams}
+              localStream={localStream}
+              currentUserId={currentUserId}
+              isHost={isHost}
+              onToggleMute={onToggleMute}
+              onSelectVideo={onVideoSelect || (() => {})}
+              selectedVideoId={selectedVideoId}
+            />
+          </div>
+        )}
+      </div>
     );
-  };
+  }
 
   return (
-    <div className={gridClasses} style={gridStyle}>
-      {/* Local Video */}
-      <VideoCard
-        stream={localStream}
-        streamId="local"
-        participantName={userName}
-        isLocal={true}
-        isParticipantHostUser={isHost}
-      />
-      
-      {/* Remote Videos */}
-      {remoteStreams.map((remoteStream) => (
-        <VideoCard
-          key={remoteStream.id}
-          stream={remoteStream.stream}
-          streamId={remoteStream.id}
-          participantName={remoteStream.userName}
-          isParticipantHostUser={isParticipantHost(remoteStream.userName)}
+    <div className="flex h-full">
+      <div className="flex-1">
+        <ParticipantGrid
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          isVideoEnabled={isVideoEnabled}
+          selectedVideoId={selectedVideoId}
+          onVideoSelect={onVideoSelect}
         />
-      ))}
+      </div>
+      
+      {showParticipants && (
+        <div className="w-80 border-l border-white/20">
+          <ParticipantsList
+            participants={participants}
+            remoteStreams={remoteStreams}
+            localStream={localStream}
+            currentUserId={currentUserId}
+            isHost={isHost}
+            onToggleMute={onToggleMute}
+            onSelectVideo={onVideoSelect || (() => {})}
+            selectedVideoId={selectedVideoId}
+          />
+        </div>
+      )}
     </div>
   );
 };

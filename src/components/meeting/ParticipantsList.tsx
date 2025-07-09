@@ -1,13 +1,24 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface Participant {
+  id: string;
+  user_id: string;
+  user_name: string;
+  is_host: boolean;
+  is_muted: boolean;
+  joined_at: string;
+}
 
 interface ParticipantsListProps {
-  participants: any[];
+  participants: Participant[];
   isCurrentUserHost: boolean;
   currentUserId: string;
   userName: string;
@@ -16,30 +27,156 @@ interface ParticipantsListProps {
 }
 
 export const ParticipantsList = ({
-  participants,
+  participants: initialParticipants,
   isCurrentUserHost,
   currentUserId,
   userName,
   onClose,
   onToggleMute
 }: ParticipantsListProps) => {
-  // Add current user to the list if not already present
-  const allParticipants = [
-    {
-      id: currentUserId,
-      user_name: userName,
-      user_id: currentUserId,
-      is_host: isCurrentUserHost,
-      is_muted: false,
-      joined_at: new Date().toISOString(),
-      email: 'current@user.com' // This would normally come from user profile
-    },
-    ...participants.filter(p => p.user_id !== currentUserId)
-  ];
+  const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
+  const { toast } = useToast();
 
-  const ParticipantCard = ({ participant }: { participant: any }) => {
+  // Update participants when props change
+  useEffect(() => {
+    setParticipants(initialParticipants);
+  }, [initialParticipants]);
+
+  // Real-time updates for participants
+  useEffect(() => {
+    if (participants.length === 0) return;
+
+    const meetingId = participants[0]?.id ? participants[0].id.split('-')[0] : null;
+    if (!meetingId) return;
+
+    const channel = supabase
+      .channel(`participants-realtime-${meetingId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'meeting_participants'
+        },
+        (payload) => {
+          console.log('Participant update:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            setParticipants(prev => 
+              prev.map(p => 
+                p.id === payload.new.id 
+                  ? { ...p, ...payload.new }
+                  : p
+              )
+            );
+          } else if (payload.eventType === 'INSERT') {
+            setParticipants(prev => {
+              const exists = prev.find(p => p.id === payload.new.id);
+              if (!exists) {
+                return [...prev, payload.new as Participant];
+              }
+              return prev;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setParticipants(prev => 
+              prev.filter(p => p.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [participants.length]);
+
+  const handleMuteToggle = async (participant: Participant) => {
+    if (!isCurrentUserHost || participant.user_id === currentUserId) return;
+
+    try {
+      const newMutedState = !participant.is_muted;
+      
+      // Update in database
+      const { error } = await supabase
+        .from('meeting_participants')
+        .update({ is_muted: newMutedState })
+        .eq('id', participant.id);
+
+      if (error) {
+        console.error('Error updating mute status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update mute status",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update local state immediately for better UX
+      setParticipants(prev => 
+        prev.map(p => 
+          p.id === participant.id 
+            ? { ...p, is_muted: newMutedState }
+            : p
+        )
+      );
+
+      // Send signaling to participant to mute/unmute
+      const channel = supabase.channel(`meeting-mute-${participant.user_id}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'mute-toggle',
+        payload: {
+          participantId: participant.user_id,
+          isMuted: newMutedState,
+          fromHost: true
+        }
+      });
+
+      // Call the callback if provided
+      if (onToggleMute) {
+        onToggleMute(participant.id, newMutedState);
+      }
+
+      toast({
+        title: newMutedState ? "Participant Muted" : "Participant Unmuted",
+        description: `${participant.user_name} has been ${newMutedState ? 'muted' : 'unmuted'}`
+      });
+
+    } catch (error) {
+      console.error('Error in handleMuteToggle:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update participant mute status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Add current user to the list if not already present
+  const allParticipants = React.useMemo(() => {
+    const currentUserExists = participants.find(p => p.user_id === currentUserId);
+    if (!currentUserExists) {
+      return [
+        {
+          id: `current-${currentUserId}`,
+          user_name: userName,
+          user_id: currentUserId,
+          is_host: isCurrentUserHost,
+          is_muted: false,
+          joined_at: new Date().toISOString()
+        },
+        ...participants
+      ];
+    }
+    return participants;
+  }, [participants, currentUserId, userName, isCurrentUserHost]);
+
+  const ParticipantCard = ({ participant }: { participant: Participant }) => {
     const isCurrentUser = participant.user_id === currentUserId;
     const canViewEmail = isCurrentUserHost || isCurrentUser;
+    const canMute = isCurrentUserHost && !isCurrentUser;
 
     return (
       <Card className="p-4 bg-slate-800/60 border-slate-700/60 backdrop-blur-sm">
@@ -71,7 +208,7 @@ export const ParticipantsList = ({
                 <div className="flex items-center space-x-1 mt-1">
                   <Mail className="h-3 w-3 text-slate-400" />
                   <span className="text-xs text-slate-400">
-                    {participant.email || `${participant.user_name.toLowerCase().replace(' ', '.')}@example.com`}
+                    {`${participant.user_name.toLowerCase().replace(' ', '.')}@example.com`}
                   </span>
                 </div>
               )}
@@ -106,9 +243,9 @@ export const ParticipantsList = ({
             </div>
 
             {/* Host Controls */}
-            {isCurrentUserHost && !isCurrentUser && onToggleMute && (
+            {canMute && (
               <Button
-                onClick={() => onToggleMute(participant.id, !participant.is_muted)}
+                onClick={() => handleMuteToggle(participant)}
                 variant="outline"
                 size="sm"
                 className="h-8 w-16 text-xs bg-slate-700/60 border-slate-600/60 hover:bg-slate-600/60"
@@ -156,7 +293,7 @@ export const ParticipantsList = ({
             {isCurrentUserHost && (
               <p className="text-xs text-slate-400 mt-1">
                 <Shield className="h-3 w-3 inline mr-1" />
-                As host, you can see contact details
+                As host, you can see contact details and mute participants
               </p>
             )}
           </div>
@@ -175,7 +312,7 @@ export const ParticipantsList = ({
           <div className="p-4 space-y-3">
             {allParticipants.map((participant) => (
               <ParticipantCard
-                key={participant.id || participant.user_id}
+                key={participant.id}
                 participant={participant}
               />
             ))}
