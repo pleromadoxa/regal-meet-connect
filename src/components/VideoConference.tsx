@@ -77,6 +77,13 @@ export const VideoConference = ({
     connectedPeers
   } = useWebRTC(meetingId, userName, user?.id || '');
 
+  // Convert Map to RemoteStream array for components
+  const remoteStreamsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({
+    id,
+    stream,
+    userName: `User ${id.slice(0, 8)}` // Fallback name
+  }));
+
   const { 
     participants, 
     fetchParticipants, 
@@ -294,7 +301,7 @@ export const VideoConference = ({
 
         <NewMeetingLayout
           localStream={localStream}
-          remoteStreams={remoteStreams}
+          remoteStreams={remoteStreamsArray}
           userName={userName}
           isVideoEnabled={isVideoEnabled}
           selectedVideoId={selectedVideoId}
@@ -322,7 +329,7 @@ export const VideoConference = ({
           isVideoEnabled={isVideoEnabled}
           isAudioEnabled={isAudioEnabled}
           isScreenSharing={isScreenSharing}
-          currentFacingMode={currentFacingMode}
+          currentFacingMode={currentFacingMode as "user" | "environment"}
           currentAudioDevice={currentAudioDevice}
           currentVideoDevice={currentVideoDevice}
           onToggleVideo={toggleVideo}

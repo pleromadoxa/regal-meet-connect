@@ -46,8 +46,11 @@ export const MeetingLayout = ({
           isVideoEnabled={isVideoEnabled}
           selectedVideoId={selectedVideoId}
           onVideoSelect={onVideoSelect}
-          isHost={isCurrentUserHost}
+          showParticipants={showParticipants}
           participants={participants}
+          currentUserId={currentUserId}
+          isHost={isCurrentUserHost}
+          onToggleMute={onToggleMute}
         />
       </div>
 

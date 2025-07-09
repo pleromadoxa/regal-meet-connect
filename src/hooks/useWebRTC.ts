@@ -18,7 +18,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [currentFacingMode, setCurrentFacingMode] = useState<string>('user');
+  const [currentFacingMode, setCurrentFacingMode] = useState<"user" | "environment">('user');
   const [currentAudioDevice, setCurrentAudioDevice] = useState<string>('');
   const [currentVideoDevice, setCurrentVideoDevice] = useState<string>('');
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
@@ -347,7 +347,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   }, [toast]);
 
   const switchCamera = useCallback(() => {
-    const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';
     setCurrentFacingMode(newFacingMode);
   }, [currentFacingMode]);
 

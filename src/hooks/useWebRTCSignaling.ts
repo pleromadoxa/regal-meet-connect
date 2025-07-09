@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignalingMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
   data: any;
   from: string;
   to?: string;
