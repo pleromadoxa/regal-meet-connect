@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Video, VideoOff, Crown, User } from 'lucide-react';
@@ -97,49 +97,73 @@ export const ResponsiveParticipantGrid = ({
     isLocal?: boolean;
     isParticipantHostUser?: boolean;
   }) => {
-    const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     const isSelected = selectedVideoId === streamId;
-    const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
+    
+    // Check stream tracks
+    const hasVideo = stream && stream.getVideoTracks().length > 0 && 
+      (isLocal ? isVideoEnabled && stream.getVideoTracks()[0].enabled : stream.getVideoTracks()[0].enabled);
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
 
     useEffect(() => {
-      if (videoElement && stream && hasVideo) {
-        // Prevent video glitching by properly handling stream assignment
-        if (videoElement.srcObject !== stream) {
-          videoElement.srcObject = stream;
-          
-          // Handle video play with proper error handling
-          const playVideo = async () => {
-            try {
-              await videoElement.play();
-            } catch (error) {
-              console.log('Video play failed, retrying...', error);
-              // Retry once after a short delay
-              setTimeout(async () => {
-                try {
-                  if (videoElement.srcObject === stream) {
-                    await videoElement.play();
-                  }
-                } catch (retryError) {
-                  console.warn('Video play retry failed:', retryError);
-                }
-              }, 100);
-            }
-          };
-          
-          playVideo();
-        }
+      const videoElement = videoRef.current;
+      if (!videoElement || !stream || !hasVideo) {
+        setIsVideoLoaded(false);
+        return;
       }
-    }, [videoElement, stream, hasVideo]);
 
-    // Clean up video element when component unmounts or stream changes
+      // Prevent glitching by checking if stream is already set
+      if (videoElement.srcObject !== stream) {
+        console.log(`Setting stream for ${participantName}:`, {
+          streamId: stream.id,
+          videoTracks: stream.getVideoTracks().length,
+          audioTracks: stream.getAudioTracks().length
+        });
+
+        videoElement.srcObject = stream;
+        setIsVideoLoaded(false);
+
+        const handleLoadedMetadata = () => {
+          setIsVideoLoaded(true);
+          console.log(`Video loaded for ${participantName}`);
+        };
+
+        const handleError = (error: any) => {
+          console.error(`Video error for ${participantName}:`, error);
+          setIsVideoLoaded(false);
+        };
+
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.addEventListener('error', handleError);
+
+        // Auto-play with error handling
+        const playVideo = async () => {
+          try {
+            await videoElement.play();
+          } catch (error: any) {
+            console.log(`Auto-play failed for ${participantName}, user interaction required:`, error);
+          }
+        };
+
+        playVideo();
+
+        return () => {
+          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement.removeEventListener('error', handleError);
+        };
+      }
+    }, [stream, hasVideo, participantName]);
+
+    // Clean up on unmount
     useEffect(() => {
       return () => {
+        const videoElement = videoRef.current;
         if (videoElement) {
           videoElement.srcObject = null;
         }
       };
-    }, [videoElement]);
+    }, []);
 
     return (
       <Card 
@@ -151,18 +175,26 @@ export const ResponsiveParticipantGrid = ({
         onClick={() => onVideoSelect(streamId)}
       >
         <div className="relative w-full h-full min-h-[120px] sm:min-h-[180px] md:min-h-[240px]">
-          {hasVideo ? (
+          {hasVideo && isVideoLoaded ? (
             <video
-              ref={setVideoElement}
+              ref={videoRef}
               autoPlay
               playsInline
               muted={isLocal}
               className="w-full h-full object-cover rounded-lg"
               style={{
                 imageRendering: 'auto',
-                objectFit: 'cover'
+                objectFit: 'cover',
+                transform: isLocal && currentFacingMode === 'user' ? 'scaleX(-1)' : 'none'
               }}
             />
+          ) : hasVideo && !isVideoLoaded ? (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
+              <div className="text-center">
+                <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p className="text-white/70 text-sm">Loading video...</p>
+              </div>
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
               <div className="text-center">
@@ -171,6 +203,7 @@ export const ResponsiveParticipantGrid = ({
                   {participantName}
                   {isParticipantHostUser && " (HOST)"}
                 </p>
+                {!hasVideo && <VideoOff className="h-4 w-4 text-red-400 mx-auto mt-1" />}
               </div>
             </div>
           )}
@@ -213,6 +246,13 @@ export const ResponsiveParticipantGrid = ({
           {isSelected && (
             <div className="absolute top-2 right-2">
               <div className="w-3 h-3 bg-orange-400 rounded-full animate-pulse"></div>
+            </div>
+          )}
+
+          {/* Audio Indicator for non-video participants */}
+          {!hasVideo && hasAudio && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 bg-green-400 rounded-full animate-pulse"></div>
             </div>
           )}
         </div>

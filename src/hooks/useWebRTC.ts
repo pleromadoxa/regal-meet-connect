@@ -41,6 +41,43 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   };
 
+  // Session management - detect when user leaves
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Send leave signal to other participants
+      sendSignalingMessage({
+        type: 'leave',
+        data: { userId, userName }
+      });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // User switched tabs or minimized - pause streams but don't leave
+        localStreamRef.current?.getTracks().forEach(track => {
+          if (track.kind === 'video') {
+            track.enabled = false;
+          }
+        });
+      } else {
+        // User returned - resume streams
+        localStreamRef.current?.getTracks().forEach(track => {
+          if (track.kind === 'video') {
+            track.enabled = isVideoEnabled;
+          }
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [sendSignalingMessage, userId, userName, isVideoEnabled]);
+
   const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user', audioDeviceId?: string, videoDeviceId?: string) => ({
     video: videoDeviceId ? 
       { deviceId: { exact: videoDeviceId } } : 
@@ -109,35 +146,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         audioSettings: audioTrack?.getSettings()
       });
       
-      // Update all peer connections with new stream - avoid duplicate streams
-      await Promise.all(
-        Array.from(peerConnections.current.entries()).map(async ([peerId, pc]) => {
-          if (pc.connectionState === 'connected' || pc.connectionState === 'connecting') {
-            console.log('Updating peer connection with new stream for:', peerId);
-            
-            // Get current senders
-            const senders = pc.getSenders();
-            
-            // Replace tracks instead of removing/adding to prevent glitching
-            for (const track of stream.getTracks()) {
-              const sender = senders.find(s => s.track?.kind === track.kind);
-              if (sender) {
-                try {
-                  await sender.replaceTrack(track);
-                  console.log(`Replaced ${track.kind} track for peer ${peerId}`);
-                } catch (error) {
-                  console.warn(`Failed to replace ${track.kind} track:`, error);
-                  // Fallback: add track if replace fails
-                  pc.addTrack(track, stream);
-                }
-              } else {
-                pc.addTrack(track, stream);
-                console.log(`Added new ${track.kind} track for peer ${peerId}`);
-              }
-            }
-          }
-        })
-      );
+      // Update peer connections with new stream without causing glitches
+      await updatePeerConnectionsWithNewStream(stream);
       
       streamUpdateInProgress.current = false;
       return stream;
@@ -179,6 +189,44 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       });
       throw error;
     }
+  };
+
+  const updatePeerConnectionsWithNewStream = async (stream: MediaStream) => {
+    const updatePromises = Array.from(peerConnections.current.entries()).map(async ([peerId, pc]) => {
+      if (pc.connectionState === 'connected' || pc.connectionState === 'connecting') {
+        console.log('Updating peer connection with new stream for:', peerId);
+        
+        const senders = pc.getSenders();
+        
+        // Replace tracks to prevent glitching
+        for (const track of stream.getTracks()) {
+          const sender = senders.find(s => s.track?.kind === track.kind);
+          if (sender) {
+            try {
+              await sender.replaceTrack(track);
+              console.log(`Replaced ${track.kind} track for peer ${peerId}`);
+            } catch (error) {
+              console.warn(`Failed to replace ${track.kind} track:`, error);
+              // Fallback: add track if replace fails
+              try {
+                pc.addTrack(track, stream);
+              } catch (addError) {
+                console.warn('Failed to add track as fallback:', addError);
+              }
+            }
+          } else {
+            try {
+              pc.addTrack(track, stream);
+              console.log(`Added new ${track.kind} track for peer ${peerId}`);
+            } catch (addError) {
+              console.warn('Failed to add new track:', addError);
+            }
+          }
+        }
+      }
+    });
+
+    await Promise.allSettled(updatePromises);
   };
 
   const createPeerConnection = useCallback((remotePeerId: string) => {
@@ -223,15 +271,25 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       const [remoteStream] = event.streams;
       
       if (remoteStream && remoteStream.getTracks().length > 0) {
-        console.log('Remote stream tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+        console.log('Remote stream tracks:', remoteStream.getTracks().map(t => ({ 
+          kind: t.kind, 
+          enabled: t.enabled,
+          readyState: t.readyState 
+        })));
         
-        // Prevent adding duplicate streams and reduce glitching
+        // Ensure we have both audio and video tracks
+        const hasVideo = remoteStream.getVideoTracks().length > 0;
+        const hasAudio = remoteStream.getAudioTracks().length > 0;
+        
+        console.log(`Remote stream from ${remotePeerId}: video=${hasVideo}, audio=${hasAudio}`);
+        
+        // Update remote streams with proper handling
         setRemoteStreams(prev => {
           const existing = prev.find(s => s.id === remotePeerId);
           const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
           
           if (existing) {
-            // Only update if the stream is actually different
+            // Update existing stream only if it's actually different
             if (existing.stream.id !== remoteStream.id) {
               console.log('Updating existing remote stream for:', remotePeerId);
               return prev.map(s => 
@@ -285,6 +343,9 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           clearTimeout(timeout);
           reconnectTimeouts.current.delete(remotePeerId);
         }
+      } else if (state === 'closed') {
+        // Remove remote stream when connection is closed
+        setRemoteStreams(prev => prev.filter(s => s.id !== remotePeerId));
       }
     };
 
@@ -364,6 +425,16 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
             console.warn('Cannot add ICE candidate - no remote description set');
           }
           break;
+
+        case 'leave':
+          console.log('Participant left:', from);
+          const pc4 = peerConnections.current.get(from);
+          if (pc4) {
+            pc4.close();
+            peerConnections.current.delete(from);
+          }
+          setRemoteStreams(prev => prev.filter(s => s.id !== from));
+          break;
       }
     } catch (error) {
       console.error('Error handling signaling message:', error);
@@ -374,7 +445,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     try {
       console.log('Initiating call to peer:', peerId);
       const peerConnection = createPeerConnection(peerId);
-      const offer = await peerConnection.createOffer();
+      const offer = await peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
       await peerConnection.setLocalDescription(offer);
       
       console.log('Sending offer to:', peerId);

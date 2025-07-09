@@ -85,6 +85,15 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
             return newMap;
           });
           console.log('Peer left:', key);
+          
+          // Send leave signal to trigger cleanup
+          window.dispatchEvent(new CustomEvent('webrtc-signaling', {
+            detail: {
+              type: 'leave',
+              from: key,
+              data: { userId: key }
+            }
+          }));
         }
       })
       .subscribe(async (status) => {
@@ -126,12 +135,18 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
 
   const cleanup = useCallback(() => {
     if (channelRef.current) {
+      // Send leave message before unsubscribing
+      sendSignalingMessage({
+        type: 'leave',
+        data: { userId, userName }
+      });
+      
       channelRef.current.unsubscribe();
       channelRef.current = null;
     }
     setConnectedPeers(new Set());
     setPeerUserNames(new Map());
-  }, []);
+  }, [sendSignalingMessage, userId, userName]);
 
   return {
     initializeSignaling,

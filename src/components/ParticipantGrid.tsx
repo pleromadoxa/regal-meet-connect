@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { VideoReactions } from '@/components/VideoReactions';
 import { AudioIndicator } from '@/components/AudioIndicator';
@@ -28,14 +28,6 @@ export const ParticipantGrid = ({
   selectedVideoId,
   onVideoSelect
 }: ParticipantGridProps) => {
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream]);
-
   // Find the selected stream or default to local
   const selectedStream = selectedVideoId 
     ? remoteStreams.find(s => s.id === selectedVideoId) || { 
@@ -62,6 +54,7 @@ export const ParticipantGrid = ({
               stream={selectedStream.stream} 
               userName={selectedStream.userName}
               isLocal={selectedStream.id === 'local'}
+              isVideoEnabled={selectedStream.id === 'local' ? isVideoEnabled : true}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
@@ -109,6 +102,7 @@ export const ParticipantGrid = ({
                   stream={stream.stream} 
                   userName={stream.userName}
                   isLocal={stream.id === 'local'}
+                  isVideoEnabled={stream.id === 'local' ? isVideoEnabled : true}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
@@ -140,16 +134,58 @@ interface VideoProps {
   stream: MediaStream;
   userName: string;
   isLocal: boolean;
+  isVideoEnabled: boolean;
 }
 
-const MainVideo = ({ stream, isLocal }: VideoProps) => {
+const MainVideo = ({ stream, isLocal, isVideoEnabled }: VideoProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const videoElement = videoRef.current;
+    if (!videoElement || !stream) return;
+
+    // Check if we should show video
+    const hasVideoTrack = stream.getVideoTracks().length > 0;
+    const videoTrackEnabled = hasVideoTrack && stream.getVideoTracks()[0].enabled;
+    const shouldShowVideo = isLocal ? (isVideoEnabled && videoTrackEnabled) : videoTrackEnabled;
+
+    if (shouldShowVideo && videoElement.srcObject !== stream) {
+      videoElement.srcObject = stream;
+      setIsLoaded(false);
+
+      const handleLoadedMetadata = () => {
+        setIsLoaded(true);
+      };
+
+      videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+      const playVideo = async () => {
+        try {
+          await videoElement.play();
+        } catch (error) {
+          console.log('Video play failed:', error);
+        }
+      };
+
+      playVideo();
+
+      return () => {
+        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      };
+    } else if (!shouldShowVideo) {
+      setIsLoaded(false);
+      videoElement.srcObject = null;
     }
-  }, [stream]);
+  }, [stream, isLocal, isVideoEnabled]);
+
+  const hasVideoTrack = stream?.getVideoTracks().length > 0;
+  const videoTrackEnabled = hasVideoTrack && stream.getVideoTracks()[0].enabled;
+  const shouldShowVideo = isLocal ? (isVideoEnabled && videoTrackEnabled) : videoTrackEnabled;
+
+  if (!shouldShowVideo || !isLoaded) {
+    return null;
+  }
 
   return (
     <video
@@ -159,7 +195,6 @@ const MainVideo = ({ stream, isLocal }: VideoProps) => {
       playsInline
       className="w-full h-full object-cover"
       style={{
-        // Improve video quality and smoothness
         imageRendering: 'auto',
         objectFit: 'cover'
       }}
@@ -167,14 +202,55 @@ const MainVideo = ({ stream, isLocal }: VideoProps) => {
   );
 };
 
-const ThumbnailVideo = ({ stream, isLocal }: VideoProps) => {
+const ThumbnailVideo = ({ stream, isLocal, isVideoEnabled }: VideoProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    const videoElement = videoRef.current;
+    if (!videoElement || !stream) return;
+
+    // Check if we should show video
+    const hasVideoTrack = stream.getVideoTracks().length > 0;
+    const videoTrackEnabled = hasVideoTrack && stream.getVideoTracks()[0].enabled;
+    const shouldShowVideo = isLocal ? (isVideoEnabled && videoTrackEnabled) : videoTrackEnabled;
+
+    if (shouldShowVideo && videoElement.srcObject !== stream) {
+      videoElement.srcObject = stream;
+      setIsLoaded(false);
+
+      const handleLoadedMetadata = () => {
+        setIsLoaded(true);
+      };
+
+      videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+      const playVideo = async () => {
+        try {
+          await videoElement.play();
+        } catch (error) {
+          console.log('Thumbnail video play failed:', error);
+        }
+      };
+
+      playVideo();
+
+      return () => {
+        videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      };
+    } else if (!shouldShowVideo) {
+      setIsLoaded(false);
+      videoElement.srcObject = null;
     }
-  }, [stream]);
+  }, [stream, isLocal, isVideoEnabled]);
+
+  const hasVideoTrack = stream?.getVideoTracks().length > 0;
+  const videoTrackEnabled = hasVideoTrack && stream.getVideoTracks()[0].enabled;
+  const shouldShowVideo = isLocal ? (isVideoEnabled && videoTrackEnabled) : videoTrackEnabled;
+
+  if (!shouldShowVideo || !isLoaded) {
+    return null;
+  }
 
   return (
     <video
@@ -184,7 +260,6 @@ const ThumbnailVideo = ({ stream, isLocal }: VideoProps) => {
       playsInline
       className="w-full h-full object-cover"
       style={{
-        // Improve video quality and smoothness
         imageRendering: 'auto',
         objectFit: 'cover'
       }}
