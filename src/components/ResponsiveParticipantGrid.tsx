@@ -76,7 +76,7 @@ export const ResponsiveParticipantGrid = ({
   const gridLayout = getGridLayout(totalParticipants);
   
   const gridClasses = isMobile 
-    ? `grid gap-2 p-2 h-full`
+    ? `grid gap-2 p-2 h-full pb-24`
     : `grid gap-4 p-4 h-full`;
 
   const gridStyle = {
@@ -103,7 +103,7 @@ export const ResponsiveParticipantGrid = ({
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
 
     useEffect(() => {
-      if (videoElement && stream) {
+      if (videoElement && stream && hasVideo) {
         // Prevent video glitching by properly handling stream assignment
         if (videoElement.srcObject !== stream) {
           videoElement.srcObject = stream;
@@ -117,7 +117,9 @@ export const ResponsiveParticipantGrid = ({
               // Retry once after a short delay
               setTimeout(async () => {
                 try {
-                  await videoElement.play();
+                  if (videoElement.srcObject === stream) {
+                    await videoElement.play();
+                  }
                 } catch (retryError) {
                   console.warn('Video play retry failed:', retryError);
                 }
@@ -128,7 +130,7 @@ export const ResponsiveParticipantGrid = ({
           playVideo();
         }
       }
-    }, [videoElement, stream]);
+    }, [videoElement, stream, hasVideo]);
 
     // Clean up video element when component unmounts or stream changes
     useEffect(() => {
@@ -159,11 +161,6 @@ export const ResponsiveParticipantGrid = ({
               style={{
                 imageRendering: 'auto',
                 objectFit: 'cover'
-              }}
-              onLoadedMetadata={(e) => {
-                // Ensure video plays when metadata is loaded
-                const video = e.target as HTMLVideoElement;
-                video.play().catch(console.warn);
               }}
             />
           ) : (

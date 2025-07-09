@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { User, Mic, MicOff, Crown } from 'lucide-react';
@@ -56,10 +56,50 @@ export const MobileParticipantGrid = ({
     participantName: string;
     isLocal?: boolean;
   }) => {
+    const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
     const isSelected = selectedVideoId === streamId;
     const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
     const isHost = isLocal ? isCurrentUserHost : isParticipantHost(participantName);
+
+    // Handle video stream assignment with proper cleanup
+    useEffect(() => {
+      if (videoElement && stream && hasVideo) {
+        // Only update if stream has changed
+        if (videoElement.srcObject !== stream) {
+          videoElement.srcObject = stream;
+          
+          const playVideo = async () => {
+            try {
+              await videoElement.play();
+            } catch (error) {
+              console.warn('Video play failed:', error);
+              // Retry once after a short delay
+              setTimeout(async () => {
+                try {
+                  if (videoElement.srcObject === stream) {
+                    await videoElement.play();
+                  }
+                } catch (retryError) {
+                  console.warn('Video play retry failed:', retryError);
+                }
+              }, 200);
+            }
+          };
+          
+          playVideo();
+        }
+      }
+    }, [videoElement, stream, hasVideo]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (videoElement) {
+          videoElement.srcObject = null;
+        }
+      };
+    }, [videoElement]);
 
     return (
       <Card 
@@ -73,16 +113,15 @@ export const MobileParticipantGrid = ({
         <div className="aspect-video relative min-h-[140px]">
           {hasVideo ? (
             <video
-              ref={(video) => {
-                if (video && stream) {
-                  video.srcObject = stream;
-                  video.play().catch(console.warn);
-                }
-              }}
+              ref={setVideoElement}
               autoPlay
               playsInline
               muted={isLocal}
               className="w-full h-full object-cover rounded-lg"
+              style={{
+                imageRendering: 'auto',
+                objectFit: 'cover'
+              }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
@@ -135,7 +174,7 @@ export const MobileParticipantGrid = ({
   };
 
   return (
-    <div className={`grid ${getGridCols(totalParticipants)} gap-3 p-3 h-full overflow-y-auto`}>
+    <div className={`grid ${getGridCols(totalParticipants)} gap-3 p-3 h-full overflow-y-auto pb-24`}>
       {/* Local user */}
       <ParticipantCard
         stream={localStream}

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
@@ -12,7 +11,9 @@ interface RemoteStream {
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' }
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:global.stun.twilio.com:3478' }
 ];
 
 export const useWebRTC = (meetingId: string, userName: string, userId: string) => {
@@ -24,24 +25,30 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('user');
   const [currentAudioDevice, setCurrentAudioDevice] = useState<string>('');
   const [currentVideoDevice, setCurrentVideoDevice] = useState<string>('');
+  const [connectionRetries, setConnectionRetries] = useState<Map<string, number>>(new Map());
   
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const reconnectTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const { toast } = useToast();
 
   const { initializeSignaling, sendSignalingMessage, connectedPeers, peerUserNames, cleanup: cleanupSignaling } = 
     useWebRTCSignaling(meetingId, userId, userName);
 
+  // Check if device supports screen sharing
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
   const getMediaConstraints = (facingMode: 'user' | 'environment' = 'user', audioDeviceId?: string, videoDeviceId?: string) => ({
     video: videoDeviceId ? 
       { deviceId: { exact: videoDeviceId } } : 
       {
-        width: { ideal: 1280, max: 1920, min: 640 },
-        height: { ideal: 720, max: 1080, min: 480 },
-        frameRate: { ideal: 30, max: 60, min: 15 },
+        width: { ideal: isMobile() ? 640 : 1280, max: 1920, min: 320 },
+        height: { ideal: isMobile() ? 480 : 720, max: 1080, min: 240 },
+        frameRate: { ideal: isMobile() ? 15 : 30, max: 60, min: 10 },
         facingMode: facingMode,
-        aspectRatio: { ideal: 16/9 },
-        resizeMode: 'crop-and-scale'
+        aspectRatio: { ideal: 16/9 }
       },
     audio: audioDeviceId ? 
       { deviceId: { exact: audioDeviceId } } : 
@@ -50,9 +57,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         noiseSuppression: true,
         autoGainControl: true,
         sampleRate: { ideal: 44100, min: 16000 },
-        channelCount: { ideal: 2, min: 1 },
-        latency: { ideal: 0.01, max: 0.1 },
-        volume: { ideal: 1.0, min: 0.0, max: 1.0 }
+        channelCount: { ideal: 1, min: 1 }
       }
   });
 
@@ -89,32 +94,21 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         audioSettings: audioTrack?.getSettings()
       });
       
+      // Update all peer connections with new stream
       peerConnections.current.forEach(async (pc, peerId) => {
-        console.log('Updating peer connection with new stream for:', peerId);
-        
-        pc.getSenders().forEach(sender => {
-          if (sender.track) {
-            pc.removeTrack(sender);
-          }
-        });
-        
-        stream.getTracks().forEach(track => {
-          console.log('Adding track to peer connection:', track.kind, peerId);
-          pc.addTrack(track, stream);
-        });
-        
-        if (pc.signalingState === 'stable') {
-          try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignalingMessage({
-              type: 'offer',
-              data: offer,
-              to: peerId
-            });
-          } catch (error) {
-            console.error('Error creating renegotiation offer:', error);
-          }
+        if (pc.connectionState === 'connected' || pc.connectionState === 'connecting') {
+          console.log('Updating peer connection with new stream for:', peerId);
+          
+          // Replace tracks instead of removing/adding to prevent glitching
+          const senders = pc.getSenders();
+          stream.getTracks().forEach(track => {
+            const sender = senders.find(s => s.track?.kind === track.kind);
+            if (sender && sender.track) {
+              sender.replaceTrack(track).catch(console.warn);
+            } else {
+              pc.addTrack(track, stream);
+            }
+          });
         }
       });
       
@@ -133,7 +127,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         try {
           console.log('Falling back to basic constraints');
           const basicStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: { width: 640, height: 480 },
             audio: true
           });
           
@@ -180,10 +174,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           }
           params.encodings[0] = {
             ...params.encodings[0],
-            maxBitrate: 2500000, // 2.5 Mbps max
-            scaleResolutionDownBy: 1
+            maxBitrate: isMobile() ? 1000000 : 2500000, // Lower bitrate for mobile
+            scaleResolutionDownBy: isMobile() ? 2 : 1
           };
-          sender.setParameters(params);
+          sender.setParameters(params).catch(console.warn);
         }
       });
     }
@@ -195,26 +189,29 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       if (remoteStream && remoteStream.getTracks().length > 0) {
         console.log('Remote stream tracks:', remoteStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
         
-        setRemoteStreams(prev => {
-          const existing = prev.find(s => s.id === remotePeerId);
-          const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
-          
-          if (existing) {
-            console.log('Updating existing remote stream for:', remotePeerId);
-            return prev.map(s => 
-              s.id === remotePeerId 
-                ? { ...s, stream: remoteStream, userName: peerName }
-                : s
-            );
-          }
-          
-          console.log('Adding new remote stream for:', remotePeerId);
-          return [...prev, { 
-            id: remotePeerId, 
-            stream: remoteStream, 
-            userName: peerName
-          }];
-        });
+        // Debounce stream updates to prevent glitching
+        setTimeout(() => {
+          setRemoteStreams(prev => {
+            const existing = prev.find(s => s.id === remotePeerId);
+            const peerName = peerUserNames.get(remotePeerId) || `User ${remotePeerId.slice(-4)}`;
+            
+            if (existing) {
+              console.log('Updating existing remote stream for:', remotePeerId);
+              return prev.map(s => 
+                s.id === remotePeerId 
+                  ? { ...s, stream: remoteStream, userName: peerName }
+                  : s
+              );
+            }
+            
+            console.log('Adding new remote stream for:', remotePeerId);
+            return [...prev, { 
+              id: remotePeerId, 
+              stream: remoteStream, 
+              userName: peerName
+            }];
+          });
+        }, 100);
       } else {
         console.warn('Received empty or invalid remote stream from:', remotePeerId);
       }
@@ -232,22 +229,65 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     };
 
     peerConnection.onconnectionstatechange = () => {
-      console.log(`Connection state with ${remotePeerId}:`, peerConnection.connectionState);
+      const state = peerConnection.connectionState;
+      console.log(`Connection state with ${remotePeerId}:`, state);
       
-      if (peerConnection.connectionState === 'failed') {
-        console.log('Connection failed, attempting to restart ICE');
-        peerConnection.restartIce();
-      } else if (peerConnection.connectionState === 'connected') {
+      if (state === 'failed' || state === 'disconnected') {
+        console.log('Connection failed/disconnected, attempting to reconnect');
+        handleReconnection(remotePeerId);
+      } else if (state === 'connected') {
         console.log('Peer connected successfully');
-      } else if (peerConnection.connectionState === 'disconnected') {
-        console.log('Peer disconnected');
-        setRemoteStreams(prev => prev.filter(s => s.id !== remotePeerId));
+        // Reset retry count on successful connection
+        setConnectionRetries(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(remotePeerId);
+          return newMap;
+        });
+        // Clear any existing reconnect timeout
+        const timeout = reconnectTimeouts.current.get(remotePeerId);
+        if (timeout) {
+          clearTimeout(timeout);
+          reconnectTimeouts.current.delete(remotePeerId);
+        }
       }
     };
 
     peerConnections.current.set(remotePeerId, peerConnection);
     return peerConnection;
   }, [sendSignalingMessage, peerUserNames]);
+
+  const handleReconnection = useCallback((peerId: string) => {
+    const currentRetries = connectionRetries.get(peerId) || 0;
+    const maxRetries = 3;
+    
+    if (currentRetries >= maxRetries) {
+      console.log(`Max reconnection attempts reached for ${peerId}`);
+      setRemoteStreams(prev => prev.filter(s => s.id !== peerId));
+      return;
+    }
+
+    setConnectionRetries(prev => {
+      const newMap = new Map(prev);
+      newMap.set(peerId, currentRetries + 1);
+      return newMap;
+    });
+
+    // Close existing connection
+    const existingPc = peerConnections.current.get(peerId);
+    if (existingPc) {
+      existingPc.close();
+      peerConnections.current.delete(peerId);
+    }
+
+    // Wait before attempting reconnection
+    const timeout = setTimeout(() => {
+      console.log(`Attempting reconnection ${currentRetries + 1}/${maxRetries} for ${peerId}`);
+      initiateCallToPeer(peerId);
+      reconnectTimeouts.current.delete(peerId);
+    }, 2000 * (currentRetries + 1)); // Exponential backoff
+
+    reconnectTimeouts.current.set(peerId, timeout);
+  }, [connectionRetries]);
 
   const handleSignalingMessage = useCallback(async (message: any) => {
     const { type, data, from } = message;
@@ -446,8 +486,31 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           description: "Switched back to camera"
         });
       } else {
+        // Check if screen sharing is supported
+        if (!navigator.mediaDevices.getDisplayMedia) {
+          toast({
+            title: "Not Supported",
+            description: "Screen sharing is not supported on this device",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // On mobile, show a warning about limited support
+        if (isMobile()) {
+          toast({
+            title: "Limited Support",
+            description: "Screen sharing on mobile devices may not work as expected",
+            variant: "default"
+          });
+        }
+
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { 
+            width: { ideal: 1920 }, 
+            height: { ideal: 1080 },
+            frameRate: { ideal: 15, max: 30 }
+          },
           audio: false
         });
         
@@ -458,12 +521,13 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           requestMediaPermissions(currentFacingMode, currentAudioDevice, currentVideoDevice);
         };
         
+        // Replace video track in all peer connections
         peerConnections.current.forEach(pc => {
           const sender = pc.getSenders().find(s => 
             s.track && s.track.kind === 'video'
           );
           if (sender) {
-            sender.replaceTrack(screenTrack);
+            sender.replaceTrack(screenTrack).catch(console.warn);
           }
         });
         
@@ -487,7 +551,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       console.error('Screen share error:', error);
       toast({
         title: "Screen Share Error",
-        description: "Unable to share screen. Please try again.",
+        description: "Unable to share screen. This feature may not be supported on your device.",
         variant: "destructive"
       });
     }
@@ -495,6 +559,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   const cleanup = useCallback(() => {
     console.log('Cleaning up WebRTC...');
+    
+    // Clear all reconnection timeouts
+    reconnectTimeouts.current.forEach(timeout => clearTimeout(timeout));
+    reconnectTimeouts.current.clear();
     
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => {
@@ -514,6 +582,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     setIsVideoEnabled(true);
     setIsAudioEnabled(true);
     setIsScreenSharing(false);
+    setConnectionRetries(new Map());
     localStreamRef.current = null;
     
     console.log('WebRTC cleanup completed');

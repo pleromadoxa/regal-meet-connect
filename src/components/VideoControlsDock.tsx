@@ -1,22 +1,25 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { 
   Mic, 
   MicOff, 
   Video, 
   VideoOff, 
   Monitor, 
-  MonitorOff, 
-  SwitchCamera, 
+  MonitorOff,
   Settings, 
-  MessageSquare, 
-  Hand, 
-  Palette, 
-  LogOut,
-  LayoutDashboard,
-  Subtitles
+  MessageSquare,
+  Hand,
+  Sparkles,
+  RotateCcw,
+  Captions,
+  CaptionsOff,
+  PhoneOff,
+  LayoutDashboard
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface VideoControlsDockProps {
   isVideoEnabled: boolean;
@@ -59,149 +62,186 @@ export const VideoControlsDock = ({
   onNavigateToDashboard,
   onLeaveMeeting
 }: VideoControlsDockProps) => {
+  const buttonClass = "h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg border-2";
+  const iconClass = "h-5 w-5 sm:h-6 sm:w-6";
+
   return (
-    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="bg-black/95 backdrop-blur-xl rounded-2xl border border-white/30 p-4 shadow-2xl">
-        <div className="flex items-center space-x-3">
-          {/* Audio Control */}
-          <Button
-            onClick={onToggleAudio}
-            variant={isAudioEnabled ? "default" : "destructive"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              isAudioEnabled 
-                ? "bg-green-600 hover:bg-green-700 border-green-500 shadow-green-500/30" 
-                : "bg-red-600 hover:bg-red-700 border-red-500 shadow-red-500/30"
-            } shadow-lg`}
-          >
-            {isAudioEnabled ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-          </Button>
-
-          {/* Video Control */}
-          <Button
-            onClick={onToggleVideo}
-            variant={isVideoEnabled ? "default" : "destructive"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              isVideoEnabled 
-                ? "bg-blue-600 hover:bg-blue-700 border-blue-500 shadow-blue-500/30" 
-                : "bg-red-600 hover:bg-red-700 border-red-500 shadow-red-500/30"
-            } shadow-lg`}
-          >
-            {isVideoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-          </Button>
-
-          {/* Screen Share */}
-          <Button
-            onClick={onToggleScreenShare}
-            variant={isScreenSharing ? "default" : "outline"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              isScreenSharing 
-                ? "bg-purple-600 hover:bg-purple-700 border-purple-500 shadow-purple-500/30" 
-                : "bg-white/20 hover:bg-white/30 border-white/50"
-            } shadow-lg`}
-          >
-            {isScreenSharing ? <MonitorOff className="h-6 w-6" /> : <Monitor className="h-6 w-6" />}
-          </Button>
-
-          {/* Switch Camera */}
-          <Button
-            onClick={onSwitchCamera}
-            variant="outline"
-            size="lg"
-            className="rounded-xl bg-white/20 hover:bg-white/30 border-2 border-white/50 text-white shadow-lg transition-all duration-300"
-          >
-            <SwitchCamera className="h-6 w-6" />
-          </Button>
-
-          {/* Captions */}
-          <Button
-            onClick={onToggleCaptions}
-            variant={captionsEnabled ? "default" : "outline"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              captionsEnabled 
-                ? "bg-indigo-600 hover:bg-indigo-700 border-indigo-500 shadow-indigo-500/30" 
-                : "bg-white/20 hover:bg-white/30 border-white/50"
-            } shadow-lg`}
-          >
-            <Subtitles className="h-6 w-6" />
-          </Button>
-
-          {/* Video Effects */}
-          <Button
-            onClick={onToggleEffects}
-            variant="outline"
-            size="lg"
-            className="rounded-xl bg-white/20 hover:bg-white/30 border-2 border-white/50 text-white shadow-lg transition-all duration-300"
-          >
-            <Palette className="h-6 w-6" />
-          </Button>
-
-          {/* Hand Raise */}
-          <Button
-            onClick={onToggleHand}
-            variant={handRaised ? "default" : "outline"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              handRaised 
-                ? "bg-yellow-600 hover:bg-yellow-700 border-yellow-500 shadow-yellow-500/30 animate-pulse" 
-                : "bg-white/20 hover:bg-white/30 border-white/50"
-            } shadow-lg`}
-          >
-            <Hand className="h-6 w-6" />
-          </Button>
-
-          {/* Chat */}
-          <Button
-            onClick={onToggleChat}
-            variant={showChat ? "default" : "outline"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              showChat 
-                ? "bg-cyan-600 hover:bg-cyan-700 border-cyan-500 shadow-cyan-500/30" 
-                : "bg-white/20 hover:bg-white/30 border-white/50"
-            } shadow-lg`}
-          >
-            <MessageSquare className="h-6 w-6" />
-          </Button>
-
-          {/* Settings */}
-          <Button
-            onClick={onToggleSettings}
-            variant={showSettings ? "default" : "outline"}
-            size="lg"
-            className={`rounded-xl transition-all duration-300 text-white border-2 ${
-              showSettings 
-                ? "bg-gray-600 hover:bg-gray-700 border-gray-500 shadow-gray-500/30" 
-                : "bg-white/20 hover:bg-white/30 border-white/50"
-            } shadow-lg`}
-          >
-            <Settings className="h-6 w-6" />
-          </Button>
-
-          {/* Dashboard */}
-          {onNavigateToDashboard && (
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="bg-black/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl">
+        <div className="flex items-center gap-2 p-3 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-2 min-w-max">
+            {/* Audio Toggle */}
             <Button
-              onClick={onNavigateToDashboard}
-              variant="outline"
-              size="lg"
-              className="rounded-xl bg-white/20 hover:bg-white/30 border-2 border-white/50 text-white shadow-lg transition-all duration-300"
+              onClick={onToggleAudio}
+              className={cn(
+                buttonClass,
+                isAudioEnabled 
+                  ? "bg-green-500/20 border-green-400/40 text-green-400 hover:bg-green-500/30" 
+                  : "bg-red-500/20 border-red-400/40 text-red-400 hover:bg-red-500/30"
+              )}
+              size="sm"
             >
-              <LayoutDashboard className="h-6 w-6" />
+              {isAudioEnabled ? (
+                <Mic className={iconClass} />
+              ) : (
+                <MicOff className={iconClass} />
+              )}
             </Button>
-          )}
 
-          {/* Leave Meeting */}
-          <Button
-            onClick={onLeaveMeeting}
-            variant="destructive"
-            size="lg"
-            className="rounded-xl bg-red-600 hover:bg-red-700 border-2 border-red-500 text-white shadow-red-500/30 shadow-lg transition-all duration-300"
-          >
-            <LogOut className="h-6 w-6" />
-          </Button>
+            {/* Video Toggle */}
+            <Button
+              onClick={onToggleVideo}
+              className={cn(
+                buttonClass,
+                isVideoEnabled 
+                  ? "bg-blue-500/20 border-blue-400/40 text-blue-400 hover:bg-blue-500/30" 
+                  : "bg-red-500/20 border-red-400/40 text-red-400 hover:bg-red-500/30"
+              )}
+              size="sm"
+            >
+              {isVideoEnabled ? (
+                <Video className={iconClass} />
+              ) : (
+                <VideoOff className={iconClass} />
+              )}
+            </Button>
+
+            <Separator orientation="vertical" className="h-8 bg-white/20 mx-1" />
+
+            {/* Screen Share */}
+            <Button
+              onClick={onToggleScreenShare}
+              className={cn(
+                buttonClass,
+                isScreenSharing 
+                  ? "bg-orange-500/20 border-orange-400/40 text-orange-400 hover:bg-orange-500/30" 
+                  : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              {isScreenSharing ? (
+                <MonitorOff className={iconClass} />
+              ) : (
+                <Monitor className={iconClass} />
+              )}
+            </Button>
+
+            {/* Switch Camera */}
+            <Button
+              onClick={onSwitchCamera}
+              className={cn(
+                buttonClass,
+                "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              <RotateCcw className={iconClass} />
+            </Button>
+
+            <Separator orientation="vertical" className="h-8 bg-white/20 mx-1" />
+
+            {/* Captions */}
+            <Button
+              onClick={onToggleCaptions}
+              className={cn(
+                buttonClass,
+                captionsEnabled 
+                  ? "bg-purple-500/20 border-purple-400/40 text-purple-400 hover:bg-purple-500/30" 
+                  : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              {captionsEnabled ? (
+                <Captions className={iconClass} />
+              ) : (
+                <CaptionsOff className={iconClass} />
+              )}
+            </Button>
+
+            {/* Chat */}
+            <Button
+              onClick={onToggleChat}
+              className={cn(
+                buttonClass,
+                showChat 
+                  ? "bg-blue-500/20 border-blue-400/40 text-blue-400 hover:bg-blue-500/30" 
+                  : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              <MessageSquare className={iconClass} />
+            </Button>
+
+            {/* Raise Hand */}
+            <Button
+              onClick={onToggleHand}
+              className={cn(
+                buttonClass,
+                handRaised 
+                  ? "bg-yellow-500/20 border-yellow-400/40 text-yellow-400 hover:bg-yellow-500/30 animate-pulse" 
+                  : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              <Hand className={iconClass} />
+            </Button>
+
+            {/* Effects */}
+            <Button
+              onClick={onToggleEffects}
+              className={cn(
+                buttonClass,
+                "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              <Sparkles className={iconClass} />
+            </Button>
+
+            <Separator orientation="vertical" className="h-8 bg-white/20 mx-1" />
+
+            {/* Settings */}
+            <Button
+              onClick={onToggleSettings}
+              className={cn(
+                buttonClass,
+                showSettings 
+                  ? "bg-slate-600/60 border-slate-500/40 text-slate-200 hover:bg-slate-500/60" 
+                  : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+              )}
+              size="sm"
+            >
+              <Settings className={iconClass} />
+            </Button>
+
+            {/* Dashboard (if available) */}
+            {onNavigateToDashboard && (
+              <Button
+                onClick={onNavigateToDashboard}
+                className={cn(
+                  buttonClass,
+                  "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60"
+                )}
+                size="sm"
+              >
+                <LayoutDashboard className={iconClass} />
+              </Button>
+            )}
+
+            <Separator orientation="vertical" className="h-8 bg-white/20 mx-1" />
+
+            {/* Leave Meeting */}
+            <Button
+              onClick={onLeaveMeeting}
+              className={cn(
+                buttonClass,
+                "bg-red-500/20 border-red-400/40 text-red-400 hover:bg-red-500/30"
+              )}
+              size="sm"
+            >
+              <PhoneOff className={iconClass} />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
