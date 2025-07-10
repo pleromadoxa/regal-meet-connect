@@ -1,8 +1,7 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useCaptionsCore } from './useCaptionsCore';
 
 interface Caption {
   id: string;
@@ -12,75 +11,69 @@ interface Caption {
   timestamp: string;
 }
 
-export const useCaptions = (meetingId: string, participantId: string) => {
+export const useCaptions = (meetingId: string, participantId?: string) => {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
   const { toast } = useToast();
-  const { isListening, currentTranscript, startListening, stopListening } = useCaptionsCore(meetingId, participantId);
-
-  const toggleCaptions = useCallback(() => {
-    const newEnabled = !isEnabled;
-    console.log('Toggling captions:', newEnabled);
-    setIsEnabled(newEnabled);
-    
-    if (newEnabled) {
-      if (participantId && meetingId) {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-          .then(() => {
-            startListening();
-            toast({
-              title: "Captions Enabled",
-              description: "Live captions are now active. Speak clearly into your microphone."
-            });
-          })
-          .catch((error) => {
-            console.error('Microphone permission denied:', error);
-            setIsEnabled(false);
-            toast({
-              title: "Microphone Access Required", 
-              description: "Please allow microphone access to use live captions.",
-              variant: "destructive"
-            });
-          });
-      } else {
-        toast({
-          title: "Cannot Enable Captions",
-          description: "Please join the meeting first",
-          variant: "destructive"
-        });
-        setIsEnabled(false);
-      }
-    } else {
-      stopListening();
-      toast({
-        title: "Captions Disabled",
-        description: "Live captions have been turned off"
-      });
-    }
-  }, [isEnabled, startListening, stopListening, toast, participantId, meetingId]);
 
   const fetchCaptions = useCallback(async () => {
     if (!meetingId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('meeting_captions')
         .select('*')
         .eq('meeting_id', meetingId)
-        .order('timestamp', { ascending: true })
-        .limit(50);
+        .order('timestamp', { ascending: true });
 
-      if (error) throw error;
-      console.log('Fetched captions:', data);
+      if (error) {
+        console.error('Error fetching captions:', error);
+        return;
+      }
+
       setCaptions(data || []);
     } catch (error) {
-      console.error('Error fetching captions:', error);
+      console.error('Error in fetchCaptions:', error);
     }
   }, [meetingId]);
 
+  const addCaption = useCallback(async (content: string) => {
+    if (!meetingId || !participantId || !content.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('meeting_captions')
+        .insert({
+          meeting_id: meetingId,
+          participant_id: participantId,
+          content: content.trim()
+        });
+
+      if (error) {
+        console.error('Error adding caption:', error);
+        toast({
+          title: "Caption Error",
+          description: "Failed to add caption",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error in addCaption:', error);
+    }
+  }, [meetingId, participantId, toast]);
+
+  const toggleCaptions = useCallback(() => {
+    setIsEnabled(prev => !prev);
+    if (isEnabled) {
+      setCurrentTranscript('');
+    }
+  }, [isEnabled]);
+
+  // Subscribe to real-time caption updates
   useEffect(() => {
     if (!meetingId) return;
-    
+
     fetchCaptions();
 
     const channel = supabase
@@ -94,8 +87,8 @@ export const useCaptions = (meetingId: string, participantId: string) => {
           filter: `meeting_id=eq.${meetingId}`
         },
         (payload) => {
-          console.log('New caption received:', payload.new);
-          setCaptions(prev => [...prev, payload.new as Caption].slice(-50));
+          console.log('New caption:', payload);
+          setCaptions(prev => [...prev, payload.new as Caption]);
         }
       )
       .subscribe();
@@ -105,17 +98,12 @@ export const useCaptions = (meetingId: string, participantId: string) => {
     };
   }, [meetingId, fetchCaptions]);
 
-  useEffect(() => {
-    return () => {
-      stopListening();
-    };
-  }, [stopListening]);
-
   return {
     captions,
     isEnabled,
-    isListening,
     currentTranscript,
-    toggleCaptions
+    toggleCaptions,
+    addCaption,
+    setCurrentTranscript
   };
 };

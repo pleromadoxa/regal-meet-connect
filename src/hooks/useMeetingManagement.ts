@@ -43,10 +43,12 @@ export const useMeetingManagement = () => {
     try {
       console.log('Fetching meetings for user:', user.id);
       
+      // Fetch hosted meetings
       const { data: hostedMeetings, error: hostedError } = await supabase
         .from('meetings')
         .select('*')
         .eq('host_id', user.id)
+        .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (hostedError) {
@@ -54,6 +56,7 @@ export const useMeetingManagement = () => {
         throw hostedError;
       }
 
+      // Fetch meetings where user is a participant (simplified query)
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants')
         .select(`
@@ -64,10 +67,13 @@ export const useMeetingManagement = () => {
 
       if (participantError) {
         console.error('Error fetching participant meetings:', participantError);
+      } else {
+        console.log('Participant meetings fetched successfully');
       }
 
       const allMeetings = [...(hostedMeetings || [])];
       
+      // Add participant meetings that aren't already in hosted meetings
       if (participantMeetings) {
         participantMeetings.forEach((pm: any) => {
           const meeting = pm.meetings;
@@ -77,7 +83,7 @@ export const useMeetingManagement = () => {
         });
       }
 
-      console.log('Fetched meetings:', allMeetings);
+      console.log('All meetings fetched:', allMeetings);
       setMeetings(allMeetings);
     } catch (error) {
       console.error('Error in fetchMeetings:', error);
@@ -122,6 +128,7 @@ export const useMeetingManagement = () => {
       console.log('Fetched participants:', data);
       setParticipants(data || []);
       
+      // Set up real-time subscription
       const channel = supabase
         .channel(`participants-${meetingUuid}`)
         .on(
@@ -158,34 +165,38 @@ export const useMeetingManagement = () => {
     try {
       console.log('Joining meeting:', { meetingId, userName, userId: user.id });
       
+      // Find the meeting by meeting_id
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
-        .select('id, host_id')
+        .select('id, host_id, title')
         .eq('meeting_id', meetingId)
+        .eq('is_active', true)
         .single();
 
       if (meetingError) {
         console.error('Meeting not found:', meetingError);
         toast({
           title: "Meeting Not Found",
-          description: "The meeting ID you entered does not exist.",
+          description: "The meeting ID you entered does not exist or is no longer active.",
           variant: "destructive"
         });
         return null;
       }
 
+      // Check if user is already a participant
       const { data: existingParticipant } = await supabase
         .from('meeting_participants')
         .select('id')
         .eq('meeting_id', meeting.id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existingParticipant) {
         console.log('User already participant, returning existing record');
         return existingParticipant;
       }
 
+      // Add user as participant
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -204,6 +215,10 @@ export const useMeetingManagement = () => {
       }
       
       console.log('Joined meeting successfully:', data);
+      toast({
+        title: "Joined Meeting",
+        description: `Successfully joined "${meeting.title}"`
+      });
       return data;
     } catch (error) {
       console.error('Error in joinMeeting:', error);
@@ -222,11 +237,13 @@ export const useMeetingManagement = () => {
     try {
       console.log('Joining as host:', { meetingId, userName, userId: user.id });
       
+      // Find the meeting and verify user is the host
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('*')
         .eq('meeting_id', meetingId)
         .eq('host_id', user.id)
+        .eq('is_active', true)
         .single();
 
       if (meetingError) {
@@ -239,18 +256,20 @@ export const useMeetingManagement = () => {
         return null;
       }
 
+      // Check if host is already a participant
       const { data: existingParticipant } = await supabase
         .from('meeting_participants')
         .select('id')
         .eq('meeting_id', meeting.id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existingParticipant) {
         console.log('Host already participant, returning existing record');
         return { meeting, participant: existingParticipant };
       }
 
+      // Add host as participant
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -269,6 +288,10 @@ export const useMeetingManagement = () => {
       }
       
       console.log('Joined as host successfully:', data);
+      toast({
+        title: "Hosting Meeting",
+        description: `Successfully joined "${meeting.title}" as host`
+      });
       return { meeting, participant: data };
     } catch (error) {
       console.error('Error in joinAsHost:', error);
