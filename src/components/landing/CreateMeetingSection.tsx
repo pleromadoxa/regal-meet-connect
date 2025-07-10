@@ -24,12 +24,16 @@ export const CreateMeetingSection = ({ onJoinMeeting, userName }: CreateMeetingS
   const { toast } = useToast();
 
   const generateMeetingId = () => {
-    return Math.random().toString(36).substring(2, 12).toUpperCase();
+    // Generate a more unique meeting ID
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${timestamp}${random}`.toUpperCase();
   };
 
   const handleCreateMeeting = async () => {
     console.log('Starting meeting creation process...');
     
+    // Validation
     if (!newMeetingTitle.trim()) {
       toast({
         title: "Missing Information",
@@ -64,22 +68,27 @@ export const CreateMeetingSection = ({ onJoinMeeting, userName }: CreateMeetingS
       console.log('Create meeting result:', result);
       
       if (result && result.meeting_id) {
-        console.log('Meeting created successfully, joining as host...');
-        setIsCreateDialogOpen(false);
+        console.log('Meeting created successfully, preparing to join...');
+        
+        // Reset form
         setNewMeetingTitle('');
         setNewMeetingDescription('');
+        setIsCreateDialogOpen(false);
         
         toast({
-          title: "Meeting Created",
-          description: `Meeting "${newMeetingTitle}" created successfully!`
+          title: "Meeting Created Successfully!",
+          description: `Meeting "${newMeetingTitle}" created with ID: ${result.meeting_id}`,
         });
         
+        // Small delay to ensure toast is visible before navigation
         setTimeout(() => {
+          console.log('Joining meeting as host:', { hostName: hostName.trim(), meetingId: result.meeting_id });
           onJoinMeeting(hostName.trim(), result.meeting_id, true);
-        }, 500);
+        }, 1000);
+        
       } else {
         console.error('Meeting creation failed - no valid result:', result);
-        throw new Error('Meeting creation failed - invalid response from server');
+        throw new Error('Meeting creation failed - please try again');
       }
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -99,7 +108,6 @@ export const CreateMeetingSection = ({ onJoinMeeting, userName }: CreateMeetingS
       <div className="absolute inset-0 bg-gradient-to-br from-orange-400/20 via-pink-400/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
       <div className="absolute inset-0 bg-gradient-to-tl from-orange-300/10 to-transparent animate-pulse"></div>
       
-      {/* Enhanced floating particles */}
       <div className="absolute top-6 right-6 w-3 h-3 bg-orange-300/80 rounded-full animate-ping animation-delay-300"></div>
       <div className="absolute bottom-10 left-8 w-2 h-2 bg-pink-300/80 rounded-full animate-pulse animation-delay-800"></div>
       <div className="absolute top-1/3 right-4 w-1 h-1 bg-yellow-300/80 rounded-full animate-ping animation-delay-600"></div>

@@ -35,7 +35,9 @@ export const CreateMeetingCard = ({
   const { toast } = useToast();
 
   const generateMeetingId = () => {
-    return Math.random().toString(36).substring(2, 12).toUpperCase();
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${timestamp}${random}`.toUpperCase();
   };
 
   const handleCreateMeeting = async () => {
@@ -70,7 +72,7 @@ export const CreateMeetingCard = ({
         
         toast({
           title: "Meeting Created",
-          description: `Meeting "${newMeetingTitle}" has been created successfully with ID: ${generatedId}`
+          description: `Meeting "${newMeetingTitle}" has been created successfully with ID: ${result.meeting_id}`
         });
         
         // Refresh the meetings list
@@ -82,7 +84,7 @@ export const CreateMeetingCard = ({
         onCreateMeeting();
       } else {
         console.error('Dashboard: Meeting creation failed - no valid result:', result);
-        throw new Error('Meeting creation failed - invalid response from server');
+        throw new Error('Meeting creation failed - please try again');
       }
     } catch (error) {
       console.error('Dashboard: Error creating meeting:', error);

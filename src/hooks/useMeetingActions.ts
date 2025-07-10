@@ -29,22 +29,36 @@ export const useMeetingActions = () => {
         status: 'active'
       });
       
+      // First, check if meeting ID already exists
+      const { data: existingMeeting } = await supabase
+        .from('meetings')
+        .select('meeting_id')
+        .eq('meeting_id', meetingId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (existingMeeting) {
+        console.error('Meeting ID already exists:', meetingId);
+        throw new Error('Meeting ID already exists. Please try again.');
+      }
+
+      // Create the meeting
       const { data, error } = await supabase
         .from('meetings')
         .insert({
           meeting_id: meetingId,
           host_id: user.id,
-          title: title,
-          description: description || null,
+          title: title.trim(),
+          description: description?.trim() || null,
           is_active: true,
           status: 'active'
         })
-        .select()
+        .select('*')
         .single();
 
       if (error) {
         console.error('Supabase error creating meeting:', error);
-        throw new Error(`Database error: ${error.message}`);
+        throw new Error(`Failed to create meeting: ${error.message}`);
       }
       
       if (!data) {
@@ -53,7 +67,23 @@ export const useMeetingActions = () => {
       }
       
       console.log('Meeting created successfully:', data);
-      return data;
+      
+      // Verify the meeting was created by fetching it
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('meeting_id', meetingId)
+        .eq('host_id', user.id)
+        .single();
+
+      if (verifyError || !verifyData) {
+        console.error('Failed to verify meeting creation:', verifyError);
+        throw new Error('Meeting creation could not be verified');
+      }
+
+      console.log('Meeting verification successful:', verifyData);
+      return verifyData;
+      
     } catch (error) {
       console.error('Error in createMeeting:', error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -69,7 +99,7 @@ export const useMeetingActions = () => {
   const removeMeeting = useCallback(async (meetingId: string) => {
     if (!user?.id) {
       toast({
-        title: "Authentication Error",
+        title: "Authentication Error", 
         description: "You must be logged in to delete a meeting",
         variant: "destructive"
       });

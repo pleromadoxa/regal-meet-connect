@@ -21,13 +21,23 @@ export const useMeetingValidation = () => {
       
       const { data: meeting, error } = await supabase
         .from('meetings')
-        .select('id, meeting_id, is_active, status')
-        .eq('meeting_id', meetingId.trim())
+        .select('id, meeting_id, is_active, status, title')
+        .eq('meeting_id', meetingId.trim().toUpperCase())
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
-      if (error || !meeting) {
-        console.error('Meeting validation error:', error);
+      if (error) {
+        console.error('Error validating meeting:', error);
+        toast({
+          title: "Validation Error",
+          description: "Unable to validate meeting ID. Please try again.",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (!meeting) {
+        console.error('Meeting not found:', meetingId);
         toast({
           title: "Invalid Meeting ID",
           description: "The meeting ID you entered does not exist or is no longer active. Please check the ID and try again.",
@@ -46,7 +56,12 @@ export const useMeetingValidation = () => {
       }
 
       console.log('Meeting validation successful:', meeting);
+      toast({
+        title: "Meeting Found",
+        description: `Ready to join "${meeting.title}"`,
+      });
       return true;
+      
     } catch (error) {
       console.error('Error validating meeting:', error);
       toast({
