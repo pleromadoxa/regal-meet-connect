@@ -103,8 +103,8 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-pink-600/20 animate-pulse"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-blue-600/20 to-pink-600/20 animate-pulse"></div>
         <div className="relative z-10">
           <div className="w-24 h-24 border-4 border-blue-400/30 border-t-blue-400 rounded-full animate-spin"></div>
           <div className="absolute inset-0 w-24 h-24 border-4 border-purple-400/20 border-b-purple-400 rounded-full animate-spin animation-delay-150"></div>
@@ -137,43 +137,43 @@ const Index = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Stunning Multi-Layered Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        {/* Dynamic gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/30 via-transparent to-orange-500/30 animate-pulse"></div>
-        <div className="absolute inset-0 bg-gradient-to-bl from-purple-600/40 via-transparent to-emerald-500/30 animation-delay-1000 animate-pulse"></div>
-        <div className="absolute inset-0 bg-gradient-to-tl from-pink-600/30 via-transparent to-cyan-500/30 animation-delay-500 animate-pulse"></div>
+      {/* Enhanced Dark Background with Multiple Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        {/* Primary gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-blue-700/40 via-transparent to-purple-700/40 animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-purple-700/50 via-transparent to-pink-700/40 animation-delay-1000 animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-tl from-pink-700/40 via-transparent to-blue-700/40 animation-delay-500 animate-pulse"></div>
       </div>
 
-      {/* Spectacular Floating Elements */}
+      {/* Enhanced Floating Elements with Better Contrast */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Large glowing orbs */}
-        <div className="absolute top-20 left-20 w-40 h-40 bg-gradient-to-r from-blue-400/30 to-purple-400/30 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute bottom-32 right-32 w-56 h-56 bg-gradient-to-r from-pink-400/30 to-orange-400/30 rounded-full blur-3xl animate-float-delayed"></div>
-        <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-gradient-to-r from-emerald-400/30 to-cyan-400/30 rounded-full blur-2xl animate-float-slow"></div>
-        <div className="absolute top-1/4 right-1/4 w-28 h-28 bg-gradient-to-r from-yellow-400/30 to-red-400/30 rounded-full blur-xl animate-bounce-slow"></div>
+        {/* Large glowing orbs with stronger colors */}
+        <div className="absolute top-20 left-20 w-40 h-40 bg-gradient-to-r from-blue-500/40 to-purple-500/40 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute bottom-32 right-32 w-56 h-56 bg-gradient-to-r from-pink-500/40 to-orange-500/40 rounded-full blur-3xl animate-float-delayed"></div>
+        <div className="absolute top-1/2 left-1/3 w-32 h-32 bg-gradient-to-r from-emerald-500/40 to-cyan-500/40 rounded-full blur-2xl animate-float-slow"></div>
+        <div className="absolute top-1/4 right-1/4 w-28 h-28 bg-gradient-to-r from-yellow-500/40 to-red-500/40 rounded-full blur-xl animate-bounce-slow"></div>
         
-        {/* Sparkling particles */}
-        <div className="absolute top-1/5 left-1/2 w-3 h-3 bg-blue-300/80 rounded-full animate-ping animation-delay-300"></div>
-        <div className="absolute top-3/5 left-1/4 w-2 h-2 bg-purple-300/80 rounded-full animate-ping animation-delay-700"></div>
-        <div className="absolute top-1/3 left-3/4 w-4 h-4 bg-pink-300/80 rounded-full animate-pulse animation-delay-1000"></div>
-        <div className="absolute bottom-1/4 left-2/3 w-2 h-2 bg-emerald-300/80 rounded-full animate-ping animation-delay-500"></div>
+        {/* Enhanced sparkling particles */}
+        <div className="absolute top-1/5 left-1/2 w-3 h-3 bg-blue-400/90 rounded-full animate-ping animation-delay-300"></div>
+        <div className="absolute top-3/5 left-1/4 w-2 h-2 bg-purple-400/90 rounded-full animate-ping animation-delay-700"></div>
+        <div className="absolute top-1/3 left-3/4 w-4 h-4 bg-pink-400/90 rounded-full animate-pulse animation-delay-1000"></div>
+        <div className="absolute bottom-1/4 left-2/3 w-2 h-2 bg-emerald-400/90 rounded-full animate-ping animation-delay-500"></div>
         
-        {/* Floating stars */}
-        <Stars className="absolute top-1/6 right-1/6 h-6 w-6 text-yellow-300/60 animate-pulse animation-delay-400" />
-        <Stars className="absolute bottom-1/3 left-1/5 h-4 w-4 text-blue-300/60 animate-pulse animation-delay-800" />
-        <Heart className="absolute top-2/3 right-1/3 h-5 w-5 text-pink-300/60 animate-bounce-gentle animation-delay-600" />
+        {/* Floating icons with better visibility */}
+        <Stars className="absolute top-1/6 right-1/6 h-6 w-6 text-yellow-400/80 animate-pulse animation-delay-400" />
+        <Stars className="absolute bottom-1/3 left-1/5 h-4 w-4 text-blue-400/80 animate-pulse animation-delay-800" />
+        <Heart className="absolute top-2/3 right-1/3 h-5 w-5 text-pink-400/80 animate-bounce-gentle animation-delay-600" />
       </div>
 
-      {/* Enhanced Glass Mesh Overlay */}
-      <div className="absolute inset-0 opacity-40">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/10 via-transparent to-transparent"></div>
+      {/* Enhanced Glass Mesh Overlay with Better Opacity */}
+      <div className="absolute inset-0 opacity-60">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/15 via-transparent to-transparent"></div>
         <div className="absolute inset-0" style={{
           backgroundImage: `
-            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 30%),
-            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.1) 0%, transparent 30%),
-            radial-gradient(circle at 60% 20%, rgba(255,255,255,0.08) 0%, transparent 25%),
-            linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.05) 50%, transparent 70%)
+            radial-gradient(circle at 20% 30%, rgba(255,255,255,0.2) 0%, transparent 30%),
+            radial-gradient(circle at 80% 70%, rgba(255,255,255,0.15) 0%, transparent 30%),
+            radial-gradient(circle at 60% 20%, rgba(255,255,255,0.12) 0%, transparent 25%),
+            linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%)
           `
         }}></div>
       </div>
@@ -185,7 +185,7 @@ const Index = () => {
             onClick={() => setShowDashboard(true)}
             variant="outline"
             size="lg"
-            className="bg-white/15 backdrop-blur-3xl border-white/30 text-white/95 hover:bg-white/25 hover:border-white/50 shadow-2xl transition-all duration-500 hover:scale-110 hover:shadow-blue-500/30 font-semibold text-lg px-6 py-3"
+            className="bg-white/20 backdrop-blur-3xl border-white/40 text-white/95 hover:bg-white/30 hover:border-white/60 shadow-2xl transition-all duration-500 hover:scale-110 hover:shadow-blue-500/30 font-semibold text-lg px-6 py-3"
           >
             <LayoutDashboard className="h-5 w-5 mr-3" />
             Dashboard
@@ -196,13 +196,13 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Spectacular Hero Section */}
+        {/* Spectacular Hero Section with Enhanced Contrast */}
         <div className="min-h-screen flex items-center justify-center p-8">
           <div className="w-full max-w-8xl space-y-16">
-            {/* Enhanced Hero Content */}
+            {/* Enhanced Hero Content with Stronger Background */}
             <div className="text-center mb-20 relative">
-              {/* Magnificent background for hero text */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl blur-3xl animate-pulse scale-110"></div>
+              {/* Stronger background for hero text */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-pink-600/30 rounded-3xl blur-3xl animate-pulse scale-110"></div>
               
               <div className="relative z-10">
                 <h1 className="text-8xl md:text-9xl font-black mb-8 relative">
@@ -221,17 +221,17 @@ const Index = () => {
                   </p>
                 </div>
 
-                {/* Enhanced feature badges */}
+                {/* Enhanced feature badges with better contrast */}
                 <div className="flex justify-center flex-wrap gap-8 mt-10">
-                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/20 animate-bounce-gentle shadow-lg">
+                  <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/30 animate-bounce-gentle shadow-lg">
                     <Sparkles className="h-6 w-6 text-yellow-300" />
                     <span className="text-white font-semibold text-lg">Premium Quality</span>
                   </div>
-                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/20 animate-bounce-gentle animation-delay-200 shadow-lg">
+                  <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/30 animate-bounce-gentle animation-delay-200 shadow-lg">
                     <Zap className="h-6 w-6 text-blue-300" />
                     <span className="text-white font-semibold text-lg">Lightning Fast</span>
                   </div>
-                  <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/20 animate-bounce-gentle animation-delay-400 shadow-lg">
+                  <div className="flex items-center space-x-3 bg-white/15 backdrop-blur-2xl px-6 py-3 rounded-full border border-white/30 animate-bounce-gentle animation-delay-400 shadow-lg">
                     <Shield className="h-6 w-6 text-emerald-300" />
                     <span className="text-white font-semibold text-lg">Ultra Secure</span>
                   </div>
@@ -239,7 +239,7 @@ const Index = () => {
               </div>
             </div>
 
-            {/* Stunning Meeting Options */}
+            {/* Enhanced Meeting Options with Better Backgrounds */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
               <div className="transform hover:scale-105 transition-all duration-700 hover:rotate-1 hover:shadow-2xl hover:shadow-blue-500/30">
                 <QuickJoinSection onJoinMeeting={handleJoinMeeting} />

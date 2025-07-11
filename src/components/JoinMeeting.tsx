@@ -38,7 +38,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"></div>
       
       <div className="relative z-10 w-full max-w-md space-y-6">
         <div className="text-center mb-8">
@@ -46,7 +46,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
           <p className="text-blue-200">Connect with anyone, anywhere</p>
         </div>
 
-        <Card className="bg-white/10 backdrop-blur-xl border-white/20 shadow-2xl">
+        <Card className="bg-white/15 backdrop-blur-xl border-white/30 shadow-2xl">
           <CardHeader>
             <CardTitle className="text-white text-center text-xl">Join Meeting</CardTitle>
           </CardHeader>
@@ -57,7 +57,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter your name..."
-                className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
+                className="bg-white/25 border-white/40 text-white placeholder-white/70 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
                 onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
               />
             </div>
@@ -68,7 +68,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value.toUpperCase())}
                 placeholder="Enter meeting ID..."
-                className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
+                className="bg-white/25 border-white/40 text-white placeholder-white/70 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20"
                 onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
               />
             </div>
@@ -77,7 +77,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
               <Button
                 onClick={handleJoin}
                 disabled={!name.trim() || !roomId.trim() || isLoading}
-                className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
               >
                 <Video className="h-5 w-5 mr-2" />
                 {isLoading ? 'Validating...' : 'Join Meeting'}
@@ -86,7 +86,7 @@ export const JoinMeeting = ({ onJoinMeeting }: JoinMeetingProps) => {
               <Button
                 onClick={generateRoomId}
                 variant="outline"
-                className="w-full h-12 border-white/30 text-white hover:bg-white/10 hover:border-white/50 font-semibold"
+                className="w-full h-12 border-white/40 text-white hover:bg-white/15 hover:border-white/60 font-semibold"
               >
                 <Users className="h-5 w-5 mr-2" />
                 Generate Meeting ID
