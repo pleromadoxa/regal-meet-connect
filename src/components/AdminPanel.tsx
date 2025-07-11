@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
 import { useAdmin } from '@/hooks/useAdmin';
-import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Home, ArrowLeft } from 'lucide-react';
+import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Home, ArrowLeft, Calendar, Trash2, Video } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
+import { AdminMeetingCreator } from './AdminMeetingCreator';
+import { format } from 'date-fns';
 
 export const AdminPanel = () => {
-  const { users, logs, countryStats, loading, assignRole, refreshData } = useAdmin();
+  const { users, meetings, logs, countryStats, loading, assignRole, createMeeting, deleteMeeting, refreshData } = useAdmin();
   const { signOut } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
 
@@ -26,6 +27,8 @@ export const AdminPanel = () => {
   }
 
   const totalUsers = users.length;
+  const totalMeetings = meetings.length;
+  const activeMeetings = meetings.filter(meeting => meeting.is_active).length;
   const totalLogs = logs.length;
   const adminUsers = users.filter(user => user.roles.includes('admin')).length;
   const activeCountries = countryStats.length;
@@ -96,7 +99,7 @@ export const AdminPanel = () => {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <Card className="bg-orange-500/10 backdrop-blur-lg border-orange-500/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-orange-100">Total Users</CardTitle>
@@ -105,6 +108,28 @@ export const AdminPanel = () => {
           <CardContent>
             <div className="text-2xl font-bold text-white">{totalUsers}</div>
             <p className="text-xs text-orange-200">Registered users</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-orange-500/10 backdrop-blur-lg border-orange-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-100">Total Meetings</CardTitle>
+            <Video className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{totalMeetings}</div>
+            <p className="text-xs text-orange-200">Created meetings</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-orange-500/10 backdrop-blur-lg border-orange-500/20">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-100">Active Meetings</CardTitle>
+            <Calendar className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{activeMeetings}</div>
+            <p className="text-xs text-orange-200">Currently active</p>
           </CardContent>
         </Card>
 
@@ -129,17 +154,6 @@ export const AdminPanel = () => {
             <p className="text-xs text-orange-200">Administrative access</p>
           </CardContent>
         </Card>
-
-        <Card className="bg-orange-500/10 backdrop-blur-lg border-orange-500/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Global Reach</CardTitle>
-            <Globe className="h-4 w-4 text-orange-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{activeCountries}</div>
-            <p className="text-xs text-orange-200">Countries served</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Content Tabs */}
@@ -148,6 +162,10 @@ export const AdminPanel = () => {
           <TabsTrigger value="overview" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
             <BarChart3 className="h-4 w-4 mr-2" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="meetings" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
+            <Video className="h-4 w-4 mr-2" />
+            Meetings
           </TabsTrigger>
           <TabsTrigger value="users" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
             <Users className="h-4 w-4 mr-2" />
@@ -211,6 +229,94 @@ export const AdminPanel = () => {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="meetings" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Meeting Creation */}
+            <div className="lg:col-span-1">
+              <AdminMeetingCreator onCreateMeeting={createMeeting} />
+            </div>
+
+            {/* Meetings List */}
+            <div className="lg:col-span-2">
+              <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <Video className="h-5 w-5 mr-2 text-orange-400" />
+                    All Meetings ({meetings.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {meetings.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Video className="h-12 w-12 text-white/50 mx-auto mb-4" />
+                      <p className="text-white/70">No meetings created yet</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-white/20">
+                          <TableHead className="text-orange-200">Meeting ID</TableHead>
+                          <TableHead className="text-orange-200">Title</TableHead>
+                          <TableHead className="text-orange-200">Host</TableHead>
+                          <TableHead className="text-orange-200">Status</TableHead>
+                          <TableHead className="text-orange-200">Created</TableHead>
+                          <TableHead className="text-orange-200">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {meetings.map((meeting) => (
+                          <TableRow key={meeting.id} className="border-white/10">
+                            <TableCell className="text-white font-mono text-sm">
+                              {meeting.meeting_id}
+                            </TableCell>
+                            <TableCell className="text-white">
+                              <div>
+                                <div className="font-medium">{meeting.title}</div>
+                                {meeting.description && (
+                                  <div className="text-sm text-white/70 truncate max-w-[200px]">
+                                    {meeting.description}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-white">
+                              {meeting.host_profile?.display_name || 'Unknown'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                className={
+                                  meeting.is_active 
+                                    ? 'bg-green-500/80 text-white' 
+                                    : 'bg-gray-500/80 text-white'
+                                }
+                              >
+                                {meeting.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-white text-sm">
+                              {format(new Date(meeting.created_at), 'MMM d, yyyy HH:mm')}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                onClick={() => deleteMeeting(meeting.id)}
+                                size="sm"
+                                variant="outline"
+                                className="border-red-400/40 text-red-300 hover:bg-red-500/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -12,6 +11,20 @@ interface UserWithProfile {
     display_name: string | null;
   } | null;
   roles: string[];
+}
+
+interface Meeting {
+  id: string;
+  meeting_id: string;
+  host_id: string;
+  title: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  status: string;
+  host_profile?: {
+    display_name: string | null;
+  };
 }
 
 interface PlatformUsageLog {
@@ -34,6 +47,7 @@ interface CountryStats {
 
 export const useAdmin = () => {
   const [users, setUsers] = useState<UserWithProfile[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [logs, setLogs] = useState<PlatformUsageLog[]>([]);
   const [countryStats, setCountryStats] = useState<CountryStats[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -68,6 +82,7 @@ export const useAdmin = () => {
       if (data) {
         await Promise.all([
           fetchUsers(),
+          fetchMeetings(),
           fetchLogs(),
           fetchCountryStats()
         ]);
@@ -115,6 +130,47 @@ export const useAdmin = () => {
       setUsers(usersWithProfiles);
     } catch (error) {
       console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchMeetings = async () => {
+    try {
+      // Fetch all meetings with host profile information
+      const { data: meetingsData, error: meetingsError } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (meetingsError) {
+        console.error('Error fetching meetings:', meetingsError);
+        return;
+      }
+
+      // Get profiles for host information
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name');
+
+      if (profilesError) {
+        console.error('Error fetching profiles for meetings:', profilesError);
+      }
+
+      // Combine meeting data with host profiles
+      const meetingsWithHosts: Meeting[] = meetingsData?.map(meeting => ({
+        id: meeting.id,
+        meeting_id: meeting.meeting_id,
+        host_id: meeting.host_id,
+        title: meeting.title,
+        description: meeting.description,
+        is_active: meeting.is_active,
+        created_at: meeting.created_at,
+        status: meeting.status || 'active',
+        host_profile: profilesData?.find(profile => profile.id === meeting.host_id) || null
+      })) || [];
+
+      setMeetings(meetingsWithHosts);
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
     }
   };
 
@@ -230,14 +286,119 @@ export const useAdmin = () => {
     }
   };
 
+  const createMeeting = async (meetingId: string, title: string, description?: string) => {
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to create a meeting",
+        variant: "destructive"
+      });
+      return null;
+    }
+
+    try {
+      console.log('Admin creating meeting:', { meeting_id: meetingId, title, description });
+      
+      // Check if meeting ID already exists
+      const { data: existingMeeting } = await supabase
+        .from('meetings')
+        .select('meeting_id')
+        .eq('meeting_id', meetingId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (existingMeeting) {
+        throw new Error('Meeting ID already exists. Please try again.');
+      }
+
+      // Create the meeting
+      const { data, error } = await supabase
+        .from('meetings')
+        .insert({
+          meeting_id: meetingId,
+          host_id: user.id,
+          title: title.trim(),
+          description: description?.trim() || null,
+          is_active: true,
+          status: 'active'
+        })
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Supabase error creating meeting:', error);
+        throw new Error(`Failed to create meeting: ${error.message}`);
+      }
+      
+      console.log('Meeting created successfully:', data);
+      
+      toast({
+        title: "Meeting Created",
+        description: `Meeting "${title}" created successfully with ID: ${meetingId}`
+      });
+
+      // Refresh meetings list
+      await fetchMeetings();
+      
+      return data;
+      
+    } catch (error) {
+      console.error('Error in createMeeting:', error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast({
+        title: "Failed to Create Meeting",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  const deleteMeeting = async (meetingId: string) => {
+    try {
+      console.log('Admin deleting meeting:', meetingId);
+      
+      const { error } = await supabase
+        .from('meetings')
+        .delete()
+        .eq('id', meetingId);
+
+      if (error) {
+        console.error('Error deleting meeting:', error);
+        throw new Error(`Failed to delete meeting: ${error.message}`);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Meeting deleted successfully"
+      });
+      
+      // Refresh meetings list
+      await fetchMeetings();
+      
+      console.log('Meeting deleted successfully');
+    } catch (error) {
+      console.error('Error in deleteMeeting:', error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
+  };
+
   return {
     users,
+    meetings,
     logs,
     countryStats,
     isAdmin,
     loading,
     assignRole,
     logAction,
-    refreshData: () => Promise.all([fetchUsers(), fetchLogs(), fetchCountryStats()])
+    createMeeting,
+    deleteMeeting,
+    refreshData: () => Promise.all([fetchUsers(), fetchMeetings(), fetchLogs(), fetchCountryStats()])
   };
 };
