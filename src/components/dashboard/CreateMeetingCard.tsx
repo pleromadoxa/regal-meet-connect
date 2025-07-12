@@ -1,173 +1,102 @@
 
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Crown, Plus, RefreshCw } from 'lucide-react';
+import { Plus, Loader2, Video } from 'lucide-react';
 import { useMeetingActions } from '@/hooks/useMeetingActions';
-import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
-interface CreateMeetingCardProps {
-  isCreateDialogOpen: boolean;
-  newMeetingTitle: string;
-  newMeetingDescription: string;
-  isCreatingMeeting: boolean;
-  onSetIsCreateDialogOpen: (open: boolean) => void;
-  onSetNewMeetingTitle: (title: string) => void;
-  onSetNewMeetingDescription: (description: string) => void;
-  onCreateMeeting: () => void;
-  onRefreshMeetings?: () => void;
-}
-
-export const CreateMeetingCard = ({
-  isCreateDialogOpen,
-  newMeetingTitle,
-  newMeetingDescription,
-  isCreatingMeeting,
-  onSetIsCreateDialogOpen,
-  onSetNewMeetingTitle,
-  onSetNewMeetingDescription,
-  onCreateMeeting,
-  onRefreshMeetings
-}: CreateMeetingCardProps) => {
+export const CreateMeetingCard = () => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   const { createMeeting } = useMeetingActions();
-  const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   const generateMeetingId = () => {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 8);
-    return `${timestamp}${random}`.toUpperCase();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   };
 
   const handleCreateMeeting = async () => {
-    console.log('Dashboard: Starting meeting creation...');
-    
-    if (!newMeetingTitle.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter a meeting title",
-        variant: "destructive"
-      });
+    if (!title.trim()) {
       return;
     }
 
+    setIsCreating(true);
     try {
-      const generatedId = generateMeetingId();
-      console.log('Dashboard: Generated meeting ID:', generatedId);
-      console.log('Dashboard: Creating meeting with details:', {
-        id: generatedId,
-        title: newMeetingTitle.trim(),
-        description: newMeetingDescription.trim()
-      });
+      const meetingId = generateMeetingId();
+      const result = await createMeeting(meetingId, title, description);
       
-      const result = await createMeeting(generatedId, newMeetingTitle.trim(), newMeetingDescription.trim());
-      console.log('Dashboard: Create meeting result:', result);
-      
-      if (result && result.meeting_id) {
-        console.log('Dashboard: Meeting created successfully');
-        onSetIsCreateDialogOpen(false);
-        onSetNewMeetingTitle('');
-        onSetNewMeetingDescription('');
-        
-        toast({
-          title: "Meeting Created",
-          description: `Meeting "${newMeetingTitle}" has been created successfully with ID: ${result.meeting_id}`
-        });
-        
-        // Refresh the meetings list
-        if (onRefreshMeetings) {
-          onRefreshMeetings();
-        }
-        
-        // Call the original onCreateMeeting for any additional logic
-        onCreateMeeting();
-      } else {
-        console.error('Dashboard: Meeting creation failed - no valid result:', result);
-        throw new Error('Meeting creation failed - please try again');
+      if (result) {
+        // Navigate to the meeting as host
+        navigate(`/meeting/${meetingId}?host=true&userName=${encodeURIComponent(user?.email || 'Host')}`);
       }
     } catch (error) {
-      console.error('Dashboard: Error creating meeting:', error);
-      toast({
-        title: "Creation Failed",
-        description: error instanceof Error ? error.message : "Failed to create meeting. Please try again.",
-        variant: "destructive"
-      });
+      console.error('Error creating meeting:', error);
+    } finally {
+      setIsCreating(false);
     }
   };
 
   return (
-    <Card className="bg-gradient-to-br from-orange-500/20 to-red-500/20 backdrop-blur-xl border-orange-400/30 shadow-2xl">
+    <Card className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl border-slate-700/40 hover:border-orange-400/30 transition-all duration-300 shadow-xl">
       <CardHeader className="pb-4">
-        <CardTitle className="text-white flex items-center text-lg">
-          <Crown className="h-6 w-6 mr-3 text-orange-300" />
-          Host New Meeting
+        <CardTitle className="flex items-center text-white">
+          <Video className="h-6 w-6 mr-2 text-orange-400" />
+          Create New Meeting
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Dialog open={isCreateDialogOpen} onOpenChange={onSetIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full h-16 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 border-0">
-              <Plus className="h-8 w-8 mr-4" />
-              Create New Meeting
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-slate-800 border-white/20 max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-white text-xl">Create New Meeting</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-              <div>
-                <label className="text-sm font-medium text-white/90 mb-2 block">Meeting Title</label>
-                <Input
-                  value={newMeetingTitle}
-                  onChange={(e) => onSetNewMeetingTitle(e.target.value)}
-                  placeholder="Enter meeting title..."
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 h-12"
-                  disabled={isCreatingMeeting}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-white/90 mb-2 block">Description (Optional)</label>
-                <Textarea
-                  value={newMeetingDescription}
-                  onChange={(e) => onSetNewMeetingDescription(e.target.value)}
-                  placeholder="Enter meeting description..."
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 focus:bg-white/25 focus:border-white/50 resize-none"
-                  rows={3}
-                  disabled={isCreatingMeeting}
-                />
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={() => onSetIsCreateDialogOpen(false)}
-                  variant="outline"
-                  className="flex-1 border-white/30 text-white hover:bg-white/10 bg-white/5 h-12"
-                  disabled={isCreatingMeeting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateMeeting}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold h-12 shadow-lg"
-                  disabled={isCreatingMeeting}
-                >
-                  {isCreatingMeeting ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Crown className="h-4 w-4 mr-2" />
-                      Create Meeting
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-slate-200 text-sm font-medium">
+            Meeting Title *
+          </label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter meeting title"
+            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-slate-200 text-sm font-medium">
+            Description (Optional)
+          </label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter meeting description"
+            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20 min-h-[80px]"
+          />
+        </div>
+
+        <Button
+          onClick={handleCreateMeeting}
+          disabled={!title.trim() || isCreating}
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Create & Start Meeting
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

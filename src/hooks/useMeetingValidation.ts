@@ -56,10 +56,6 @@ export const useMeetingValidation = () => {
       }
 
       console.log('Meeting validation successful:', meeting);
-      toast({
-        title: "Meeting Found",
-        description: `Ready to join "${meeting.title}"`,
-      });
       return true;
       
     } catch (error) {

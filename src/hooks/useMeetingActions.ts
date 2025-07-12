@@ -30,12 +30,17 @@ export const useMeetingActions = () => {
       });
       
       // First, check if meeting ID already exists
-      const { data: existingMeeting } = await supabase
+      const { data: existingMeeting, error: checkError } = await supabase
         .from('meetings')
         .select('meeting_id')
         .eq('meeting_id', meetingId)
         .eq('is_active', true)
         .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing meeting:', checkError);
+        throw new Error(`Failed to check existing meeting: ${checkError.message}`);
+      }
 
       if (existingMeeting) {
         console.error('Meeting ID already exists:', meetingId);
@@ -68,21 +73,12 @@ export const useMeetingActions = () => {
       
       console.log('Meeting created successfully:', data);
       
-      // Verify the meeting was created by fetching it
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('meetings')
-        .select('*')
-        .eq('meeting_id', meetingId)
-        .eq('host_id', user.id)
-        .single();
-
-      if (verifyError || !verifyData) {
-        console.error('Failed to verify meeting creation:', verifyError);
-        throw new Error('Meeting creation could not be verified');
-      }
-
-      console.log('Meeting verification successful:', verifyData);
-      return verifyData;
+      toast({
+        title: "Meeting Created",
+        description: `"${title}" has been created successfully`,
+      });
+      
+      return data;
       
     } catch (error) {
       console.error('Error in createMeeting:', error);
