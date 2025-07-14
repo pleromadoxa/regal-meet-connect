@@ -19,6 +19,7 @@ export const useMeetingValidation = () => {
     try {
       console.log('Validating meeting ID:', meetingId);
       
+      // Query by meeting_id (text field) not by id (uuid field)
       const { data: meeting, error } = await supabase
         .from('meetings')
         .select('id, meeting_id, is_active, status, title')
