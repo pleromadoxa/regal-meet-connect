@@ -252,29 +252,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     };
 
-    return () => {
-      console.log('Cleaning up WebRTC');
-      cleanupSignaling();
-      supabase.removeChannel(muteChannel);
-      window.removeEventListener('webrtc-signaling', handleSignalingMessage as any);
-
-      peerConnectionsRef.current.forEach(pc => {
-        pc.close();
-      });
-      peerConnectionsRef.current.clear();
-
-      remoteStreamsRef.current.forEach(stream => {
-        stream.getTracks().forEach(track => track.stop());
-      });
-      remoteStreamsRef.current.clear();
-      setRemoteStreams(new Map());
-
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach(track => track.stop());
-        setLocalStream(null);
-      }
-    };
-  }, [meetingId, userName, userId]);
+    return cleanup;
+  }, [meetingId, userName, userId, toast]);
 
   const initialize = useCallback(async () => {
     try {
@@ -363,7 +342,6 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         console.log('Starting screen share...');
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
           video: {
-            mediaSource: 'screen',
             width: { ideal: 1920, max: 1920 },
             height: { ideal: 1080, max: 1080 },
             frameRate: { ideal: 15, max: 30 }

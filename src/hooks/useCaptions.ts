@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -123,8 +122,8 @@ export const useCaptions = (meetingId: string, currentParticipantId: string | nu
     if (!isEnabled) {
       // Start captions
       if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-        const recognition = new SpeechRecognition();
+        const SpeechRecognitionConstructor = window.webkitSpeechRecognition || window.SpeechRecognition;
+        const recognition = new SpeechRecognitionConstructor();
         
         recognition.continuous = true;
         recognition.interimResults = true;
@@ -139,7 +138,7 @@ export const useCaptions = (meetingId: string, currentParticipantId: string | nu
           });
         };
         
-        recognition.onresult = (event) => {
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
           let interim = '';
           let final = '';
           
@@ -160,7 +159,7 @@ export const useCaptions = (meetingId: string, currentParticipantId: string | nu
           }
         };
         
-        recognition.onerror = (event) => {
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
           console.error('Speech recognition error:', event.error);
           setIsEnabled(false);
           toast({
