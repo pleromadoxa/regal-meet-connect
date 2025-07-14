@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -164,11 +165,12 @@ export const useMeetingManagement = () => {
     try {
       console.log('Joining meeting:', { meetingIdText, userName, userId: user.id });
       
-      // Find the meeting by meeting_id (text field)
+      // Find the meeting by meeting_id (text field) - ensure we use uppercase
+      const normalizedMeetingId = meetingIdText.toUpperCase().trim();
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('id, host_id, title, meeting_id')
-        .eq('meeting_id', meetingIdText.toUpperCase())
+        .eq('meeting_id', normalizedMeetingId)
         .eq('is_active', true)
         .maybeSingle();
 
@@ -178,7 +180,7 @@ export const useMeetingManagement = () => {
       }
 
       if (!meeting) {
-        console.log('Meeting not found for meeting_id:', meetingIdText);
+        console.log('Meeting not found for meeting_id:', normalizedMeetingId);
         toast({
           title: "Meeting Not Found",
           description: "The meeting ID you entered does not exist or is no longer active.",
@@ -244,16 +246,22 @@ export const useMeetingManagement = () => {
       console.log('Joining as host:', { meetingIdText, userName, userId: user.id });
       
       // Find the meeting and verify user is the host using meeting_id (text field)
+      const normalizedMeetingId = meetingIdText.toUpperCase().trim();
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('*')
-        .eq('meeting_id', meetingIdText.toUpperCase())
+        .eq('meeting_id', normalizedMeetingId)
         .eq('host_id', user.id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (meetingError) {
-        console.error('Meeting not found or user not host:', meetingError);
+        console.error('Meeting query error:', meetingError);
+        throw meetingError;
+      }
+
+      if (!meeting) {
+        console.error('Meeting not found or user not host:', { meetingIdText: normalizedMeetingId, userId: user.id });
         toast({
           title: "Access Denied",
           description: "You are not the host of this meeting or it doesn't exist.",

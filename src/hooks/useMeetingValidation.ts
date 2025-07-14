@@ -20,10 +20,12 @@ export const useMeetingValidation = () => {
       console.log('Validating meeting ID:', meetingId);
       
       // Query by meeting_id (text field) not by id (uuid field)
+      // Normalize the meeting ID to uppercase and trim whitespace
+      const normalizedMeetingId = meetingId.trim().toUpperCase();
       const { data: meeting, error } = await supabase
         .from('meetings')
         .select('id, meeting_id, is_active, status, title')
-        .eq('meeting_id', meetingId.trim().toUpperCase())
+        .eq('meeting_id', normalizedMeetingId)
         .eq('is_active', true)
         .maybeSingle();
 
@@ -38,7 +40,7 @@ export const useMeetingValidation = () => {
       }
 
       if (!meeting) {
-        console.error('Meeting not found:', meetingId);
+        console.error('Meeting not found:', normalizedMeetingId);
         toast({
           title: "Invalid Meeting ID",
           description: "The meeting ID you entered does not exist or is no longer active. Please check the ID and try again.",

@@ -360,45 +360,139 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
       try {
-        const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true });
-        screenTrackRef.current = stream.getVideoTracks()[0];
-
-        screenTrackRef.current.onended = () => {
-          console.log('Screen sharing stopped by user');
-          toggleScreenShare();
-        };
-
-        peerConnectionsRef.current.forEach(pc => {
-          const sender = pc.getSenders().find(s => s.track?.kind === 'video' && s.track?.label === 'FaceTime HD Camera');
-          if (sender) {
-            pc.removeTrack(sender);
+        console.log('Starting screen share...');
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+          video: {
+            mediaSource: 'screen',
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 },
+            frameRate: { ideal: 15, max: 30 }
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 44100
           }
-          pc.addTrack(screenTrackRef.current!, localStreamRef.current!);
         });
+        
+        const screenTrack = displayStream.getVideoTracks()[0];
+        const audioTrack = displayStream.getAudioTracks()[0];
+        
+        if (screenTrack) {
+          screenTrackRef.current = screenTrack;
+          
+          // Handle screen share ending
+          screenTrack.onended = () => {
+            console.log('Screen sharing stopped by user');
+            setIsScreenSharing(false);
+            
+            // Restore camera video for all peer connections
+            peerConnectionsRef.current.forEach(async (pc) => {
+              const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+              if (sender && localStreamRef.current) {
+                const cameraTrack = localStreamRef.current.getVideoTracks()[0];
+                if (cameraTrack) {
+                  try {
+                    await sender.replaceTrack(cameraTrack);
+                    console.log('Restored camera track for peer connection');
+                  } catch (error) {
+                    console.error('Error restoring camera track:', error);
+                  }
+                }
+              }
+            });
+            
+            screenTrackRef.current = null;
+            
+            toast({
+              title: "Screen Share Stopped",
+              description: "You have stopped sharing your screen"
+            });
+          };
 
-        setIsScreenSharing(true);
+          // Replace video track in all peer connections with screen share
+          peerConnectionsRef.current.forEach(async (pc) => {
+            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) {
+              try {
+                await sender.replaceTrack(screenTrack);
+                console.log('Replaced video track with screen share for peer connection');
+              } catch (error) {
+                console.error('Error replacing track with screen share:', error);
+              }
+            }
+          });
+
+          // If there's audio from screen share, handle it
+          if (audioTrack) {
+            // Add audio track to peer connections
+            peerConnectionsRef.current.forEach((pc) => {
+              try {
+                pc.addTrack(audioTrack, displayStream);
+                console.log('Added screen share audio track');
+              } catch (error) {
+                console.error('Error adding screen share audio:', error);
+              }
+            });
+          }
+
+          setIsScreenSharing(true);
+          
+          toast({
+            title: "Screen Share Started",
+            description: "You are now sharing your screen"
+          });
+        }
       } catch (error) {
         console.error('Error accessing display media:', error);
         toast({
-          title: "Error",
-          description: "Failed to share screen. Please check your permissions.",
+          title: "Screen Share Error",
+          description: "Failed to start screen sharing. Please check your permissions.",
           variant: "destructive"
         });
       }
     } else {
-      peerConnectionsRef.current.forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video' && s.track?.label === 'Screen Sharing');
-        if (sender) {
-          pc.removeTrack(sender);
+      // Stop screen sharing
+      console.log('Stopping screen share...');
+      
+      if (screenTrackRef.current) {
+        screenTrackRef.current.stop();
+        screenTrackRef.current = null;
+      }
+
+      // Restore camera video for all peer connections
+      peerConnectionsRef.current.forEach(async (pc) => {
+        const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (videoSender && localStreamRef.current) {
+          const cameraTrack = localStreamRef.current.getVideoTracks()[0];
+          if (cameraTrack) {
+            try {
+              await videoSender.replaceTrack(cameraTrack);
+              console.log('Restored camera track for peer connection');
+            } catch (error) {
+              console.error('Error restoring camera track:', error);
+            }
+          }
         }
-        localStreamRef.current?.getVideoTracks().forEach(track => {
-          pc.addTrack(track, localStreamRef.current!);
+        
+        // Remove any screen share audio tracks
+        const audioSenders = pc.getSenders().filter(s => s.track?.kind === 'audio' && s.track?.label.includes('Screen'));
+        audioSenders.forEach(sender => {
+          try {
+            pc.removeTrack(sender);
+            console.log('Removed screen share audio track');
+          } catch (error) {
+            console.error('Error removing screen share audio:', error);
+          }
         });
       });
 
-      screenTrackRef.current?.stop();
-      screenTrackRef.current = null;
       setIsScreenSharing(false);
+      
+      toast({
+        title: "Screen Share Stopped",
+        description: "You have stopped sharing your screen"
+      });
     }
   }, [isScreenSharing, toast]);
 

@@ -1,30 +1,63 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Caption {
   id: string;
-  meeting_id: string;
-  participant_id: string;
   content: string;
+  participant_id: string;
+  meeting_id: string;
   timestamp: string;
 }
 
-export const useCaptions = (meetingId: string, participantId?: string) => {
+export const useCaptions = (meetingId: string, currentParticipantId: string | null) => {
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [isEnabled, setIsEnabled] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const { toast } = useToast();
 
+  // Fetch meeting UUID from meeting_id text
+  const [meetingUuid, setMeetingUuid] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMeetingUuid = async () => {
+      if (!meetingId) return;
+      
+      try {
+        const { data: meeting, error } = await supabase
+          .from('meetings')
+          .select('id')
+          .eq('meeting_id', meetingId.toUpperCase().trim())
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching meeting UUID:', error);
+          return;
+        }
+
+        if (meeting) {
+          setMeetingUuid(meeting.id);
+        }
+      } catch (error) {
+        console.error('Error in fetchMeetingUuid:', error);
+      }
+    };
+
+    fetchMeetingUuid();
+  }, [meetingId]);
+
   const fetchCaptions = useCallback(async () => {
-    if (!meetingId) return;
+    if (!meetingUuid) return;
 
     try {
+      console.log('Fetching captions for meeting UUID:', meetingUuid);
+      
       const { data, error } = await supabase
         .from('meeting_captions')
         .select('*')
-        .eq('meeting_id', meetingId)
+        .eq('meeting_id', meetingUuid)
         .order('timestamp', { ascending: true });
 
       if (error) {
@@ -34,76 +67,151 @@ export const useCaptions = (meetingId: string, participantId?: string) => {
 
       setCaptions(data || []);
     } catch (error) {
-      console.error('Error in fetchCaptions:', error);
+      console.error('Error fetching captions:', error);
     }
-  }, [meetingId]);
+  }, [meetingUuid]);
 
-  const addCaption = useCallback(async (content: string) => {
-    if (!meetingId || !participantId || !content.trim()) return;
+  useEffect(() => {
+    if (meetingUuid) {
+      fetchCaptions();
+
+      // Set up real-time subscription for captions
+      const channel = supabase
+        .channel(`captions-${meetingUuid}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'meeting_captions',
+            filter: `meeting_id=eq.${meetingUuid}`
+          },
+          (payload) => {
+            console.log('New caption received:', payload);
+            setCaptions(prev => [...prev, payload.new as Caption]);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [meetingUuid, fetchCaptions]);
+
+  const saveCaptionToDatabase = useCallback(async (content: string) => {
+    if (!meetingUuid || !currentParticipantId || !content.trim()) return;
 
     try {
       const { error } = await supabase
         .from('meeting_captions')
         .insert({
-          meeting_id: meetingId,
-          participant_id: participantId,
-          content: content.trim()
+          meeting_id: meetingUuid,
+          participant_id: currentParticipantId,
+          content: content.trim(),
         });
 
       if (error) {
-        console.error('Error adding caption:', error);
+        console.error('Error saving caption:', error);
+      }
+    } catch (error) {
+      console.error('Error saving caption:', error);
+    }
+  }, [meetingUuid, currentParticipantId]);
+
+  const toggleCaptions = useCallback(() => {
+    if (!isEnabled) {
+      // Start captions
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        const recognition = new SpeechRecognition();
+        
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+        
+        recognition.onstart = () => {
+          console.log('Speech recognition started');
+          setIsEnabled(true);
+          toast({
+            title: "Captions Enabled",
+            description: "Live captions are now active"
+          });
+        };
+        
+        recognition.onresult = (event) => {
+          let interim = '';
+          let final = '';
+          
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              final += transcript;
+            } else {
+              interim += transcript;
+            }
+          }
+          
+          setCurrentTranscript(interim);
+          
+          if (final) {
+            saveCaptionToDatabase(final);
+            setCurrentTranscript('');
+          }
+        };
+        
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          setIsEnabled(false);
+          toast({
+            title: "Caption Error",
+            description: "There was an error with speech recognition",
+            variant: "destructive"
+          });
+        };
+        
+        recognition.onend = () => {
+          console.log('Speech recognition ended');
+          setIsEnabled(false);
+          setCurrentTranscript('');
+        };
+        
+        recognitionRef.current = recognition;
+        recognition.start();
+      } else {
         toast({
-          title: "Caption Error",
-          description: "Failed to add caption",
+          title: "Not Supported",
+          description: "Speech recognition is not supported in this browser",
           variant: "destructive"
         });
       }
-    } catch (error) {
-      console.error('Error in addCaption:', error);
-    }
-  }, [meetingId, participantId, toast]);
-
-  const toggleCaptions = useCallback(() => {
-    setIsEnabled(prev => !prev);
-    if (isEnabled) {
+    } else {
+      // Stop captions
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setIsEnabled(false);
       setCurrentTranscript('');
+      toast({
+        title: "Captions Disabled",
+        description: "Live captions have been turned off"
+      });
     }
-  }, [isEnabled]);
+  }, [isEnabled, saveCaptionToDatabase, toast]);
 
-  // Subscribe to real-time caption updates
   useEffect(() => {
-    if (!meetingId) return;
-
-    fetchCaptions();
-
-    const channel = supabase
-      .channel(`captions-${meetingId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'meeting_captions',
-          filter: `meeting_id=eq.${meetingId}`
-        },
-        (payload) => {
-          console.log('New caption:', payload);
-          setCaptions(prev => [...prev, payload.new as Caption]);
-        }
-      )
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(channel);
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
-  }, [meetingId, fetchCaptions]);
+  }, []);
 
   return {
     captions,
     isEnabled,
     currentTranscript,
-    toggleCaptions,
-    addCaption,
-    setCurrentTranscript
+    toggleCaptions
   };
 };
