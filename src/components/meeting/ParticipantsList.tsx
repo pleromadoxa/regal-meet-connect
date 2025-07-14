@@ -7,6 +7,7 @@ import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Participant {
   id: string;
@@ -36,6 +37,7 @@ export const ParticipantsList = ({
 }: ParticipantsListProps) => {
   const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Update participants when props change
   useEffect(() => {
@@ -178,6 +180,11 @@ export const ParticipantsList = ({
     const canViewEmail = isCurrentUserHost || isCurrentUser;
     const canMute = isCurrentUserHost && !isCurrentUser;
 
+    // Get the actual user email if it's the current user, otherwise use a placeholder
+    const displayEmail = isCurrentUser && user?.email 
+      ? user.email 
+      : `${participant.user_name.toLowerCase().replace(' ', '.')}@example.com`;
+
     return (
       <Card className="p-4 bg-slate-800/60 border-slate-700/60 backdrop-blur-sm">
         <div className="flex items-center justify-between">
@@ -208,7 +215,7 @@ export const ParticipantsList = ({
                 <div className="flex items-center space-x-1 mt-1">
                   <Mail className="h-3 w-3 text-slate-400" />
                   <span className="text-xs text-slate-400">
-                    {`${participant.user_name.toLowerCase().replace(' ', '.')}@example.com`}
+                    {displayEmail}
                   </span>
                 </div>
               )}
