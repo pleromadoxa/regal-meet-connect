@@ -291,7 +291,7 @@ export const ParticipantsList = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
       <div className="fixed right-0 top-0 h-full w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/60 shadow-2xl">
-        {/* Header */}
+        {/* Header with close button */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700/60">
           <div>
             <h2 className="text-lg font-semibold text-white">
@@ -308,7 +308,7 @@ export const ParticipantsList = ({
             onClick={onClose}
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-slate-700/60"
+            className="h-8 w-8 p-0 hover:bg-slate-700/60 text-white"
           >
             <X className="h-4 w-4" />
           </Button>
