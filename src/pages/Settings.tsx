@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Crown, Save, User, Bell, Video, Mic, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface UserSettings {
   notifications_enabled: boolean;
@@ -27,8 +26,8 @@ const Settings = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     notifications_enabled: true,
     auto_join_audio: true,
@@ -41,6 +40,17 @@ const Settings = () => {
   });
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     loadSettings();
@@ -137,28 +147,28 @@ const Settings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-2 sm:p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row items-center justify-between'} gap-4 mb-8`}>
           <div className="flex items-center space-x-3">
             <Button
               onClick={() => navigate('/')}
               variant="outline"
-              size={isMobile ? "sm" : "sm"}
+              size="sm"
               className="bg-white/20 border-white/40 text-white hover:bg-white/30"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <div className="p-2 sm:p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-2xl">
+            <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-2xl">
               <Crown className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
             </div>
             <div>
               <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-white drop-shadow-lg`}>
                 Settings
               </h1>
-              <p className={`text-blue-200 ${isMobile ? 'text-xs' : 'text-base'}`}>
+              <p className={`text-blue-200 ${isMobile ? 'text-sm' : 'text-base'}`}>
                 Manage your Regal Meet preferences
               </p>
             </div>
@@ -167,25 +177,25 @@ const Settings = () => {
           <Button
             onClick={handleSignOut}
             variant="outline"
-            size={isMobile ? "sm" : "sm"}
-            className="bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 self-start sm:self-auto"
+            size="sm"
+            className={`bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 ${isMobile ? 'self-start' : ''}`}
           >
             Sign Out
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-6`}>
           {/* Profile Settings */}
           <Card className="bg-white/10 backdrop-blur-xl border-white/20">
             <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-base' : 'text-lg'}`}>
-                <User className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                <User className="h-5 w-5 mr-2" />
                 Profile Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
+            <CardContent className="space-y-4">
               <div>
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Display Name
                 </label>
                 <Input
@@ -196,7 +206,7 @@ const Settings = () => {
                 />
               </div>
               <div>
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Email
                 </label>
                 <Input
@@ -211,14 +221,14 @@ const Settings = () => {
           {/* Meeting Settings */}
           <Card className="bg-white/10 backdrop-blur-xl border-white/20">
             <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-base' : 'text-lg'}`}>
-                <Video className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                <Video className="h-5 w-5 mr-2" />
                 Meeting Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Auto-join with video
                 </label>
                 <Switch
@@ -227,7 +237,7 @@ const Settings = () => {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Auto-join with audio
                 </label>
                 <Switch
@@ -236,7 +246,7 @@ const Settings = () => {
                 />
               </div>
               <div>
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Video Quality
                 </label>
                 <Select
@@ -249,13 +259,13 @@ const Settings = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-black/90 border-white/20">
-                    <SelectItem value="low" className={`text-white hover:bg-white/10 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <SelectItem value="low" className="text-white hover:bg-white/10">
                       Low (Better for slow connections)
                     </SelectItem>
-                    <SelectItem value="medium" className={`text-white hover:bg-white/10 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <SelectItem value="medium" className="text-white hover:bg-white/10">
                       Medium (Balanced)
                     </SelectItem>
-                    <SelectItem value="high" className={`text-white hover:bg-white/10 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                    <SelectItem value="high" className="text-white hover:bg-white/10">
                       High (Best quality)
                     </SelectItem>
                   </SelectContent>
@@ -267,14 +277,14 @@ const Settings = () => {
           {/* Device Settings */}
           <Card className="bg-white/10 backdrop-blur-xl border-white/20">
             <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-base' : 'text-lg'}`}>
-                <Mic className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                <Mic className="h-5 w-5 mr-2" />
                 Device Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
+            <CardContent className="space-y-4">
               <div>
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Default Microphone
                 </label>
                 <Select
@@ -289,7 +299,7 @@ const Settings = () => {
                       <SelectItem
                         key={device.deviceId}
                         value={device.deviceId}
-                        className={`text-white hover:bg-white/10 ${isMobile ? 'text-xs' : 'text-sm'}`}
+                        className="text-white hover:bg-white/10"
                       >
                         {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
                       </SelectItem>
@@ -298,7 +308,7 @@ const Settings = () => {
                 </Select>
               </div>
               <div>
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Default Camera
                 </label>
                 <Select
@@ -313,7 +323,7 @@ const Settings = () => {
                       <SelectItem
                         key={device.deviceId}
                         value={device.deviceId}
-                        className={`text-white hover:bg-white/10 ${isMobile ? 'text-xs' : 'text-sm'}`}
+                        className="text-white hover:bg-white/10"
                       >
                         {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
                       </SelectItem>
@@ -327,14 +337,14 @@ const Settings = () => {
           {/* Notification Settings */}
           <Card className="bg-white/10 backdrop-blur-xl border-white/20">
             <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-base' : 'text-lg'}`}>
-                <Bell className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
+                <Bell className="h-5 w-5 mr-2" />
                 Notifications
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium text-white/90`}>
+                <label className="text-sm font-medium text-white/90">
                   Enable notifications
                 </label>
                 <Switch
@@ -342,7 +352,7 @@ const Settings = () => {
                   onCheckedChange={(checked) => setSettings(prev => ({ ...prev, notifications_enabled: checked }))}
                 />
               </div>
-              <p className={`${isMobile ? 'text-xs' : 'text-xs'} text-white/60`}>
+              <p className="text-xs text-white/60">
                 Get notified when someone joins your meeting or sends a message
               </p>
             </CardContent>
@@ -350,7 +360,7 @@ const Settings = () => {
         </div>
 
         {/* Save Button */}
-        <div className="mt-6 sm:mt-8 text-center">
+        <div className="mt-8 text-center">
           <Button
             onClick={saveSettings}
             disabled={loading}
@@ -358,7 +368,7 @@ const Settings = () => {
               isMobile ? 'px-6 py-2 text-sm' : 'px-8 py-3'
             }`}
           >
-            <Save className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+            <Save className="h-4 w-4 mr-2" />
             {loading ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
