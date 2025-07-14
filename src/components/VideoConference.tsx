@@ -179,7 +179,7 @@ export const VideoConference = ({
       
       const joinMeetingDb = async () => {
         try {
-          console.log('Joining meeting:', { meetingId, userName, isHost });
+          console.log('Joining meeting in VideoConference:', { meetingId, userName, isHost });
           const result = isHost 
             ? await joinAsHost(meetingId, userName)
             : await joinMeeting(meetingId, userName);
@@ -224,6 +224,11 @@ export const VideoConference = ({
         } catch (error) {
           console.error('Error joining meeting:', error);
           setCurrentParticipantId(`temp-${user.id}-${Date.now()}`);
+          toast({
+            title: "Error",
+            description: "Failed to join meeting. Please try again.",
+            variant: "destructive"
+          });
         }
       };
       
