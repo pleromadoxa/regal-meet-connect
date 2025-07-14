@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import Meeting from "./pages/Meeting";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/meeting/:meetingId" element={<Meeting />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
