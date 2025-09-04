@@ -35,39 +35,39 @@ export const QuickJoinSection = ({ onJoinMeeting }: QuickJoinSectionProps) => {
   };
 
   return (
-    <section className="py-24 px-4">
+    <section className="py-12 md:py-24 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-white mb-4">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4">
             Join a Meeting
           </h2>
-          <p className="text-xl text-slate-300">
+          <p className="text-lg md:text-xl text-slate-300">
             Enter a meeting ID to join an ongoing conference
           </p>
         </div>
 
-        <Card className="bg-slate-900/40 backdrop-blur-xl border-slate-700/40 shadow-2xl max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center justify-center">
-              <LogIn className="h-5 w-5 mr-2 text-orange-400" />
+        <Card className="glass-morphism shadow-2xl border-border/40 max-w-md mx-auto">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="text-foreground flex items-center justify-center text-lg md:text-xl">
+              <LogIn className="h-5 w-5 mr-2 text-primary" />
               Quick Join
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 md:space-y-6">
             <div className="space-y-2">
-              <label className="text-slate-200 text-sm font-medium">
+              <label className="text-foreground text-sm font-medium">
                 Your Name
               </label>
               <Input
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder="Enter your name"
-                className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20"
+                className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 h-12 md:h-14"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-slate-200 text-sm font-medium">
+              <label className="text-foreground text-sm font-medium">
                 Meeting ID
               </label>
               <Input
@@ -75,14 +75,16 @@ export const QuickJoinSection = ({ onJoinMeeting }: QuickJoinSectionProps) => {
                 onChange={(e) => setMeetingId(e.target.value.toUpperCase())}
                 placeholder="Enter 8-character meeting ID"
                 maxLength={8}
-                className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20 font-mono text-center text-lg tracking-wider"
+                className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 font-mono text-center text-base md:text-lg tracking-wider h-12 md:h-14"
               />
             </div>
 
             <Button
               onClick={handleJoinMeeting}
               disabled={!meetingId.trim() || !userName.trim() || isJoining}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+              variant="hero"
+              size="lg"
+              className="w-full"
             >
               {isJoining ? (
                 <>

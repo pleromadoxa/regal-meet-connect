@@ -53,53 +53,55 @@ export const CreateMeetingSection = () => {
   };
 
   return (
-    <section className="py-24 px-4">
+    <section className="py-12 md:py-24 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-white mb-4">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4">
             Create Your Meeting
           </h2>
-          <p className="text-xl text-slate-300">
+          <p className="text-lg md:text-xl text-slate-300">
             Start a new video conference in seconds
           </p>
         </div>
 
-        <Card className="bg-slate-900/40 backdrop-blur-xl border-slate-700/40 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Plus className="h-5 w-5 mr-2 text-orange-400" />
+        <Card className="glass-morphism shadow-2xl border-border/40">
+          <CardHeader className="pb-4 md:pb-6">
+            <CardTitle className="text-foreground flex items-center text-lg md:text-xl">
+              <Plus className="h-5 w-5 mr-2 text-primary" />
               New Meeting
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 md:space-y-6">
             <div className="space-y-2">
-              <label className="text-slate-200 text-sm font-medium">
+              <label className="text-foreground text-sm font-medium">
                 Meeting Title *
               </label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter meeting title"
-                className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20"
+                className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 h-12 md:h-14"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-slate-200 text-sm font-medium">
+              <label className="text-foreground text-sm font-medium">
                 Description (Optional)
               </label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter meeting description"
-                className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20 min-h-[100px]"
+                className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 min-h-[80px] md:min-h-[100px] resize-none"
               />
             </div>
 
             <Button
               onClick={handleCreateMeeting}
               disabled={!title.trim() || isCreating}
-              className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+              variant="premium"
+              size="lg"
+              className="w-full"
             >
               {isCreating ? (
                 <>
@@ -115,7 +117,7 @@ export const CreateMeetingSection = () => {
             </Button>
 
             {!user && (
-              <p className="text-center text-slate-400 text-sm">
+              <p className="text-center text-muted-foreground text-sm">
                 You need to be signed in to create meetings
               </p>
             )}

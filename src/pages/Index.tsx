@@ -28,60 +28,62 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800">
       {/* Header */}
-      <header className="container mx-auto px-4 py-6">
+      <header className="container mx-auto px-4 py-4 md:py-6 safe-area-inset-top">
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Video className="h-8 w-8 text-orange-400" />
-            <span className="text-2xl font-bold text-white">Regal Meet</span>
+            <Video className="h-6 w-6 md:h-8 md:w-8 text-orange-400" />
+            <span className="text-xl md:text-2xl font-bold text-white">Regal Meet</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             <Button 
               variant="ghost" 
-              className="text-white hover:text-orange-400"
+              size="sm"
+              className="text-white hover:text-orange-400 hidden sm:flex"
               onClick={() => navigate('/auth')}
             >
               Sign In
             </Button>
             <Button 
-              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+              variant="premium"
+              size="sm"
               onClick={() => navigate('/auth')}
             >
               Get Started
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-2 h-3 w-3 md:h-4 md:w-4" />
             </Button>
           </div>
         </nav>
       </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-24 text-center">
+      <section className="container mx-auto px-4 py-12 md:py-24 text-center">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-6xl font-bold text-white mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 md:mb-6 leading-tight">
             Connect Beyond
             <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent"> Distance</span>
           </h1>
-          <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-slate-300 mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed px-4">
             Experience crystal-clear video conferences with real-time captions, 
             seamless screen sharing, and enterprise-grade security. 
             Your meetings, elevated.
           </p>
           
           {/* Feature Highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/40">
-              <Users className="h-12 w-12 text-orange-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">HD Video Quality</h3>
-              <p className="text-slate-300">Crystal clear video and audio for professional meetings</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16">
+            <div className="glass-morphism rounded-2xl p-6 md:p-8 hover-lift">
+              <Users className="h-10 w-10 md:h-12 md:w-12 text-orange-400 mx-auto mb-3 md:mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">HD Video Quality</h3>
+              <p className="text-slate-300 text-sm md:text-base">Crystal clear video and audio for professional meetings</p>
             </div>
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/40">
-              <Shield className="h-12 w-12 text-orange-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Secure & Private</h3>
-              <p className="text-slate-300">End-to-end encryption keeps your conversations safe</p>
+            <div className="glass-morphism rounded-2xl p-6 md:p-8 hover-lift">
+              <Shield className="h-10 w-10 md:h-12 md:w-12 text-orange-400 mx-auto mb-3 md:mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">Secure & Private</h3>
+              <p className="text-slate-300 text-sm md:text-base">End-to-end encryption keeps your conversations safe</p>
             </div>
-            <div className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/40">
-              <Zap className="h-12 w-12 text-orange-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Lightning Fast</h3>
-              <p className="text-slate-300">Join meetings instantly with no downloads required</p>
+            <div className="glass-morphism rounded-2xl p-6 md:p-8 hover-lift">
+              <Zap className="h-10 w-10 md:h-12 md:w-12 text-orange-400 mx-auto mb-3 md:mb-4" />
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">Lightning Fast</h3>
+              <p className="text-slate-300 text-sm md:text-base">Join meetings instantly with no downloads required</p>
             </div>
           </div>
         </div>
@@ -94,13 +96,13 @@ const Index = () => {
       <CreateMeetingSection />
 
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-12 border-t border-slate-700/40">
+      <footer className="container mx-auto px-4 py-8 md:py-12 border-t border-slate-700/40 safe-area-inset-bottom">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Video className="h-6 w-6 text-orange-400" />
-            <span className="text-xl font-bold text-white">Regal Meet</span>
+            <Video className="h-5 w-5 md:h-6 md:w-6 text-orange-400" />
+            <span className="text-lg md:text-xl font-bold text-white">Regal Meet</span>
           </div>
-          <p className="text-slate-400">
+          <p className="text-slate-400 text-sm md:text-base">
             © 2024 Regal Meet. Connecting people across the globe.
           </p>
         </div>

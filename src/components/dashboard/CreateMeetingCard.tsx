@@ -48,42 +48,44 @@ export const CreateMeetingCard = () => {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl border-slate-700/40 hover:border-orange-400/30 transition-all duration-300 shadow-xl">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center text-white">
-          <Video className="h-6 w-6 mr-2 text-orange-400" />
+    <Card className="glass-morphism hover:glass-morphism-elevated transition-all duration-300 border-border/40 hover:border-primary/30">
+      <CardHeader className="pb-3 md:pb-4">
+        <CardTitle className="flex items-center text-foreground text-base md:text-lg">
+          <Video className="h-5 w-5 md:h-6 md:w-6 mr-2 text-primary" />
           Create New Meeting
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 md:space-y-4">
         <div className="space-y-2">
-          <label className="text-slate-200 text-sm font-medium">
+          <label className="text-foreground text-xs md:text-sm font-medium">
             Meeting Title *
           </label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Enter meeting title"
-            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20"
+            className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 h-11 md:h-12"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-slate-200 text-sm font-medium">
+          <label className="text-foreground text-xs md:text-sm font-medium">
             Description (Optional)
           </label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Enter meeting description"
-            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20 min-h-[80px]"
+            className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 min-h-[70px] md:min-h-[80px] resize-none"
           />
         </div>
 
         <Button
           onClick={handleCreateMeeting}
           disabled={!title.trim() || isCreating}
-          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+          variant="premium"
+          size="default"
+          className="w-full"
         >
           {isCreating ? (
             <>

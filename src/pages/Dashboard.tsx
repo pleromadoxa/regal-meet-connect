@@ -83,8 +83,8 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen gradient-hero">
+      <div className="container mx-auto px-4 py-6 md:py-8 safe-area-inset-top safe-area-inset-bottom">
         <DashboardHeader 
           displayName={profile?.display_name || ''}
           userEmail={user?.email || ''}
@@ -94,7 +94,7 @@ const Dashboard = () => {
           onSignOut={signOut}
         />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
           <ProfileCard 
             userName={profile?.display_name || ''}
             displayName={displayName}

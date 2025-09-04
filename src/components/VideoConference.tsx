@@ -316,14 +316,14 @@ export const VideoConference = ({
   const totalParticipantCount = connectedPeers.length + 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+    <div className="min-h-screen gradient-hero relative overflow-hidden">
       <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-20 h-20 bg-orange-400 rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-20 w-32 h-32 bg-blue-500 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-purple-500 rounded-full blur-lg"></div>
+        <div className="absolute top-10 left-10 w-20 h-20 bg-primary rounded-full blur-xl animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-32 h-32 bg-blue-500 rounded-full blur-2xl animate-float-delayed"></div>
+        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-purple-500 rounded-full blur-lg animate-float-slow"></div>
       </div>
 
-      <div className="relative z-10 flex flex-col h-screen">
+      <div className="relative z-10 flex flex-col h-screen safe-area-inset-top safe-area-inset-bottom">
         <MeetingHeader
           meetingId={meetingId}
           isCurrentUserHost={isCurrentUserHost}

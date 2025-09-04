@@ -35,28 +35,28 @@ export const QuickJoinCard = ({ onJoinMeeting }: QuickJoinCardProps) => {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 backdrop-blur-xl border-slate-700/40 hover:border-orange-400/30 transition-all duration-300 shadow-xl">
-      <CardHeader className="pb-4">
-        <CardTitle className="flex items-center text-white">
-          <LogIn className="h-6 w-6 mr-2 text-orange-400" />
+    <Card className="glass-morphism hover:glass-morphism-elevated transition-all duration-300 border-border/40 hover:border-primary/30">
+      <CardHeader className="pb-3 md:pb-4">
+        <CardTitle className="flex items-center text-foreground text-base md:text-lg">
+          <LogIn className="h-5 w-5 md:h-6 md:w-6 mr-2 text-primary" />
           Join Meeting
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 md:space-y-4">
         <div className="space-y-2">
-          <label className="text-slate-200 text-sm font-medium">
+          <label className="text-foreground text-xs md:text-sm font-medium">
             Your Name
           </label>
           <Input
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
             placeholder="Enter your name"
-            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20"
+            className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 h-11 md:h-12"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-slate-200 text-sm font-medium">
+          <label className="text-foreground text-xs md:text-sm font-medium">
             Meeting ID
           </label>
           <Input
@@ -64,14 +64,16 @@ export const QuickJoinCard = ({ onJoinMeeting }: QuickJoinCardProps) => {
             onChange={(e) => setMeetingId(e.target.value.toUpperCase())}
             placeholder="Enter meeting ID"
             maxLength={8}
-            className="bg-slate-800/50 border-slate-600/50 text-white placeholder:text-slate-400 focus:border-orange-400/50 focus:ring-orange-400/20 font-mono"
+            className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 font-mono h-11 md:h-12"
           />
         </div>
 
         <Button
           onClick={handleJoinMeeting}
           disabled={!meetingId.trim() || !userName.trim() || isJoining}
-          className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50"
+          variant="hero"
+          size="default"
+          className="w-full"
         >
           {isJoining ? (
             <>
