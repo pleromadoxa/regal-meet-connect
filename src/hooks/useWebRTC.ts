@@ -27,15 +27,28 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
-  const signalingRef = useRef(useWebRTCSignaling(meetingId, userId, userName));
+  const createOfferRef = useRef<((remoteUserId: string) => Promise<void>) | null>(null);
   const { toast } = useToast();
+
+  // Use the signaling hook
+  const { 
+    initializeSignaling, 
+    sendSignalingMessage, 
+    connectedPeers: signalingPeers,
+    peerUserNames,
+    cleanup: cleanupSignaling 
+  } = useWebRTCSignaling(meetingId, userId, userName);
+
+  // Update connected peers from signaling
+  useEffect(() => {
+    setConnectedPeers(Array.from(signalingPeers));
+  }, [signalingPeers]);
 
   useEffect(() => {
     if (!meetingId || !userName || !userId) return;
 
     console.log('Initializing WebRTC for:', { meetingId, userName, userId });
     
-    const { initializeSignaling, sendSignalingMessage, cleanup: cleanupSignaling } = signalingRef.current;
     const signalingChannel = initializeSignaling();
 
     const createPeerConnection = (remoteUserId: string) => {
@@ -143,12 +156,19 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     };
 
-    window.addEventListener('webrtc-signaling', (event: any) => {
+    const handleWebRTCSignaling = (event: any) => {
       handleSignalingMessage(event.detail);
-    });
+    };
+
+    window.addEventListener('webrtc-signaling', handleWebRTCSignaling);
 
     const createOffer = async (remoteUserId: string) => {
       console.log('Creating offer for:', remoteUserId);
+      if (peerConnectionsRef.current.has(remoteUserId)) {
+        console.log('Peer connection already exists for:', remoteUserId);
+        return;
+      }
+
       const pc = createPeerConnection(remoteUserId);
       peerConnectionsRef.current.set(remoteUserId, pc);
 
@@ -166,74 +186,41 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       }
     };
 
-    signalingChannel.on('presence', { event: 'sync' }, () => {
-      const presenceState = signalingChannel.presenceState();
-      const peers = Object.keys(presenceState).filter(id => id !== userId);
-      setConnectedPeers(peers);
-      peers.forEach(peerId => {
-        if (!peerConnectionsRef.current.has(peerId)) {
-          createOffer(peerId);
-        }
-      });
-    });
-
-    signalingChannel.on('presence', { event: 'join' }, ({ key }: { key: string }) => {
-      if (key !== userId) {
-        setConnectedPeers(prev => [...prev, key]);
-        createOffer(key);
-      }
-    });
-
-    signalingChannel.on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
-      if (key !== userId) {
-        setConnectedPeers(prev => prev.filter(id => id !== key));
-        const pc = peerConnectionsRef.current.get(key);
-        if (pc) {
-          pc.close();
-          peerConnectionsRef.current.delete(key);
-          remoteStreamsRef.current.delete(key);
-          setRemoteStreams(new Map(remoteStreamsRef.current));
-        }
-      }
-    });
-
-    // Add listener for host mute commands
-    const handleHostMute = (event: CustomEvent) => {
-      const { participantId, isMuted, fromHost } = event.detail;
-      
-      if (participantId === userId && fromHost) {
-        console.log('Received mute command from host:', isMuted);
-        
-        if (localStreamRef.current) {
-          const audioTrack = localStreamRef.current.getAudioTracks()[0];
-          if (audioTrack) {
-            audioTrack.enabled = !isMuted;
-            setIsAudioEnabled(!isMuted);
-            
-            // Update UI to reflect the change
-            toast({
-              title: isMuted ? "You have been muted by the host" : "You have been unmuted by the host",
-              description: isMuted ? "Your microphone is now muted" : "Your microphone is now active",
-              variant: isMuted ? "destructive" : "default"
-            });
-          }
-        }
-      }
-    };
+    // Store createOffer function for access in other effects
+    createOfferRef.current = createOffer;
 
     // Listen for host mute commands
     const muteChannel = supabase.channel(`meeting-mute-${userId}`);
     muteChannel
       .on('broadcast', { event: 'mute-toggle' }, (payload) => {
-        handleHostMute(new CustomEvent('host-mute', { detail: payload.payload }));
+        const { participantId, isMuted, fromHost } = payload.payload;
+        
+        if (participantId === userId && fromHost) {
+          console.log('Received mute command from host:', isMuted);
+          
+          if (localStreamRef.current) {
+            const audioTrack = localStreamRef.current.getAudioTracks()[0];
+            if (audioTrack) {
+              audioTrack.enabled = !isMuted;
+              setIsAudioEnabled(!isMuted);
+              
+              toast({
+                title: isMuted ? "You have been muted by the host" : "You have been unmuted by the host",
+                description: isMuted ? "Your microphone is now muted" : "Your microphone is now active",
+                variant: isMuted ? "destructive" : "default"
+              });
+            }
+          }
+        }
       })
       .subscribe();
 
     const cleanup = () => {
-      console.log('Cleaning up WebRTC');
+      console.log('Cleaning up WebRTC listeners');
       cleanupSignaling();
       supabase.removeChannel(muteChannel);
-      window.removeEventListener('webrtc-signaling', handleSignalingMessage as any);
+      window.removeEventListener('webrtc-signaling', handleWebRTCSignaling);
+      createOfferRef.current = null;
 
       peerConnectionsRef.current.forEach(pc => {
         pc.close();
@@ -253,7 +240,28 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     };
 
     return cleanup;
-  }, [meetingId, userName, userId, toast]);
+  }, [meetingId, userName, userId, toast, initializeSignaling, sendSignalingMessage, cleanupSignaling]);
+
+  // Handle peer connection setup when new peers join
+  useEffect(() => {
+    const handleNewPeers = () => {
+      const currentPeers = Array.from(signalingPeers);
+      console.log('Current signaling peers:', currentPeers);
+      
+      currentPeers.forEach(peerId => {
+        if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
+          console.log('Creating offer for new peer:', peerId);
+          if (createOfferRef.current) {
+            createOfferRef.current(peerId);
+          }
+        }
+      });
+    };
+
+    if (signalingPeers.size > 0) {
+      handleNewPeers();
+    }
+  }, [signalingPeers]);
 
   const initialize = useCallback(async () => {
     try {
@@ -313,12 +321,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         console.log('Audio toggled:', newEnabled);
         
         // Send audio state to other participants
-        if (signalingRef.current.sendSignalingMessage) {
-          signalingRef.current.sendSignalingMessage({
-            type: 'audio-toggle',
-            data: { enabled: newEnabled }
-          });
-        }
+        sendSignalingMessage({
+          type: 'audio-toggle',
+          data: { enabled: newEnabled }
+        });
         
         toast({
           title: newEnabled ? "Microphone On" : "Microphone Off",
@@ -527,9 +533,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const cleanup = useCallback(() => {
     console.log('Cleaning up WebRTC');
 
-    if (signalingRef.current) {
-      signalingRef.current.cleanup();
-    }
+    cleanupSignaling();
 
     peerConnectionsRef.current.forEach(pc => {
       pc.close();
@@ -546,7 +550,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       localStreamRef.current.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
-  }, []);
+  }, [cleanupSignaling]);
 
   return {
     localStream,
