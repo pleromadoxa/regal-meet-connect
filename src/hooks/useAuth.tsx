@@ -82,12 +82,13 @@ export const useAuth = () => {
         
         if (!mounted) return;
 
-        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (!session?.user) {
-            setProfile(null);
-          }
+        // Handle different auth events
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
         }
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -102,18 +103,20 @@ export const useAuth = () => {
                 .eq('id', session.user.id)
                 .single();
               
-              if (profileError) {
+              if (profileError && profileError.code !== 'PGRST116') {
                 console.error('Error fetching profile:', profileError);
-              } else {
+              } else if (profileData) {
                 setProfile(profileData);
               }
             } catch (error) {
               console.error('Error fetching profile:', error);
             }
+          } else {
+            setProfile(null);
           }
+          
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
