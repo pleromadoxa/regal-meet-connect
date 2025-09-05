@@ -26,7 +26,7 @@ const Dashboard = () => {
     if (user) {
       fetchMeetings();
     }
-  }, [user, authLoading, navigate, fetchMeetings]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (profile?.display_name) {
