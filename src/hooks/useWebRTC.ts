@@ -337,10 +337,68 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     return isAudioEnabled;
   }, [isAudioEnabled, toast]);
 
-  const switchCamera = useCallback(() => {
+  const switchCamera = useCallback(async () => {
+    if (!localStreamRef.current) return;
+
     const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';
-    setCurrentFacingMode(newFacingMode);
-  }, [currentFacingMode]);
+    
+    try {
+      // Get new video stream with different facing mode
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: newFacingMode },
+        audio: true
+      });
+
+      // Stop old video track
+      const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (oldVideoTrack) {
+        oldVideoTrack.stop();
+      }
+
+      // Replace video track in local stream
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (newVideoTrack) {
+        // Update peer connections with new video track
+        peerConnectionsRef.current.forEach(async (pc) => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) {
+            try {
+              await sender.replaceTrack(newVideoTrack);
+              console.log('Replaced video track for peer connection');
+            } catch (error) {
+              console.error('Error replacing video track:', error);
+            }
+          }
+        });
+
+        // Update local stream ref
+        localStreamRef.current.removeTrack(oldVideoTrack);
+        localStreamRef.current.addTrack(newVideoTrack);
+        
+        // Update state
+        setLocalStream(new MediaStream([...localStreamRef.current.getTracks()]));
+        setCurrentFacingMode(newFacingMode);
+
+        toast({
+          title: "Camera Switched",
+          description: `Switched to ${newFacingMode === 'user' ? 'front' : 'back'} camera`
+        });
+      }
+
+      // Stop the temporary stream
+      newStream.getTracks().forEach(track => {
+        if (track.kind === 'audio') track.stop(); // Stop audio from temp stream
+      });
+
+    } catch (error) {
+      console.error('Error switching camera:', error);
+      toast({
+        title: "Camera Switch Failed",
+        description: "Failed to switch camera. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, [currentFacingMode, toast]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {

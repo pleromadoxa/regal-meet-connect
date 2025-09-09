@@ -62,7 +62,7 @@ export const ParticipantsSidebar = ({
         } backdrop-blur-sm`}
         onClick={() => onVideoSelect(streamId)}
       >
-        <div className="aspect-video relative">
+        <div className="aspect-video relative min-h-[120px]">
           {hasVideo ? (
             <video
               ref={(video) => {

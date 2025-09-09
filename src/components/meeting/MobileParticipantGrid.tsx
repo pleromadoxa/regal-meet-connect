@@ -156,10 +156,10 @@ export const MobileParticipantGrid = ({
 
     return (
       <Card 
-        className="relative overflow-hidden cursor-pointer transition-all duration-200 bg-slate-800/90 border border-slate-600 hover:border-orange-400 rounded-xl"
+        className="relative overflow-hidden cursor-pointer transition-all duration-200 bg-slate-800/90 border border-slate-600 hover:border-orange-400 rounded-xl w-full h-full"
         onClick={() => onVideoSelect(streamId)}
       >
-        <div className="aspect-video relative min-h-[80px]">
+        <div className="w-full h-full relative">
           {hasVideo ? (
             <video
               ref={setVideoElement}
@@ -188,9 +188,10 @@ export const MobileParticipantGrid = ({
             )}
           </div>
 
-          {/* Emoji reaction overlay */}
-          <div className="absolute bottom-1 right-1">
-            <div className="text-xl">😊</div>
+          {/* Name label for thumbnails */}
+          <div className="absolute bottom-1 left-1 text-xs text-white bg-black/60 rounded px-1">
+            {participantName.split(' ')[0]}
+            {isLocal && " (You)"}
           </div>
         </div>
       </Card>
@@ -200,7 +201,7 @@ export const MobileParticipantGrid = ({
   return (
     <div className="flex flex-col h-full p-4 pb-24 space-y-4">
       {/* Main video */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-[300px] max-h-[calc(100vh-200px)]">
         {selectedStream && (
           <ParticipantCard
             stream={selectedStream.stream}
@@ -214,9 +215,9 @@ export const MobileParticipantGrid = ({
 
       {/* Thumbnail videos */}
       {otherStreams.length > 0 && (
-        <div className="flex space-x-3 overflow-x-auto pb-2">
+        <div className="flex space-x-3 overflow-x-auto pb-2 min-h-[90px]">
           {otherStreams.map((stream) => (
-            <div key={stream.id} className="flex-shrink-0 w-24">
+            <div key={stream.id} className="flex-shrink-0 w-28 h-20">
               <ParticipantCard
                 stream={stream.stream}
                 streamId={stream.id}
