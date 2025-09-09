@@ -18,14 +18,14 @@ export const useAuth = () => {
 
   useEffect(() => {
     let mounted = true;
-    let isInitialized = false;
+    let isInitializing = false;
 
-    // Set up auth state listener FIRST
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
         
-        if (!mounted) return;
+        if (!mounted || isInitializing) return;
 
         // Handle different auth events
         if (event === 'SIGNED_OUT') {
@@ -48,9 +48,9 @@ export const useAuth = () => {
                   .from('profiles')
                   .select('*')
                   .eq('id', session.user.id)
-                  .single();
+                  .maybeSingle();
                 
-                if (profileError && profileError.code !== 'PGRST116') {
+                if (profileError) {
                   console.error('Error fetching profile:', profileError);
                 } else if (profileData) {
                   setProfile(profileData);
@@ -63,44 +63,39 @@ export const useAuth = () => {
             setProfile(null);
           }
           
-          if (!isInitialized) {
-            setLoading(false);
-            isInitialized = true;
-          }
+          setLoading(false);
         }
       }
     );
 
-    // Then check for existing session
+    // Initialize auth state
     const initializeAuth = async () => {
+      if (isInitializing || !mounted) return;
+      
+      isInitializing = true;
+      
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Auth session error:', error);
-          if (mounted) {
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setLoading(false);
-          }
-          return;
+          throw error;
         }
 
-        if (mounted && session) {
+        if (mounted) {
           setSession(session);
-          setUser(session.user);
+          setUser(session?.user ?? null);
           
-          // Fetch user profile only if we have a session
-          if (session.user) {
+          // Fetch user profile if we have a session
+          if (session?.user) {
             try {
               const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
-                .single();
+                .maybeSingle();
               
-              if (profileError && profileError.code !== 'PGRST116') {
+              if (profileError) {
                 console.error('Error fetching profile:', profileError);
               } else if (profileData) {
                 setProfile(profileData);
@@ -109,21 +104,19 @@ export const useAuth = () => {
               console.error('Error fetching profile:', error);
             }
           }
-        }
-        
-        if (mounted && !isInitialized) {
+          
           setLoading(false);
-          isInitialized = true;
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        if (mounted && !isInitialized) {
+        if (mounted) {
           setSession(null);
           setUser(null);
           setProfile(null);
           setLoading(false);
-          isInitialized = true;
         }
+      } finally {
+        isInitializing = false;
       }
     };
 

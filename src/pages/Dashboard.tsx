@@ -73,12 +73,16 @@ const Dashboard = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-xl">Loading dashboard...</div>
+        </div>
       </div>
     );
   }
 
   if (!user) {
+    console.log('No user found, redirecting to auth');
     return null;
   }
 

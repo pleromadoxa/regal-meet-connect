@@ -36,6 +36,7 @@ export const useMeetingManagement = () => {
 
   const fetchMeetings = useCallback(async () => {
     if (!user?.id) {
+      console.log('No user ID available, skipping meeting fetch');
       setLoading(false);
       return;
     }
@@ -43,7 +44,7 @@ export const useMeetingManagement = () => {
     try {
       console.log('Fetching meetings for user:', user.id);
       
-      // Fetch hosted meetings
+      // Fetch hosted meetings with error handling
       const { data: hostedMeetings, error: hostedError } = await supabase
         .from('meetings')
         .select('*')
@@ -53,10 +54,10 @@ export const useMeetingManagement = () => {
 
       if (hostedError) {
         console.error('Error fetching hosted meetings:', hostedError);
-        throw hostedError;
+        // Don't throw - continue with empty array
       }
 
-      // Fetch participant meetings
+      // Fetch participant meetings with error handling
       const { data: participantRecords, error: participantError } = await supabase
         .from('meeting_participants')
         .select('meeting_id')
@@ -64,6 +65,7 @@ export const useMeetingManagement = () => {
 
       if (participantError) {
         console.error('Error fetching participant records:', participantError);
+        // Continue with just hosted meetings
       }
 
       let participantMeetings: Meeting[] = [];
@@ -85,17 +87,15 @@ export const useMeetingManagement = () => {
       
       console.log('All meetings fetched:', allMeetings);
       setMeetings(allMeetings);
+      
     } catch (error) {
       console.error('Error in fetchMeetings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch meetings. Please try again.",
-        variant: "destructive"
-      });
+      // Don't show toast on error to avoid annoying users
+      setMeetings([]); // Set empty array as fallback
     } finally {
       setLoading(false);
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   const createMeeting = useCallback(async (meetingId: string, title: string, description?: string) => {
     const result = await createMeetingAction(meetingId, title, description);
