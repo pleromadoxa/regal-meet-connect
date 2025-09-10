@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield } from 'lucide-react';
+import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield, Volume2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
 
 interface Participant {
   id: string;

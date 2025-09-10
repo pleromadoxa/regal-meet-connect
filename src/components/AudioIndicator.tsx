@@ -7,7 +7,7 @@ interface AudioIndicatorProps {
 }
 
 export const AudioIndicator = ({ stream, className = "" }: AudioIndicatorProps) => {
-  const { audioLevel, isActive } = useAudioVisualizer(stream);
+  const { volume, isActive, avgVolume } = useAudioVisualizer(stream);
 
   if (!isActive) return null;
 
@@ -18,7 +18,7 @@ export const AudioIndicator = ({ stream, className = "" }: AudioIndicatorProps) 
           <div
             key={i}
             className={`w-1 bg-green-400 rounded-full transition-all duration-150 ${
-              audioLevel > (i + 1) * 20 ? 'h-4' : 'h-1'
+              volume > (i + 1) * 20 ? 'h-4' : 'h-1'
             }`}
           />
         ))}
