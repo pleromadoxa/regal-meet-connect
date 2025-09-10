@@ -48,7 +48,7 @@ const ParticipantItem = ({
   onSelectVideo: (streamId: string) => void;
   isSelected: boolean;
 }) => {
-  const { audioLevel, isActive } = useAudioVisualizer(stream);
+  const { volume, isActive } = useAudioVisualizer(stream);
 
   return (
     <div 
@@ -91,7 +91,7 @@ const ParticipantItem = ({
                   className={`h-full transition-all duration-100 ${
                     isActive ? 'bg-green-400' : 'bg-gray-500'
                   }`}
-                  style={{ width: `${audioLevel}%` }}
+                  style={{ width: `${volume}%` }}
                 />
               </div>
             </div>

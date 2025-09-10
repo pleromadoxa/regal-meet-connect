@@ -353,15 +353,6 @@ export const VideoConference = ({
           connectionQuality={networkQuality}
         />
 
-        {/* Network Quality Indicator */}
-        <div className="absolute top-4 right-4 z-20">
-          <NetworkQualityIndicator
-            connectionQuality={connectionQuality}
-            isOptimizing={isOptimizing}
-            onQualityOverride={setQualityOverride}
-          />
-        </div>
-
         <div className="relative flex-1">
           <NewMeetingLayout
             localStream={localStream}
@@ -376,6 +367,15 @@ export const VideoConference = ({
             currentUserId={user?.id || ''}
             onToggleMute={handleToggleMute}
           />
+
+          {/* Network Quality Indicator - Top Right of Video Feed */}
+          <div className="absolute top-4 right-4 z-20">
+            <NetworkQualityIndicator
+              connectionQuality={connectionQuality}
+              isOptimizing={isOptimizing}
+              onQualityOverride={setQualityOverride}
+            />
+          </div>
           
           <ReactionsOverlay reactions={reactions} />
         </div>
