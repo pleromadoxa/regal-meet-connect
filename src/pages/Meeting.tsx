@@ -46,9 +46,9 @@ const Meeting = () => {
           if (isValid) {
             console.log('Meeting ID is valid, proceeding to meeting');
             // Log meeting page view
-            logPageView(`meeting/${meetingId}`);
+            logPageView(`meeting/${meetingId}`, user?.id);
             if (meetingId) {
-              logMeetingJoin(meetingId);
+              logMeetingJoin(meetingId, user?.id);
             }
             setIsReady(true);
           } else {

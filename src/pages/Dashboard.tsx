@@ -37,7 +37,7 @@ const Dashboard = () => {
     if (user) {
       fetchMeetings();
       // Log page view
-      logPageView('dashboard');
+      logPageView('dashboard', user.id);
     }
   }, [user, authLoading, navigate, fetchMeetings, logPageView]);
 
@@ -80,7 +80,7 @@ const Dashboard = () => {
     addRecentMeeting(roomId, `Meeting ${roomId}`, hostStatus || false);
     
     // Log meeting join
-    logMeetingJoin(roomId);
+    logMeetingJoin(roomId, user?.id);
     
     navigate(`/meeting/${roomId}?${params.toString()}`);
   };
@@ -103,7 +103,7 @@ const Dashboard = () => {
     // Add to recent meetings
     addRecentMeeting(meetingId, title, true);
     // Log meeting creation/join as host
-    logMeetingCreate(meetingId);
+    logMeetingCreate(meetingId, user?.id);
     handleJoinMeeting(userName, meetingId, true);
   };
 

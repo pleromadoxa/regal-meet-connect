@@ -44,7 +44,7 @@ export const useAuth = () => {
           
           // Log sign-in activity when it's actually a sign-in (not token refresh)
           if (event === 'SIGNED_IN') {
-            setTimeout(() => logUserSignIn(), 1000); // Delay to ensure user state is set
+            setTimeout(() => logUserSignIn(session?.user?.id), 1000); // Delay to ensure user state is set
           }
           
           if (session?.user) {
@@ -139,7 +139,7 @@ export const useAuth = () => {
     try {
       // Log sign out before clearing state
       if (user) {
-        await logUserSignOut();
+        await logUserSignOut(user.id);
       }
       
       // Clear all stored meeting data first

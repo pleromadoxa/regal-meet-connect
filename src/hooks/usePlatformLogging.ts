@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LogActivityOptions {
@@ -8,10 +7,9 @@ interface LogActivityOptions {
 }
 
 export const usePlatformLogging = () => {
-  const { user } = useAuth();
-
   const logActivity = useCallback(async (
     action: string, 
+    userId?: string,
     options: LogActivityOptions = {}
   ) => {
     try {
@@ -19,7 +17,7 @@ export const usePlatformLogging = () => {
       const { data, error } = await supabase.functions.invoke('log-activity', {
         body: {
           action,
-          user_id: user?.id,
+          user_id: userId,
           ...options
         }
       });
@@ -35,43 +33,43 @@ export const usePlatformLogging = () => {
       console.error('Failed to log activity:', error);
       return false;
     }
-  }, [user]);
+  }, []);
 
   // Common logging functions for specific actions
-  const logUserSignIn = useCallback(() => {
-    return logActivity('user_sign_in');
+  const logUserSignIn = useCallback((userId?: string) => {
+    return logActivity('user_sign_in', userId);
   }, [logActivity]);
 
-  const logUserSignOut = useCallback(() => {
-    return logActivity('user_sign_out');
+  const logUserSignOut = useCallback((userId?: string) => {
+    return logActivity('user_sign_out', userId);
   }, [logActivity]);
 
-  const logMeetingJoin = useCallback((meetingId: string) => {
-    return logActivity('meeting_join', { 
+  const logMeetingJoin = useCallback((meetingId: string, userId?: string) => {
+    return logActivity('meeting_join', userId, { 
       metadata: { meetingId } 
     });
   }, [logActivity]);
 
-  const logMeetingCreate = useCallback((meetingId: string) => {
-    return logActivity('meeting_create', { 
+  const logMeetingCreate = useCallback((meetingId: string, userId?: string) => {
+    return logActivity('meeting_create', userId, { 
       metadata: { meetingId } 
     });
   }, [logActivity]);
 
-  const logMeetingLeave = useCallback((meetingId: string) => {
-    return logActivity('meeting_leave', { 
+  const logMeetingLeave = useCallback((meetingId: string, userId?: string) => {
+    return logActivity('meeting_leave', userId, { 
       metadata: { meetingId } 
     });
   }, [logActivity]);
 
-  const logPageView = useCallback((page: string) => {
-    return logActivity('page_view', { 
+  const logPageView = useCallback((page: string, userId?: string) => {
+    return logActivity('page_view', userId, { 
       metadata: { page } 
     });
   }, [logActivity]);
 
-  const logFeatureUsage = useCallback((feature: string) => {
-    return logActivity('feature_usage', { 
+  const logFeatureUsage = useCallback((feature: string, userId?: string) => {
+    return logActivity('feature_usage', userId, { 
       metadata: { feature } 
     });
   }, [logActivity]);
