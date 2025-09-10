@@ -3,22 +3,25 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Clock, Users, Wifi, WifiOff, Circle, Square } from 'lucide-react';
+import { useMeetingRecording } from '@/hooks/useMeetingRecording';
 
 interface MeetingFeaturesProps {
   participantCount: number;
   isHost?: boolean;
   meetingStartTime: Date;
   connectionQuality: 'good' | 'poor' | 'offline';
+  meetingId: string;
 }
 
 export const MeetingFeatures = ({ 
   participantCount, 
   isHost = false, 
   meetingStartTime,
-  connectionQuality 
+  connectionQuality,
+  meetingId
 }: MeetingFeaturesProps) => {
   const [meetingDuration, setMeetingDuration] = useState('00:00');
-  const [isRecording, setIsRecording] = useState(false);
+  const { isRecording, startRecording, stopRecording } = useMeetingRecording(meetingId, isHost || false);
 
   useEffect(() => {
     const updateDuration = () => {
@@ -35,9 +38,12 @@ export const MeetingFeatures = ({
     return () => clearInterval(interval);
   }, [meetingStartTime]);
 
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // In a real implementation, this would start/stop actual recording
+  const toggleRecording = async () => {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
+    }
   };
 
   const getConnectionIcon = () => {

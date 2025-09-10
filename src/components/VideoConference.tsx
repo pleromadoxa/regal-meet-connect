@@ -357,6 +357,7 @@ export const VideoConference = ({
           isHost={isCurrentUserHost}
           meetingStartTime={meetingStartTime}
           connectionQuality={networkQuality}
+          meetingId={meetingId}
         />
 
         <div className="relative flex-1">

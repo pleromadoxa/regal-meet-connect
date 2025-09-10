@@ -151,6 +151,48 @@ export type Database = {
           },
         ]
       }
+      meeting_recordings: {
+        Row: {
+          created_at: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          file_path: string
+          file_size: number | null
+          host_id: string
+          id: string
+          meeting_id: string
+          started_at: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          file_path: string
+          file_size?: number | null
+          host_id: string
+          id?: string
+          meeting_id: string
+          started_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          file_path?: string
+          file_size?: number | null
+          host_id?: string
+          id?: string
+          meeting_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       meetings: {
         Row: {
           created_at: string
