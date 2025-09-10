@@ -12,6 +12,8 @@ export interface ParticipantState {
   isHost: boolean;
   isMuted: boolean;
   joinedAt: string;
+  country?: string;
+  city?: string;
 }
 
 export interface ReactionEvent {
