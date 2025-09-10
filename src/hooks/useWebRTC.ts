@@ -2,6 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
+import { useNetworkOptimization } from './useNetworkOptimization';
+import { useBandwidthAware } from './useBandwidthAware';
 
 interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
@@ -29,6 +31,18 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const createOfferRef = useRef<((remoteUserId: string) => Promise<void>) | null>(null);
   const { toast } = useToast();
+
+  // Network optimization hook
+  const {
+    connectionQuality,
+    isOptimizing,
+    startMonitoring,
+    stopMonitoring,
+    setQualityOverride
+  } = useNetworkOptimization();
+
+  // Bandwidth-aware constraints hook
+  const { getOptimalConstraints, getScreenShareConstraints } = useBandwidthAware();
 
   // Use the signaling hook
   const { 
@@ -94,6 +108,11 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           pc.addTrack(track, localStreamRef.current!);
         });
       }
+
+      peerConnectionsRef.current.set(remoteUserId, pc);
+
+      // Start network monitoring for this peer connection
+      startMonitoring(pc);
 
       return pc;
     };
@@ -343,11 +362,12 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';
     
     try {
-      // Get new video stream with different facing mode
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: newFacingMode },
-        audio: true
-      });
+      // Get new video stream with different facing mode using adaptive constraints
+      const constraints = getOptimalConstraints(
+        connectionQuality.metrics.qualityLevel,
+        newFacingMode
+      );
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
 
       // Stop old video track
       const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
@@ -398,7 +418,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         variant: "destructive"
       });
     }
-  }, [currentFacingMode, toast]);
+  }, [currentFacingMode, toast, getOptimalConstraints, connectionQuality.metrics.qualityLevel]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
@@ -592,6 +612,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     console.log('Cleaning up WebRTC');
 
     cleanupSignaling();
+    stopMonitoring();
 
     peerConnectionsRef.current.forEach(pc => {
       pc.close();
@@ -608,7 +629,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       localStreamRef.current.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
-  }, [cleanupSignaling]);
+  }, [cleanupSignaling, stopMonitoring]);
 
   return {
     localStream,
@@ -621,12 +642,15 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     currentVideoDevice,
     connectedPeers,
     peerUserNames,
+    connectionQuality,
+    isOptimizing,
     toggleVideo,
     toggleAudio,
     switchCamera,
     toggleScreenShare,
     handleDeviceChange,
     initialize,
-    cleanup
+    cleanup,
+    setQualityOverride
   };
 };

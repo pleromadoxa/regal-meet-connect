@@ -7,6 +7,7 @@ import { MeetingHeader } from '@/components/meeting/MeetingHeader';
 import { NewMeetingLayout } from '@/components/meeting/NewMeetingLayout';
 import { ParticipantsList } from '@/components/meeting/ParticipantsList';
 import { ReactionsOverlay } from '@/components/meeting/ReactionsOverlay';
+import { NetworkQualityIndicator } from '@/components/NetworkQualityIndicator';
 import { 
   useMeetingState as useMeetingHooks, 
   useHandRaiseNotifications, 
@@ -54,7 +55,7 @@ export const VideoConference = ({
     isFullscreen,
     setIsFullscreen,
     meetingStartTime,
-    connectionQuality,
+    connectionQuality: networkQuality,
     setConnectionQuality,
     handNotifications,
     setHandNotifications
@@ -77,7 +78,10 @@ export const VideoConference = ({
     initialize,
     cleanup,
     connectedPeers,
-    peerUserNames
+    peerUserNames,
+    connectionQuality,
+    isOptimizing,
+    setQualityOverride
   } = useWebRTC(meetingId, userName, user?.id || '');
 
   // Meeting state management for synchronization
@@ -346,8 +350,17 @@ export const VideoConference = ({
           participantCount={totalParticipantCount}
           isHost={isCurrentUserHost}
           meetingStartTime={meetingStartTime}
-          connectionQuality={connectionQuality}
+          connectionQuality={networkQuality}
         />
+
+        {/* Network Quality Indicator */}
+        <div className="absolute top-4 right-4 z-20">
+          <NetworkQualityIndicator
+            connectionQuality={connectionQuality}
+            isOptimizing={isOptimizing}
+            onQualityOverride={setQualityOverride}
+          />
+        </div>
 
         <div className="relative flex-1">
           <NewMeetingLayout
