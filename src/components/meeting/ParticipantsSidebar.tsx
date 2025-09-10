@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,10 @@ export const ParticipantsSidebar = ({
     participantName: string;
     isLocal?: boolean;
   }) => {
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+    const currentStreamRef = React.useRef<MediaStream | null>(null);
+    const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+    
     const isSelected = selectedVideoId === streamId;
     const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
@@ -85,6 +89,54 @@ export const ParticipantsSidebar = ({
     
     // Audio visualization for this participant's stream
     const audioData = useAudioVisualizer(stream, hasAudio && !isMuted);
+
+    // Optimize video stream handling to prevent blinking
+    React.useEffect(() => {
+      const videoElement = videoRef.current;
+      if (!videoElement || !stream) {
+        setIsVideoLoaded(false);
+        return;
+      }
+
+      // Only update srcObject if the stream actually changed
+      if (currentStreamRef.current !== stream) {
+        currentStreamRef.current = stream;
+        videoElement.srcObject = stream;
+        setIsVideoLoaded(false);
+        
+        const handleLoadedMetadata = () => {
+          setIsVideoLoaded(true);
+        };
+
+        const handleError = () => {
+          setIsVideoLoaded(false);
+        };
+
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.addEventListener('error', handleError);
+
+        // Play video with proper error handling
+        const playVideo = async () => {
+          try {
+            if (videoElement.readyState >= 2) {
+              await videoElement.play();
+            }
+          } catch (error) {
+            // Silently handle autoplay restrictions
+            console.warn('Video play failed for participant:', participantName, error);
+          }
+        };
+
+        // Add delay to prevent race conditions
+        const timeoutId = setTimeout(playVideo, 100);
+
+        return () => {
+          clearTimeout(timeoutId);
+          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement.removeEventListener('error', handleError);
+        };
+      }
+    }, [stream, participantName]);
 
     return (
       <Card 
@@ -98,22 +150,27 @@ export const ParticipantsSidebar = ({
         <div className="aspect-video relative min-h-[120px]">
           {hasVideo ? (
             <video
-              ref={(video) => {
-                if (video && stream) {
-                  video.srcObject = stream;
-                  video.play().catch(console.warn);
-                }
-              }}
+              ref={videoRef}
               autoPlay
               playsInline
               muted={isLocal}
-              className="w-full h-full object-cover rounded-lg"
+              preload="metadata"
+              webkit-playsinline="true"
+              x5-playsinline="true"
+              x5-video-player-type="h5"
+              x5-video-player-fullscreen="true"
+              className={`w-full h-full object-cover rounded-lg transition-opacity duration-200 ${
+                isVideoLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg">
-              <User className="h-8 w-8 text-slate-400" />
-            </div>
-          )}
+          ) : null}
+          
+          {/* Fallback content - always rendered but controlled by video visibility */}
+          <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg transition-opacity duration-200 ${
+            hasVideo && isVideoLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}>
+            <User className="h-8 w-8 text-slate-400" />
+          </div>
 
           {/* Status indicators */}
           <div className="absolute top-2 right-2 flex flex-col space-y-1">

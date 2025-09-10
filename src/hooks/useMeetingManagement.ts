@@ -353,6 +353,22 @@ export const useMeetingManagement = () => {
     return meeting.host_id === user?.id;
   };
 
+  // Track participant leaving
+  const updateParticipantLeaveTime = async (participantId: string) => {
+    try {
+      const { error } = await supabase
+        .from('meeting_participants')
+        .update({ left_at: new Date().toISOString() })
+        .eq('id', participantId);
+
+      if (error) {
+        console.error('Error updating participant leave time:', error);
+      }
+    } catch (error) {
+      console.error('Error updating participant leave time:', error);
+    }
+  };
+
   return {
     meetings,
     participants,
@@ -362,6 +378,7 @@ export const useMeetingManagement = () => {
     joinAsHost,
     fetchParticipants,
     toggleMuteParticipant,
+    updateParticipantLeaveTime,
     removeMeeting,
     fetchMeetings,
     isUserHost

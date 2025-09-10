@@ -1,9 +1,10 @@
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { Card } from '@/components/ui/card';
-import { Clock, Users, Wifi, WifiOff, Circle, Square } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Users, Wifi, WifiOff, Signal, User } from 'lucide-react';
 import { useMeetingRecording } from '@/hooks/useMeetingRecording';
+import { ParticipationReportButton } from '@/components/ParticipationReportButton';
 
 interface MeetingFeaturesProps {
   participantCount: number;
@@ -20,10 +21,10 @@ export const MeetingFeatures = ({
   connectionQuality,
   meetingId
 }: MeetingFeaturesProps) => {
-  const [meetingDuration, setMeetingDuration] = useState('00:00');
+  const [meetingDuration, setMeetingDuration] = React.useState('00:00');
   const { isRecording, startRecording, stopRecording } = useMeetingRecording(meetingId, isHost || false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const updateDuration = () => {
       const now = new Date();
       const diff = now.getTime() - meetingStartTime.getTime();
@@ -46,30 +47,6 @@ export const MeetingFeatures = ({
     }
   };
 
-  const getConnectionIcon = () => {
-    switch (connectionQuality) {
-      case 'good': return <Wifi className="h-4 w-4 text-green-400" />;
-      case 'poor': return <Wifi className="h-4 w-4 text-yellow-400" />;
-      case 'offline': return <WifiOff className="h-4 w-4 text-red-400" />;
-    }
-  };
-
-  const getConnectionColor = () => {
-    switch (connectionQuality) {
-      case 'good': return 'text-green-400';
-      case 'poor': return 'text-yellow-400'; 
-      case 'offline': return 'text-red-400';
-    }
-  };
-
-  const getConnectionText = () => {
-    switch (connectionQuality) {
-      case 'good': return 'Good';
-      case 'poor': return 'Poor';
-      case 'offline': return 'Offline';
-    }
-  };
-
   return (
     <Card className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-xl border-white/20 p-3 z-30 rounded-xl">
       <div className="flex items-center space-x-4 text-sm">
@@ -84,36 +61,39 @@ export const MeetingFeatures = ({
         </div>
         
         <div className="flex items-center space-x-1">
-          {getConnectionIcon()}
-          <span className={`${getConnectionColor()}`}>
-            {getConnectionText()}
-          </span>
+          {connectionQuality === 'good' && <Wifi className="h-4 w-4 text-green-400" />}
+          {connectionQuality === 'poor' && <Wifi className="h-4 w-4 text-yellow-400" />}
+          {connectionQuality === 'offline' && <WifiOff className="h-4 w-4 text-red-400" />}
+          <Badge variant="outline" className={`text-xs ${
+            connectionQuality === 'good' ? 'text-green-400 border-green-400/40' :
+            connectionQuality === 'poor' ? 'text-yellow-400 border-yellow-400/40' :
+            'text-red-400 border-red-400/40'
+          }`}>
+            <Signal className="h-3 w-3 mr-1" />
+            {connectionQuality === 'good' ? 'Good' :
+             connectionQuality === 'poor' ? 'Poor' : 'Offline'}
+          </Badge>
         </div>
 
-        {isHost && (
-          <Button
-            onClick={toggleRecording}
-            variant="outline"
-            size="sm"
-            className={`h-8 px-2 ${
-              isRecording 
-                ? 'bg-red-500/20 border-red-400 text-red-300 hover:bg-red-500/30' 
-                : 'bg-white/20 border-white/30 text-white hover:bg-white/30'
-            }`}
-          >
-            {isRecording ? (
-              <>
-                <Square className="h-3 w-3 mr-1" />
-                Stop
-              </>
-            ) : (
-              <>
-                <Circle className="h-3 w-3 mr-1" />
-                Record
-              </>
-            )}
-          </Button>
-        )}
+        {/* Recording indicator and Report Download */}
+        <div className="flex items-center space-x-2">
+          {isRecording && (
+            <div className="flex items-center space-x-1">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-red-400 font-medium">REC</span>
+            </div>
+          )}
+          
+          {/* Only show report button if user is host */}
+          {isHost && (
+            <ParticipationReportButton 
+              meetingId={meetingId} 
+              meetingTitle={`Meeting ${meetingId}`}
+              variant="ghost"
+              size="sm"
+            />
+          )}
+        </div>
       </div>
     </Card>
   );

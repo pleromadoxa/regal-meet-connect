@@ -102,6 +102,7 @@ export const VideoConference = ({
     toggleMuteParticipant,
     joinMeeting,
     joinAsHost,
+    updateParticipantLeaveTime,
     isUserHost
   } = useMeetingManagement();
 
@@ -282,6 +283,10 @@ export const VideoConference = ({
   };
 
   const handleLeaveMeeting = () => {
+    // Update participant leave time before leaving
+    if (currentParticipantId) {
+      updateParticipantLeaveTime(currentParticipantId);
+    }
     localStorage.removeItem('currentMeeting');
     cleanup();
     onLeaveMeeting();
