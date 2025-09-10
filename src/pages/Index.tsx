@@ -63,6 +63,9 @@ const Index = () => {
             Connect Beyond
             <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent"> Distance</span>
           </h1>
+          <p className="text-xl md:text-2xl text-slate-300 mb-6 font-medium">
+            Powered By the LoveWorld Teens and Youth Ministry
+          </p>
           <p className="text-lg md:text-xl text-slate-300 mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed px-4">
             Experience crystal-clear video conferences with real-time captions, 
             seamless screen sharing, and enterprise-grade security. 
