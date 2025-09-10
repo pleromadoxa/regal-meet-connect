@@ -39,7 +39,10 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         });
         onAuthSuccess();
       } else {
-        const redirectUrl = `${window.location.origin}/`;
+        // Use the live domain for email redirects
+        const redirectUrl = window.location.hostname === 'localhost' 
+          ? `${window.location.origin}/` 
+          : 'http://meeting.lwteensministrytrainingportal.org/';
         
         const { error } = await supabase.auth.signUp({
           email,
