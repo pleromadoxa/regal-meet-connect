@@ -76,14 +76,33 @@ export const SpeakerView = ({
       {hasVideo ? (
         <video
           ref={(video) => {
-            if (video && selectedStream.stream) {
-              video.srcObject = selectedStream.stream;
-              video.play().catch(console.warn);
+            if (video && selectedStream.stream && video.srcObject !== selectedStream.stream) {
+              const playVideo = async () => {
+                try {
+                  video.srcObject = selectedStream.stream;
+                  if (video.readyState >= 2) {
+                    await video.play();
+                  }
+                } catch (error) {
+                  // Suppress AbortError as it's normal during stream updates
+                  if (error instanceof Error && !error.message.includes('AbortError')) {
+                    console.warn('Speaker video play failed:', error);
+                  }
+                }
+              };
+              
+              // Use requestAnimationFrame to prevent glitching
+              requestAnimationFrame(() => playVideo());
             }
           }}
           autoPlay
           playsInline
           muted={selectedStream.isLocal}
+          preload="metadata"
+          webkit-playsinline="true"
+          x5-playsinline="true"
+          x5-video-player-type="h5"
+          x5-video-player-fullscreen="true"
           className="w-full h-full object-cover"
         />
       ) : (

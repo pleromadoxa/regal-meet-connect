@@ -1,38 +1,44 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 export const usePageVisibility = () => {
   const [isVisible, setIsVisible] = useState(!document.hidden);
   const [visibilityState, setVisibilityState] = useState(document.visibilityState);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLogRef = useRef<number>(0);
 
   const handleVisibilityChange = useCallback(() => {
-    setIsVisible(!document.hidden);
-    setVisibilityState(document.visibilityState);
+    const newVisible = !document.hidden;
+    const newVisibilityState = document.visibilityState;
     
-    console.log('Page visibility changed:', {
-      hidden: document.hidden,
-      visibilityState: document.visibilityState
-    });
+    // Debounce rapid changes to prevent video glitching
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      setIsVisible(newVisible);
+      setVisibilityState(newVisibilityState);
+      
+      // Throttle logging to prevent spam (max once per 2 seconds)
+      const now = Date.now();
+      if (now - lastLogRef.current > 2000) {
+        console.log('Page visibility changed:', {
+          hidden: document.hidden,
+          visibilityState: document.visibilityState
+        });
+        lastLogRef.current = now;
+      }
+    }, 100); // 100ms debounce to prevent rapid changes
   }, []);
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Also listen for window focus/blur events
-    const handleFocus = () => {
-      console.log('Window focused');
-    };
-    
-    const handleBlur = () => {
-      console.log('Window blurred');
-    };
-
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
     };
   }, [handleVisibilityChange]);
 

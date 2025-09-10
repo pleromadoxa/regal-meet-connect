@@ -20,52 +20,64 @@ export const useBackgroundMeeting = ({
   const heartbeatRef = useRef<number | null>(null);
   const connectionCheckRef = useRef<number | null>(null);
 
-  // Handle visibility changes
+  // Handle visibility changes with debounce to prevent rapid state changes
+  const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVisibilityRef = useRef<boolean>(isVisible);
+  
   useEffect(() => {
-    onVisibilityChange?.(isVisible);
+    // Only process visibility changes if they're actually different
+    if (lastVisibilityRef.current === isVisible) return;
     
-    if (!isVisible) {
-      console.log('Meeting moved to background - maintaining connection');
-      
-      if (enableWakeLock && !isWakeLockActive) {
-        requestWakeLock().then((success) => {
-          if (success) {
-            toast({
-              title: "Meeting Active",
-              description: "Screen will stay awake during the meeting",
-              duration: 3000,
-            });
-          }
-        });
-      }
-      
-      // Start heartbeat to keep connection alive
-      if (maintainConnection && !heartbeatRef.current) {
-        startHeartbeat();
-      }
-    } else {
-      console.log('Meeting returned to foreground');
-      stopHeartbeat();
+    // Clear previous timeout to debounce rapid changes
+    if (visibilityTimeoutRef.current) {
+      clearTimeout(visibilityTimeoutRef.current);
     }
+    
+    visibilityTimeoutRef.current = setTimeout(() => {
+      lastVisibilityRef.current = isVisible;
+      onVisibilityChange?.(isVisible);
+      
+      if (!isVisible) {
+        console.log('Meeting moved to background - maintaining connection');
+        
+        if (enableWakeLock && !isWakeLockActive) {
+          requestWakeLock().then((success) => {
+            if (success) {
+              toast({
+                title: "Meeting Active",
+                description: "Screen will stay awake during the meeting",
+                duration: 3000,
+              });
+            }
+          });
+        }
+        
+        // Start heartbeat to keep connection alive
+        if (maintainConnection && !heartbeatRef.current) {
+          startHeartbeat();
+        }
+      } else {
+        console.log('Meeting returned to foreground');
+        stopHeartbeat();
+      }
+    }, 200); // 200ms debounce to prevent rapid visibility changes
   }, [isVisible, enableWakeLock, isWakeLockActive, maintainConnection, onVisibilityChange, requestWakeLock, toast]);
 
   const startHeartbeat = useCallback(() => {
-    // Send periodic heartbeats to prevent connection timeout
+    // Send periodic heartbeats to prevent connection timeout (less frequent to reduce interference)
     heartbeatRef.current = window.setInterval(() => {
       // Dispatch a custom event to keep WebRTC connections alive
       window.dispatchEvent(new CustomEvent('meeting-heartbeat', {
         detail: { timestamp: Date.now(), hidden: !isVisible }
       }));
-      
-      console.log('Meeting heartbeat sent');
-    }, 5000); // Send heartbeat every 5 seconds
+    }, 10000); // Send heartbeat every 10 seconds (less frequent)
     
-    // Also perform connection checks
+    // Also perform connection checks (less frequent)
     connectionCheckRef.current = window.setInterval(() => {
       window.dispatchEvent(new CustomEvent('meeting-connection-check', {
         detail: { timestamp: Date.now() }
       }));
-    }, 15000); // Check connection every 15 seconds
+    }, 30000); // Check connection every 30 seconds (less frequent)
   }, [isVisible]);
 
   const stopHeartbeat = useCallback(() => {
@@ -104,6 +116,9 @@ export const useBackgroundMeeting = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+      }
       stopHeartbeat();
       releaseWakeLock();
     };

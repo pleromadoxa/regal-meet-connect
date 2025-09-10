@@ -201,7 +201,7 @@ export const ResponsiveVideoGrid = ({
             videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
             videoElement.removeEventListener('error', handleError);
           };
-        }, 50); // Small debounce to prevent rapid updates
+        }, 150); // Longer debounce to prevent rapid updates and video glitching
 
         return () => clearTimeout(updateTimeout);
       }
