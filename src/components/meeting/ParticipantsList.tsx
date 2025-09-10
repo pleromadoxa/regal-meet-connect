@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -165,7 +164,7 @@ export const ParticipantsList = ({
     }
   };
 
-  const handleRemoveParticipant = async (participant: Participant) => {
+  const handleRemoveUser = async (participant: Participant) => {
     if (!isCurrentUserHost || participant.user_id === currentUserId) return;
 
     try {
@@ -190,15 +189,15 @@ export const ParticipantsList = ({
         prev.filter(p => p.id !== participant.id)
       );
 
-      // Send signaling to notify the participant they've been removed
+      // Send signaling to participant to disconnect
       const channel = supabase.channel(`meeting-remove-${participant.user_id}`);
       channel.send({
         type: 'broadcast',
-        event: 'participant-removed',
+        event: 'user-removed',
         payload: {
           participantId: participant.user_id,
           fromHost: true,
-          reason: 'Removed by host'
+          message: 'You have been removed from the meeting by the host'
         }
       });
 
@@ -208,7 +207,7 @@ export const ParticipantsList = ({
       });
 
     } catch (error) {
-      console.error('Error in handleRemoveParticipant:', error);
+      console.error('Error in handleRemoveUser:', error);
       toast({
         title: "Error",
         description: "Failed to remove participant",
@@ -312,7 +311,7 @@ export const ParticipantsList = ({
 
             {/* Host Controls */}
             {canMute && (
-              <div className="flex space-x-1">
+              <>
                 <Button
                   onClick={() => handleMuteToggle(participant)}
                   variant="outline"
@@ -322,7 +321,7 @@ export const ParticipantsList = ({
                   {participant.is_muted ? 'Unmute' : 'Mute'}
                 </Button>
                 <Button
-                  onClick={() => handleRemoveParticipant(participant)}
+                  onClick={() => handleRemoveUser(participant)}
                   variant="outline"
                   size="sm"
                   className="h-8 w-8 p-0 text-xs bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
@@ -330,7 +329,7 @@ export const ParticipantsList = ({
                 >
                   <UserX className="h-3 w-3" />
                 </Button>
-              </div>
+              </>
             )}
 
             {/* Contact Actions for Host */}
@@ -372,7 +371,7 @@ export const ParticipantsList = ({
             {isCurrentUserHost && (
               <p className="text-xs text-slate-400 mt-1">
                 <Shield className="h-3 w-3 inline mr-1" />
-                As host, you can see contact details and mute participants
+                As host, you can mute and remove participants
               </p>
             )}
           </div>

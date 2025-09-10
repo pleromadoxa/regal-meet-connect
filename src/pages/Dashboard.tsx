@@ -72,7 +72,7 @@ const Dashboard = () => {
     navigate(`/meeting/${roomId}?${params.toString()}`);
   };
 
-  const handleJoinRecentMeeting = (meetingId: string, isHost: boolean, title?: string) => {
+  const handleJoinRecentMeeting = (meetingId: string, title: string, isHost: boolean) => {
     const userName = profile?.display_name || user?.email || (isHost ? 'Host' : 'User');
     const params = new URLSearchParams({
       userName,
@@ -135,8 +135,7 @@ const Dashboard = () => {
           <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
         </div>
 
-        {/* Recent Meetings */}
-        <div className="mb-8 md:mb-12">
+        <div className="mb-8">
           <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
         </div>
 

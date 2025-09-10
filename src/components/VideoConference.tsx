@@ -20,6 +20,7 @@ import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -42,6 +43,7 @@ export const VideoConference = ({
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
+  const { addRecentMeeting } = useRecentMeetings();
 
   const {
     selectedVideoId,
@@ -192,7 +194,7 @@ export const VideoConference = ({
             ? await joinAsHost(meetingId, userName)
             : await joinMeeting(meetingId, userName);
           
-          if (result) {
+            if (result) {
             let participantId: string;
             let meeting: any;
             
@@ -202,6 +204,8 @@ export const VideoConference = ({
               setCurrentMeeting(meeting);
               console.log('Host joined successfully, fetching participants');
               fetchParticipants(meeting.id);
+              // Track as recent meeting
+              addRecentMeeting(meetingId, meeting.title, true);
             } else if (!isHost && 'id' in result) {
               participantId = result.id;
               setCurrentParticipantId(participantId);
@@ -216,6 +220,8 @@ export const VideoConference = ({
               if (meetingData) {
                 setCurrentMeeting(meetingData);
                 fetchParticipants(meetingData.id);
+                // Track as recent meeting
+                addRecentMeeting(meetingId, meetingData.title, false);
               }
             } else {
               console.error('Unexpected result structure:', result);
