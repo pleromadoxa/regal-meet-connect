@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { User, Mic, MicOff, Crown } from 'lucide-react';
 
@@ -97,71 +97,113 @@ export const ResponsiveVideoGrid = ({
   }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-    const participantInfo = getParticipantInfo(participantName, isLocal);
+    const currentStreamRef = useRef<MediaStream | null>(null);
     
-    const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
-    const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+    // Memoize participant info to prevent unnecessary re-renders
+    const participantInfo = useMemo(() => 
+      getParticipantInfo(participantName, isLocal), 
+      [participantName, isLocal, participants, userName, isCurrentUserHost, localStream]
+    );
+    
+    // Memoize video/audio track states to prevent frequent recalculation
+    const trackStates = useMemo(() => {
+      if (!stream) return { hasVideo: false, hasAudio: false };
+      
+      const videoTracks = stream.getVideoTracks();
+      const audioTracks = stream.getAudioTracks();
+      
+      return {
+        hasVideo: videoTracks.length > 0 && videoTracks[0].enabled,
+        hasAudio: audioTracks.length > 0 && audioTracks[0].enabled
+      };
+    }, [stream]);
+
+    const { hasVideo, hasAudio } = trackStates;
     
     useEffect(() => {
       const videoElement = videoRef.current;
-      if (!videoElement || !stream || !hasVideo) return;
+      if (!videoElement || !stream) {
+        setIsVideoLoaded(false);
+        return;
+      }
 
-      if (videoElement.srcObject !== stream) {
+      // Only update srcObject if the stream actually changed
+      if (currentStreamRef.current !== stream) {
+        currentStreamRef.current = stream;
         videoElement.srcObject = stream;
+        setIsVideoLoaded(false);
         
         const handleLoadedMetadata = () => {
           setIsVideoLoaded(true);
         };
 
+        const handleError = (error: Event) => {
+          console.warn('Video error:', error);
+          setIsVideoLoaded(false);
+        };
+
         videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+        videoElement.addEventListener('error', handleError);
 
         const playVideo = async () => {
           try {
-            await videoElement.play();
+            if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
+              await videoElement.play();
+            }
           } catch (error) {
-            console.warn('Video play failed:', error);
+            // Silently handle autoplay restrictions
+            if (error instanceof Error && !error.message.includes('AbortError')) {
+              console.warn('Video play failed:', error);
+            }
           }
         };
 
-        playVideo();
+        // Add a small delay to prevent race conditions
+        const timeoutId = setTimeout(playVideo, 100);
 
         return () => {
+          clearTimeout(timeoutId);
           videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement.removeEventListener('error', handleError);
         };
       }
-    }, [stream, hasVideo]);
+    }, [stream]); // Only depend on stream, not hasVideo
 
+    // Always render video element but control visibility with CSS
     return (
       <Card className="relative overflow-hidden bg-slate-800/90 border border-slate-600/60 hover:border-slate-500/60 transition-all duration-200 aspect-video">
-         {hasVideo && isVideoLoaded ? (
-           <video
-             ref={videoRef}
-             autoPlay
-             playsInline
-             muted={isLocal}
-             preload="metadata"
-             webkit-playsinline="true"
-             x5-playsinline="true"
-             x5-video-player-type="h5"
-             x5-video-player-fullscreen="true"
-             className="w-full h-full object-cover"
-           />
-         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-            <div className="flex flex-col items-center">
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-slate-600 rounded-full flex items-center justify-center mb-2">
-                <User className="h-4 w-4 sm:h-6 sm:w-6 text-slate-300" />
-              </div>
-              <span className="text-xs sm:text-sm text-slate-300 font-medium truncate max-w-full px-2">
-                {participantInfo.name}
-                {isLocal && " (You)"}
-              </span>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocal}
+          preload="metadata"
+          webkit-playsinline="true"
+          x5-playsinline="true"
+          x5-video-player-type="h5"
+          x5-video-player-fullscreen="true"
+          className={`w-full h-full object-cover transition-opacity duration-200 ${
+            hasVideo && isVideoLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+        
+        {/* Fallback content - always rendered but controlled by video visibility */}
+        <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 transition-opacity duration-200 ${
+          hasVideo && isVideoLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}>
+          <div className="flex flex-col items-center">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-slate-600 rounded-full flex items-center justify-center mb-2">
+              <User className="h-4 w-4 sm:h-6 sm:w-6 text-slate-300" />
             </div>
+            <span className="text-xs sm:text-sm text-slate-300 font-medium truncate max-w-full px-2">
+              {participantInfo.name}
+              {isLocal && " (You)"}
+            </span>
           </div>
-        )}
+        </div>
 
         {/* Status indicators */}
-        <div className="absolute top-2 right-2 flex space-x-1">
+        <div className="absolute top-2 right-2 flex space-x-1 z-10">
           {!hasAudio && (
             <div className="p-1 bg-red-500/90 rounded-full">
               <MicOff className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
@@ -175,7 +217,7 @@ export const ResponsiveVideoGrid = ({
         </div>
 
         {/* Name overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 z-10">
           <div className="flex items-center justify-between">
             <span className="text-white text-xs sm:text-sm font-medium truncate pr-2">
               {participantInfo.name}
