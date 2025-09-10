@@ -8,6 +8,7 @@ import { CreateMeetingCard } from '@/components/dashboard/CreateMeetingCard';
 import { QuickJoinCard } from '@/components/dashboard/QuickJoinCard';
 import { RecentMeetingsCard } from '@/components/dashboard/RecentMeetingsCard';
 import { MeetingList } from '@/components/MeetingList';
+import { Footer } from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
@@ -109,43 +110,48 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-hero">
-      <div className="container mx-auto px-4 py-6 md:py-8 safe-area-inset-top safe-area-inset-bottom">
-        <DashboardHeader 
-          displayName={profile?.display_name || ''}
-          userEmail={user?.email || ''}
-          isRefreshing={loading}
-          onRefreshMeetings={fetchMeetings}
-          onNavigateToSettings={() => navigate('/settings')}
-          onSignOut={signOut}
-        />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
-          <ProfileCard 
-            userName={profile?.display_name || ''}
-            displayName={displayName}
+    <div className="min-h-screen gradient-hero flex flex-col">
+      <div className="flex-1">
+        <div className="container mx-auto px-4 py-6 md:py-8 safe-area-inset-top safe-area-inset-bottom">
+          <DashboardHeader 
+            displayName={profile?.display_name || ''}
             userEmail={user?.email || ''}
-            isEditingProfile={isEditingProfile}
-            onSetUserName={setDisplayName}
-            onSetDisplayName={setDisplayName}
-            onSetIsEditingProfile={setIsEditingProfile}
-            onUpdateProfile={handleUpdateProfile}
+            isRefreshing={loading}
+            onRefreshMeetings={fetchMeetings}
+            onNavigateToSettings={() => navigate('/settings')}
+            onSignOut={signOut}
           />
-          <CreateMeetingCard />
-          <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
-        </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
+            <ProfileCard 
+              userName={profile?.display_name || ''}
+              displayName={displayName}
+              userEmail={user?.email || ''}
+              isEditingProfile={isEditingProfile}
+              onSetUserName={setDisplayName}
+              onSetDisplayName={setDisplayName}
+              onSetIsEditingProfile={setIsEditingProfile}
+              onUpdateProfile={handleUpdateProfile}
+            />
+            <CreateMeetingCard />
+            <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
+          </div>
 
-        <div className="mb-8">
-          <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
-        </div>
+          <div className="mb-8">
+            <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
+          </div>
 
-        <MeetingList 
-          meetings={meetings} 
-          loading={loading} 
-          onJoinAsHost={handleJoinAsHost}
-          onDeleteMeeting={handleDeleteMeeting}
-        />
+          <MeetingList 
+            meetings={meetings} 
+            loading={loading} 
+            onJoinAsHost={handleJoinAsHost}
+            onDeleteMeeting={handleDeleteMeeting}
+          />
+        </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

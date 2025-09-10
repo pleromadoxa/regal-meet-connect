@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Video, Users, Shield, Zap } from 'lucide-react';
 import { CreateMeetingSection } from '@/components/landing/CreateMeetingSection';
 import { QuickJoinSection } from '@/components/landing/QuickJoinSection';
+import { Footer } from '@/components/Footer';
 
 const Index = () => {
   const { user } = useAuth();
@@ -96,17 +97,7 @@ const Index = () => {
       <CreateMeetingSection />
 
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 md:py-12 border-t border-slate-700/40 safe-area-inset-bottom">
-        <div className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Video className="h-5 w-5 md:h-6 md:w-6 text-orange-400" />
-            <span className="text-lg md:text-xl font-bold text-white">Regal Meet</span>
-          </div>
-          <p className="text-slate-400 text-sm md:text-base">
-            © 2024 Regal Meet. Connecting people across the globe.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
