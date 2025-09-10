@@ -51,6 +51,8 @@ export const NewMeetingLayout = ({
           onVideoSelect={onVideoSelect}
           isCurrentUserHost={isCurrentUserHost}
           participants={participants}
+          currentUserId={currentUserId}
+          isVideoEnabled={isVideoEnabled}
         />
       </div>
     );

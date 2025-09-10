@@ -61,13 +61,16 @@ export const ResponsiveParticipantGrid = ({
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1">
-          <ParticipantGrid
+        <ParticipantGrid
             localStream={localStream}
             remoteStreams={remoteStreams}
             userName={userName}
             isVideoEnabled={isVideoEnabled}
             selectedVideoId={selectedVideoId}
             onVideoSelect={onVideoSelect}
+            participants={participants}
+            currentUserId={currentUserId}
+            isCurrentUserHost={isHost}
           />
         </div>
         
@@ -99,6 +102,9 @@ export const ResponsiveParticipantGrid = ({
           isVideoEnabled={isVideoEnabled}
           selectedVideoId={selectedVideoId}
           onVideoSelect={onVideoSelect}
+          participants={participants}
+          currentUserId={currentUserId}
+          isCurrentUserHost={isHost}
         />
       </div>
       
