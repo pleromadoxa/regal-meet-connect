@@ -32,7 +32,7 @@ interface MeetingParticipant {
 // Enhanced edge function to get location data
 const getLocationFromIP = async (): Promise<{ country?: string; city?: string; ip?: string }> => {
   try {
-    // Use the same log-activity function that already gets location data
+    // Use the log-activity function with the special action for location info
     const { data, error } = await supabase.functions.invoke('log-activity', {
       body: {
         action: 'get_location_info',
@@ -174,6 +174,7 @@ export const useMeetingManagement = () => {
       
       // Get user location data
       const locationData = await getLocationFromIP();
+      console.log('Location data retrieved:', locationData);
       
       // Find the meeting by meeting_id (text field) - ensure we use uppercase
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();
@@ -260,6 +261,7 @@ export const useMeetingManagement = () => {
       
       // Get user location data
       const locationData = await getLocationFromIP();
+      console.log('Location data retrieved for host:', locationData);
       
       // Find the meeting and verify user is the host using meeting_id (text field)
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();

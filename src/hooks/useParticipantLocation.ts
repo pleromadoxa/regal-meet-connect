@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const useParticipantLocation = () => {
   const getLocationFromIP = useCallback(async (): Promise<{ country?: string; city?: string; ip?: string }> => {
     try {
-      // Use the log-activity edge function to get location data
+      // Use the log-activity edge function with the special action for location info
       const { data, error } = await supabase.functions.invoke('log-activity', {
         body: {
           action: 'get_location_info',

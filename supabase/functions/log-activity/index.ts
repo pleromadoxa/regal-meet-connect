@@ -10,25 +10,28 @@ interface LogActivityRequest {
   user_id?: string;
 }
 
-// Function to get country from IP using a free geolocation service
-async function getCountryFromIP(ipAddress: string): Promise<string | null> {
+// Function to get location data from IP using a free geolocation service
+async function getLocationFromIP(ipAddress: string): Promise<{ country: string | null, city: string | null }> {
   try {
     // Skip if it's a local/private IP
     if (ipAddress === '127.0.0.1' || ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.') || ipAddress.startsWith('172.')) {
-      return 'Local';
+      return { country: 'Local', city: null };
     }
 
     // Use ip-api.com (free service, 1000 requests per minute)
-    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=country,countryCode`);
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=country,countryCode,city,region`);
     
     if (response.ok) {
       const data = await response.json();
-      return data.country || data.countryCode || null;
+      return {
+        country: data.country || data.countryCode || null,
+        city: data.city || null
+      };
     }
   } catch (error) {
-    console.error('Error getting country from IP:', error);
+    console.error('Error getting location from IP:', error);
   }
-  return null;
+  return { country: null, city: null };
 }
 
 // Function to extract real IP from various headers
@@ -91,10 +94,32 @@ Deno.serve(async (req) => {
       
       console.log('Logging activity:', { action, user_id, ipAddress, userAgent });
 
-      // Get country from IP address
+      // Get location data from IP address
       let country: string | null = null;
+      let city: string | null = null;
       if (ipAddress && ipAddress !== 'unknown') {
-        country = await getCountryFromIP(ipAddress);
+        const locationData = await getLocationFromIP(ipAddress);
+        country = locationData.country;
+        city = locationData.city;
+      }
+
+      // Special case for getting location info without logging
+      if (action === 'get_location_info') {
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            data: {
+              ip_address: ipAddress,
+              country: country,
+              city: city,
+              user_agent: userAgent
+            }
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
 
       // Insert log entry with all available information
@@ -130,6 +155,7 @@ Deno.serve(async (req) => {
             id: data.id,
             ip_address: ipAddress,
             country: country,
+            city: city,
             user_agent: userAgent
           }
         }),
