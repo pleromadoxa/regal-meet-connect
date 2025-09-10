@@ -98,9 +98,12 @@ export const SessionManager = () => {
 
   // Clear session when user signs out
   useEffect(() => {
-    if (!user) {
+    if (!user && hasCheckedSessionRef.current) {
+      // User has signed out, clear all meeting data
       hasCheckedSessionRef.current = false;
       localStorage.removeItem('currentMeeting');
+      localStorage.removeItem('recentMeetings');
+      console.log('User signed out, cleared all meeting sessions');
     }
   }, [user]);
 

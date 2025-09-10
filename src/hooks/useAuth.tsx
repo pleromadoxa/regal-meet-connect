@@ -129,7 +129,35 @@ export const useAuth = () => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Clear all stored meeting data first
+      localStorage.removeItem('currentMeeting');
+      localStorage.removeItem('recentMeetings');
+      
+      // Clear any other app-specific storage
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('meeting-') || key.includes('participant')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error:', error);
+        throw error;
+      }
+      
+      // Force redirect to landing page after successful sign out
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Even if there's an error, try to clear local state and redirect
+      localStorage.clear();
+      window.location.href = '/';
+    }
   };
 
   return {

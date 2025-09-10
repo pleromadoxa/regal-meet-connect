@@ -142,8 +142,14 @@ const Settings = () => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      // The useAuth hook now handles navigation, so we don't need manual navigation here
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Force navigation as fallback
+      navigate('/');
+    }
   };
 
   return (

@@ -9,7 +9,7 @@ import { QuickJoinSection } from '@/components/landing/QuickJoinSection';
 import { Footer } from '@/components/Footer';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,22 +36,45 @@ const Index = () => {
             <span className="text-xl md:text-2xl font-bold text-white">Regal Meet</span>
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="text-white hover:text-orange-400 hidden sm:flex"
-              onClick={() => navigate('/auth')}
-            >
-              Sign In
-            </Button>
-            <Button 
-              variant="premium"
-              size="sm"
-              onClick={() => navigate('/auth')}
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-3 w-3 md:h-4 md:w-4" />
-            </Button>
+            {user ? (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:text-orange-400 hidden sm:flex"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Dashboard
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="border-white/20 text-white hover:bg-white/10"
+                  onClick={signOut}
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:text-orange-400 hidden sm:flex"
+                  onClick={() => navigate('/auth')}
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  variant="premium"
+                  size="sm"
+                  onClick={() => navigate('/auth')}
+                >
+                  Get Started
+                  <ArrowRight className="ml-2 h-3 w-3 md:h-4 md:w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </nav>
       </header>

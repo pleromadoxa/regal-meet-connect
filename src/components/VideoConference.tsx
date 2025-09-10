@@ -337,12 +337,24 @@ export const VideoConference = ({
   };
 
   const handleSignOut = async () => {
-    // End background meeting management
-    endBackgroundMeeting();
-    
-    localStorage.removeItem('currentMeeting');
-    cleanup();
-    await signOut();
+    try {
+      // End background meeting management first
+      endBackgroundMeeting();
+      
+      // Clear meeting session immediately
+      localStorage.removeItem('currentMeeting');
+      localStorage.removeItem('recentMeetings');
+      
+      // Cleanup WebRTC connections
+      cleanup();
+      
+      // Sign out using the hook function (which handles navigation)
+      await signOut();
+    } catch (error) {
+      console.error('Error during meeting sign out:', error);
+      // Force navigation even if there's an error
+      window.location.href = '/';
+    }
   };
 
   const handleVideoSelect = (streamId: string) => {
