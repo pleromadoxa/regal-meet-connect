@@ -126,11 +126,18 @@ export const ResponsiveVideoGrid = ({
       if (!videoElement || !stream) {
         if (!stream && currentStreamRef.current) {
           // Clean up when stream is removed
-          videoElement?.pause();
-          if (videoElement) videoElement.srcObject = null;
-          currentStreamRef.current = null;
-          streamIdRef.current = '';
-          setIsVideoLoaded(false);
+          const cleanup = () => {
+            if (videoElement) {
+              videoElement.pause();
+              videoElement.srcObject = null;
+            }
+            currentStreamRef.current = null;
+            streamIdRef.current = '';
+            setIsVideoLoaded(false);
+          };
+          
+          // Use requestAnimationFrame to prevent race conditions
+          requestAnimationFrame(cleanup);
         }
         return;
       }
@@ -138,48 +145,61 @@ export const ResponsiveVideoGrid = ({
       // Only update srcObject if the stream ID actually changed
       const currentStreamId = stream.id || streamId;
       if (streamIdRef.current !== currentStreamId || currentStreamRef.current !== stream) {
-        streamIdRef.current = currentStreamId;
-        currentStreamRef.current = stream;
-        
-        // Prevent flickering by checking if video element is already playing this stream
-        if (videoElement.srcObject !== stream) {
-          videoElement.srcObject = stream;
-          setIsVideoLoaded(false);
+        // Prevent rapid updates by using a debounce-like approach
+        const updateTimeout = setTimeout(() => {
+          if (!videoElement || videoElement.srcObject === stream) return;
+          
+          streamIdRef.current = currentStreamId;
+          currentStreamRef.current = stream;
           
           const handleLoadedMetadata = () => {
             setIsVideoLoaded(true);
           };
 
           const handleError = (error: Event) => {
-            console.warn('Video error:', error);
+            // Suppress AbortError logs as they're normal during stream updates
+            if (error instanceof ErrorEvent && !error.message.includes('AbortError')) {
+              console.warn('Video error:', error);
+            }
             setIsVideoLoaded(false);
           };
 
-          videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-          videoElement.addEventListener('error', handleError);
+          videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+          videoElement.addEventListener('error', handleError, { once: true });
+
+          // Set stream and attempt play in a more controlled way
+          videoElement.srcObject = stream;
+          setIsVideoLoaded(false);
 
           const playVideo = async () => {
             try {
-              if (videoElement.readyState >= 2) {
-                await videoElement.play();
+              if (videoElement.readyState >= 2 && videoElement.srcObject === stream) {
+                const playPromise = videoElement.play();
+                if (playPromise) {
+                  await playPromise;
+                }
               }
             } catch (error) {
+              // Only log non-AbortError issues
               if (error instanceof Error && !error.message.includes('AbortError')) {
                 console.warn('Video play failed:', error);
               }
             }
           };
 
-          const timeoutId = setTimeout(playVideo, 50);
+          // Use longer timeout to allow stream to stabilize
+          const playTimeout = setTimeout(playVideo, 100);
 
           return () => {
-            clearTimeout(timeoutId);
+            clearTimeout(playTimeout);
             videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
             videoElement.removeEventListener('error', handleError);
           };
-        }
+        }, 50); // Small debounce to prevent rapid updates
+
+        return () => clearTimeout(updateTimeout);
       }
-    }, [stream, streamId]);
+    }, [stream?.id, streamId]); // More stable dependencies
 
     // Always render video element but control visibility with CSS
     return (

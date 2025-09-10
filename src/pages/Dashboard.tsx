@@ -22,9 +22,14 @@ const Dashboard = () => {
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
+    // Only redirect to auth if we're not loading and definitely have no user
     if (!authLoading && !user) {
-      navigate('/auth');
-      return;
+      // Add a small delay to prevent race conditions on refresh
+      const timeoutId = setTimeout(() => {
+        navigate('/auth', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
     
     if (user) {
