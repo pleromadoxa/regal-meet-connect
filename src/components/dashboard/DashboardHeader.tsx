@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button';
 import { Crown, RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AdminAccessButton } from '@/components/AdminAccessButton';
 
 interface DashboardHeaderProps {
   displayName: string;
@@ -39,6 +40,7 @@ export const DashboardHeader = ({
       </div>
 
       <div className="flex items-center justify-end lg:justify-start gap-2 lg:gap-4 overflow-x-auto">
+        <AdminAccessButton />
         <Button
           onClick={onRefreshMeetings}
           disabled={isRefreshing}
