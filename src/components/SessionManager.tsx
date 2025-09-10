@@ -28,8 +28,11 @@ export const SessionManager = () => {
           // Check if session is still valid and user matches
           if (timeElapsed < sessionTimeout && meetingData.userId === user.id) {
             console.log('Resuming previous meeting session:', meetingData);
-            // Navigate back to the meeting
-            navigate(`/meeting/${meetingData.meetingId}?userName=${encodeURIComponent(meetingData.userName)}&isHost=${meetingData.isHost}`);
+            // Only navigate if not already in a meeting
+            if (!window.location.pathname.includes('/meeting/')) {
+              // Navigate back to the meeting
+              navigate(`/meeting/${meetingData.meetingId}?userName=${encodeURIComponent(meetingData.userName)}&isHost=${meetingData.isHost}`);
+            }
           } else {
             // Clear expired session
             localStorage.removeItem('currentMeeting');
