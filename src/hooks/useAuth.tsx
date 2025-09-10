@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 
 interface Profile {
   id: string;
@@ -15,6 +16,7 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const { logUserSignIn, logUserSignOut } = usePlatformLogging();
 
   useEffect(() => {
     let mounted = true;
@@ -39,6 +41,11 @@ export const useAuth = () => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           setSession(session);
           setUser(session?.user ?? null);
+          
+          // Log sign-in activity when it's actually a sign-in (not token refresh)
+          if (event === 'SIGNED_IN') {
+            setTimeout(() => logUserSignIn(), 1000); // Delay to ensure user state is set
+          }
           
           if (session?.user) {
             // Only fetch profile if we don't already have it or if user changed
@@ -130,6 +137,11 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      // Log sign out before clearing state
+      if (user) {
+        await logUserSignOut();
+      }
+      
       // Clear all stored meeting data first
       localStorage.removeItem('currentMeeting');
       localStorage.removeItem('recentMeetings');

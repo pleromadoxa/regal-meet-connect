@@ -276,11 +276,19 @@ export const useAdmin = () => {
     if (!user) return;
 
     try {
-      await supabase.rpc('log_platform_usage', {
-        _user_id: user.id,
-        _action: action,
-        _country: country
+      // Use the enhanced edge function for better logging
+      const { data, error } = await supabase.functions.invoke('log-activity', {
+        body: {
+          action,
+          user_id: user.id
+        }
       });
+
+      if (error) {
+        console.error('Error logging action:', error);
+      } else {
+        console.log('Action logged with enhanced data:', data);
+      }
     } catch (error) {
       console.error('Error logging action:', error);
     }

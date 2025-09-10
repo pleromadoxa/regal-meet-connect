@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -12,6 +12,7 @@ import { Footer } from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 
 const Dashboard = () => {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const { logPageView, logMeetingJoin, logMeetingCreate } = usePlatformLogging();
 
   useEffect(() => {
     // Only redirect to auth if we're not loading and definitely have no user
@@ -34,8 +36,10 @@ const Dashboard = () => {
     
     if (user) {
       fetchMeetings();
+      // Log page view
+      logPageView('dashboard');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, fetchMeetings, logPageView]);
 
   useEffect(() => {
     if (profile?.display_name) {
@@ -75,6 +79,9 @@ const Dashboard = () => {
     // Add to recent meetings
     addRecentMeeting(roomId, `Meeting ${roomId}`, hostStatus || false);
     
+    // Log meeting join
+    logMeetingJoin(roomId);
+    
     navigate(`/meeting/${roomId}?${params.toString()}`);
   };
 
@@ -95,6 +102,8 @@ const Dashboard = () => {
     const userName = profile?.display_name || user?.email || 'Host';
     // Add to recent meetings
     addRecentMeeting(meetingId, title, true);
+    // Log meeting creation/join as host
+    logMeetingCreate(meetingId);
     handleJoinMeeting(userName, meetingId, true);
   };
 

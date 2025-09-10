@@ -1,9 +1,9 @@
-
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 
 const Meeting = () => {
   const { meetingId } = useParams<{ meetingId: string }>();
@@ -15,6 +15,7 @@ const Meeting = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const { validateMeetingId } = useMeetingValidation();
   const hasValidatedRef = useRef(false);
+  const { logPageView, logMeetingJoin } = usePlatformLogging();
 
   const userName = searchParams.get('userName') || '';
   const isHost = searchParams.get('host') === 'true';
@@ -44,6 +45,11 @@ const Meeting = () => {
           
           if (isValid) {
             console.log('Meeting ID is valid, proceeding to meeting');
+            // Log meeting page view
+            logPageView(`meeting/${meetingId}`);
+            if (meetingId) {
+              logMeetingJoin(meetingId);
+            }
             setIsReady(true);
           } else {
             console.log('Meeting ID validation failed');
@@ -68,7 +74,7 @@ const Meeting = () => {
 
       validateAndProceed();
     }
-  }, [user, loading, navigate, meetingId, userName, validateMeetingId]);
+  }, [user, loading, navigate, meetingId, userName, validateMeetingId, logPageView, logMeetingJoin]);
 
   const handleLeaveMeeting = () => {
     // Clear meeting session when intentionally leaving
