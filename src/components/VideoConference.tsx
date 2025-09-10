@@ -21,6 +21,8 @@ import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
+import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
+import { BackgroundMeetingIndicator } from '@/components/BackgroundMeetingIndicator';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -126,6 +128,30 @@ export const VideoConference = ({
   useHandRaiseNotifications(meetingId, userName, setHandNotifications);
   const { toggleFullscreen } = useFullscreenHandler(setIsFullscreen);
   useConnectionQuality(connectedPeers, dbParticipants, setConnectionQuality);
+
+  // Background meeting management
+  const {
+    isVisible,
+    visibilityState,
+    isWakeLockActive,
+    startMeeting: startBackgroundMeeting,
+    endMeeting: endBackgroundMeeting
+  } = useBackgroundMeeting({
+    onVisibilityChange: (visible) => {
+      console.log('Meeting visibility changed:', visible);
+      
+      if (!visible) {
+        // Meeting moved to background - maintain minimal updates
+        toast({
+          title: "Meeting in Background",
+          description: "Meeting will continue running while minimized",
+          duration: 3000,
+        });
+      }
+    },
+    enableWakeLock: true,
+    maintainConnection: true
+  });
 
   // Enhanced toggle functions that broadcast state and return the new state
   const enhancedToggleVideo = async (): Promise<boolean> => {
@@ -248,8 +274,15 @@ export const VideoConference = ({
       };
       
       joinMeetingDb();
+      
+      // Start background meeting management
+      startBackgroundMeeting();
     }
-    return () => cleanup();
+    return () => {
+      // End background meeting management before cleanup
+      endBackgroundMeeting();
+      cleanup();
+    };
   }, [meetingId, user?.id, isHost]);
 
   useEffect(() => {
@@ -287,12 +320,19 @@ export const VideoConference = ({
     if (currentParticipantId) {
       updateParticipantLeaveTime(currentParticipantId);
     }
+    
+    // End background meeting management
+    endBackgroundMeeting();
+    
     localStorage.removeItem('currentMeeting');
     cleanup();
     onLeaveMeeting();
   };
 
   const handleSignOut = async () => {
+    // End background meeting management
+    endBackgroundMeeting();
+    
     localStorage.removeItem('currentMeeting');
     cleanup();
     await signOut();
@@ -441,6 +481,18 @@ export const VideoConference = ({
           selectedVideoId={selectedVideoId}
         />
       )}
+
+      {/* Background Meeting Indicator */}
+      <BackgroundMeetingIndicator
+        isWakeLockActive={isWakeLockActive}
+        connectionQuality={
+          connectionQuality.level === 'excellent' || connectionQuality.level === 'good' 
+            ? 'good' 
+            : connectionQuality.level === 'poor' || connectionQuality.level === 'fair'
+            ? 'poor'
+            : 'offline'
+        }
+      />
     </div>
   );
 };

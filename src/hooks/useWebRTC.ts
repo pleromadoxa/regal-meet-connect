@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useWebRTCSignaling } from './useWebRTCSignaling';
 import { useNetworkOptimization } from './useNetworkOptimization';
 import { useBandwidthAware } from './useBandwidthAware';
+import { usePageVisibility } from './usePageVisibility';
 
 interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
@@ -53,10 +54,64 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     cleanup: cleanupSignaling 
   } = useWebRTCSignaling(meetingId, userId, userName);
 
+  // Page visibility for background handling
+  const { isVisible } = usePageVisibility();
+
   // Update connected peers from signaling
   useEffect(() => {
     setConnectedPeers(Array.from(signalingPeers));
   }, [signalingPeers]);
+
+  // Handle background state changes
+  useEffect(() => {
+    const handleBackgroundStateChange = () => {
+      if (!isVisible) {
+        console.log('Meeting moved to background - maintaining WebRTC connections');
+        
+        // Keep connections alive with periodic ICE connectivity checks
+        peerConnectionsRef.current.forEach((pc, peerId) => {
+          if (pc.connectionState === 'connected') {
+            // Force ICE connectivity check to keep connection alive
+            pc.getStats().then(stats => {
+              console.log(`Background stats check for ${peerId}:`, stats.size);
+            }).catch(err => {
+              console.warn(`Background stats check failed for ${peerId}:`, err);
+            });
+          }
+        });
+      } else {
+        console.log('Meeting returned to foreground');
+      }
+    };
+
+    // Listen for custom heartbeat events
+    const handleHeartbeat = () => {
+      if (!isVisible) {
+        handleBackgroundStateChange();
+      }
+    };
+
+    // Listen for connection check events
+    const handleConnectionCheck = () => {
+      peerConnectionsRef.current.forEach((pc, peerId) => {
+        if (pc.connectionState !== 'connected') {
+          console.warn(`Connection issue detected for ${peerId}:`, pc.connectionState);
+          // Attempt to restart ICE if connection is degraded
+          if (pc.connectionState === 'disconnected') {
+            pc.restartIce();
+          }
+        }
+      });
+    };
+
+    window.addEventListener('meeting-heartbeat', handleHeartbeat);
+    window.addEventListener('meeting-connection-check', handleConnectionCheck);
+
+    return () => {
+      window.removeEventListener('meeting-heartbeat', handleHeartbeat);
+      window.removeEventListener('meeting-connection-check', handleConnectionCheck);
+    };
+  }, [isVisible]);
 
   useEffect(() => {
     if (!meetingId || !userName || !userId) return;
