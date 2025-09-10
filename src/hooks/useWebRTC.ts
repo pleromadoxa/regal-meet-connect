@@ -620,6 +620,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     currentAudioDevice,
     currentVideoDevice,
     connectedPeers,
+    peerUserNames,
     toggleVideo,
     toggleAudio,
     switchCamera,

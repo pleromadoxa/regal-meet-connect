@@ -76,7 +76,8 @@ export const VideoConference = ({
     handleDeviceChange,
     initialize,
     cleanup,
-    connectedPeers
+    connectedPeers,
+    peerUserNames
   } = useWebRTC(meetingId, userName, user?.id || '');
 
   // Meeting state management for synchronization
@@ -93,7 +94,10 @@ export const VideoConference = ({
   const remoteStreamsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({
     id,
     stream,
-    userName: stateParticipants.find(p => p.userId === id)?.userName || `User ${id.slice(0, 8)}`
+    userName: peerUserNames?.get(id) || 
+             stateParticipants.find(p => p.userId === id)?.userName || 
+             dbParticipants.find(p => p.user_id === id)?.user_name ||
+             `User ${id.slice(0, 8)}`
   }));
 
   const { 
