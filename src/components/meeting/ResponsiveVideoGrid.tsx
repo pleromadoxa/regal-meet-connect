@@ -84,7 +84,7 @@ export const ResponsiveVideoGrid = ({
     ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
   ];
 
-  const VideoTile = ({ 
+  const VideoTile = useCallback(({ 
     stream, 
     streamId, 
     participantName, 
@@ -98,14 +98,15 @@ export const ResponsiveVideoGrid = ({
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     const currentStreamRef = useRef<MediaStream | null>(null);
+    const streamIdRef = useRef<string>('');
     
-    // Memoize participant info to prevent unnecessary re-renders
+    // Memoize participant info with stable dependencies
     const participantInfo = useMemo(() => 
       getParticipantInfo(participantName, isLocal), 
-      [participantName, isLocal, participants, userName, isCurrentUserHost, localStream]
+      [participantName, isLocal]
     );
     
-    // Memoize video/audio track states to prevent frequent recalculation
+    // Memoize video/audio track states with stream ID tracking
     const trackStates = useMemo(() => {
       if (!stream) return { hasVideo: false, hasAudio: false };
       
@@ -116,58 +117,69 @@ export const ResponsiveVideoGrid = ({
         hasVideo: videoTracks.length > 0 && videoTracks[0].enabled,
         hasAudio: audioTracks.length > 0 && audioTracks[0].enabled
       };
-    }, [stream]);
+    }, [stream?.id, streamId]);
 
     const { hasVideo, hasAudio } = trackStates;
     
     useEffect(() => {
       const videoElement = videoRef.current;
       if (!videoElement || !stream) {
-        setIsVideoLoaded(false);
+        if (!stream && currentStreamRef.current) {
+          // Clean up when stream is removed
+          videoElement?.pause();
+          if (videoElement) videoElement.srcObject = null;
+          currentStreamRef.current = null;
+          streamIdRef.current = '';
+          setIsVideoLoaded(false);
+        }
         return;
       }
 
-      // Only update srcObject if the stream actually changed
-      if (currentStreamRef.current !== stream) {
+      // Only update srcObject if the stream ID actually changed
+      const currentStreamId = stream.id || streamId;
+      if (streamIdRef.current !== currentStreamId || currentStreamRef.current !== stream) {
+        streamIdRef.current = currentStreamId;
         currentStreamRef.current = stream;
-        videoElement.srcObject = stream;
-        setIsVideoLoaded(false);
         
-        const handleLoadedMetadata = () => {
-          setIsVideoLoaded(true);
-        };
-
-        const handleError = (error: Event) => {
-          console.warn('Video error:', error);
+        // Prevent flickering by checking if video element is already playing this stream
+        if (videoElement.srcObject !== stream) {
+          videoElement.srcObject = stream;
           setIsVideoLoaded(false);
-        };
+          
+          const handleLoadedMetadata = () => {
+            setIsVideoLoaded(true);
+          };
 
-        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoElement.addEventListener('error', handleError);
+          const handleError = (error: Event) => {
+            console.warn('Video error:', error);
+            setIsVideoLoaded(false);
+          };
 
-        const playVideo = async () => {
-          try {
-            if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA
-              await videoElement.play();
+          videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+          videoElement.addEventListener('error', handleError);
+
+          const playVideo = async () => {
+            try {
+              if (videoElement.readyState >= 2) {
+                await videoElement.play();
+              }
+            } catch (error) {
+              if (error instanceof Error && !error.message.includes('AbortError')) {
+                console.warn('Video play failed:', error);
+              }
             }
-          } catch (error) {
-            // Silently handle autoplay restrictions
-            if (error instanceof Error && !error.message.includes('AbortError')) {
-              console.warn('Video play failed:', error);
-            }
-          }
-        };
+          };
 
-        // Add a small delay to prevent race conditions
-        const timeoutId = setTimeout(playVideo, 100);
+          const timeoutId = setTimeout(playVideo, 50);
 
-        return () => {
-          clearTimeout(timeoutId);
-          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-          videoElement.removeEventListener('error', handleError);
-        };
+          return () => {
+            clearTimeout(timeoutId);
+            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            videoElement.removeEventListener('error', handleError);
+          };
+        }
       }
-    }, [stream]); // Only depend on stream, not hasVideo
+    }, [stream, streamId]);
 
     // Always render video element but control visibility with CSS
     return (
@@ -233,7 +245,7 @@ export const ResponsiveVideoGrid = ({
         </div>
       </Card>
     );
-  };
+  }, []);
 
   return (
     <div className="h-full w-full p-2 sm:p-4 pb-20 sm:pb-24">
