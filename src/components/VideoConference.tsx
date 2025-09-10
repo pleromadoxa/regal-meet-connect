@@ -23,6 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
 import { BackgroundMeetingIndicator } from '@/components/BackgroundMeetingIndicator';
+import { MeetingDebugInfo } from '@/components/MeetingDebugInfo';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -45,6 +46,7 @@ export const VideoConference = ({
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
 
   const {
@@ -221,6 +223,7 @@ export const VideoConference = ({
             ? await joinAsHost(meetingId, userName)
             : await joinMeeting(meetingId, userName);
           
+          console.log('Join meeting result:', result);
             if (result) {
             let participantId: string;
             let meeting: any;
@@ -229,7 +232,7 @@ export const VideoConference = ({
               participantId = result.participant.id;
               meeting = result.meeting;
               setCurrentMeeting(meeting);
-              console.log('Host joined successfully, fetching participants');
+              console.log('Host joined successfully, fetching participants for meeting UUID:', meeting.id);
               fetchParticipants(meeting.id);
               // Track as recent meeting
               addRecentMeeting(meetingId, meeting.title, true);
@@ -238,17 +241,21 @@ export const VideoConference = ({
               setCurrentParticipantId(participantId);
               console.log('Participant joined successfully, finding meeting');
               
-              const { data: meetingData } = await supabase
+              const { data: meetingData, error: meetingError } = await supabase
                 .from('meetings')
                 .select('*')
                 .eq('meeting_id', meetingId)
                 .single();
-              
+               
+              console.log('Meeting data fetch:', { meetingData, meetingError });
               if (meetingData) {
                 setCurrentMeeting(meetingData);
+                console.log('Fetching participants for meeting UUID:', meetingData.id);
                 fetchParticipants(meetingData.id);
                 // Track as recent meeting
                 addRecentMeeting(meetingId, meetingData.title, false);
+              } else {
+                console.error('Could not find meeting data for meetingId:', meetingId);
               }
             } else {
               console.error('Unexpected result structure:', result);
@@ -492,6 +499,19 @@ export const VideoConference = ({
             ? 'poor'
             : 'offline'
         }
+      />
+
+      {/* Debug Info Component */}
+      <MeetingDebugInfo
+        meetingId={meetingId}
+        userName={userName}
+        isHost={isHost}
+        currentUserId={user?.id || ''}
+        participants={stateParticipants}
+        dbParticipants={dbParticipants}
+        currentMeeting={currentMeeting}
+        isVisible={showDebugInfo}
+        onToggle={() => setShowDebugInfo(!showDebugInfo)}
       />
     </div>
   );

@@ -51,8 +51,14 @@ export const ParticipantsList = ({
 
   // Update participants when props change
   useEffect(() => {
+    console.log('ParticipantsList: Props changed', {
+      initialParticipants: initialParticipants.length,
+      isCurrentUserHost,
+      currentUserId,
+      meetingId
+    });
     setParticipants(initialParticipants);
-  }, [initialParticipants]);
+  }, [initialParticipants, isCurrentUserHost, currentUserId, meetingId]);
 
   const handleMuteToggle = async (participant: Participant) => {
     if (!isCurrentUserHost) {
@@ -146,23 +152,37 @@ export const ParticipantsList = ({
     joined_at: new Date().toISOString()
   };
 
-  const allParticipants = [
-    currentUserParticipant,
-    ...participants.filter(p => p.user_id !== currentUserId)
-  ];
+  // Get all participants including current user, but avoid duplicates
+  const allParticipants = React.useMemo(() => {
+    const existingParticipant = participants.find(p => p.user_id === currentUserId);
+    if (existingParticipant) {
+      // Update existing participant with current host status
+      return participants.map(p => 
+        p.user_id === currentUserId 
+          ? { ...p, is_host: isCurrentUserHost }
+          : p
+      );
+    } else {
+      // Add current user as participant
+      return [currentUserParticipant, ...participants];
+    }
+  }, [participants, currentUserId, userName, isCurrentUserHost, currentUserParticipant]);
 
   const ParticipantCard = ({ participant }: { participant: Participant }) => {
     const isCurrentUser = participant.user_id === currentUserId;
     const canViewEmail = isCurrentUserHost || isCurrentUser;
     const canMute = isCurrentUserHost && !isCurrentUser;
+    const actualIsHost = isCurrentUser ? isCurrentUserHost : participant.is_host;
     
     console.log('ParticipantCard Debug:', {
       participantName: participant.user_name,
       isCurrentUserHost,
       isCurrentUser,
       canMute,
+      actualIsHost,
       currentUserId,
       participantUserId: participant.user_id,
+      allParticipantsCount: allParticipants.length,
       urlParams: window.location.search
     });
 
@@ -178,7 +198,7 @@ export const ParticipantsList = ({
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-              participant.is_host 
+              actualIsHost 
                 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' 
                 : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white'
             }`}>
@@ -191,7 +211,7 @@ export const ParticipantsList = ({
                   {participant.user_name}
                   {isCurrentUser && " (You)"}
                 </h4>
-                {participant.is_host && (
+                {actualIsHost && (
                   <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 text-xs">
                     <Shield className="h-3 w-3 mr-1" />
                     Host
@@ -297,17 +317,17 @@ export const ParticipantsList = ({
                 {/* Host Instructions */}
                 {isCurrentUserHost && (
                   <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                    <p className="text-xs text-slate-400 mb-2 flex items-center">
-                      <Shield className="h-3 w-3 mr-1" />
-                      As host, you can mute and remove participants
-                    </p>
+                <p className="text-xs text-slate-400 mb-2 flex items-center">
+                  <Shield className="h-3 w-3 mr-1" />
+                  Host controls active - Manage participants below
+                </p>
                   </div>
                 )}
                 {!isCurrentUserHost && (
                   <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                    <p className="text-xs text-slate-500 mb-2">
-                      You are a participant. Only the host can control audio.
-                    </p>
+                  <p className="text-xs text-slate-500 mb-2">
+                    You are a participant in this meeting.
+                  </p>
                   </div>
                 )}
 
@@ -357,6 +377,14 @@ export const ParticipantsList = ({
                   />
                 ))}
 
+                {allParticipants.length === 1 && allParticipants[0].user_id === currentUserId && (
+                  <div className="text-center py-8">
+                    <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                    <p className="text-slate-400 mb-2">You're the only participant</p>
+                    <p className="text-xs text-slate-500">Share the meeting ID to invite others</p>
+                  </div>
+                )}
+                
                 {allParticipants.length === 0 && (
                   <div className="text-center py-8">
                     <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
