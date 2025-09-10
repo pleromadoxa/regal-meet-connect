@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      meeting_admins: {
+        Row: {
+          id: string
+          meeting_id: string
+          promoted_at: string | null
+          promoted_by: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          meeting_id: string
+          promoted_at?: string | null
+          promoted_by: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          meeting_id?: string
+          promoted_at?: string | null
+          promoted_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_captions: {
         Row: {
           content: string
