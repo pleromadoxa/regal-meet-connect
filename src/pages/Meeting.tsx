@@ -71,10 +71,14 @@ const Meeting = () => {
   }, [user, loading, navigate, meetingId, userName, validateMeetingId]);
 
   const handleLeaveMeeting = () => {
+    // Clear meeting session when intentionally leaving
+    localStorage.removeItem('currentMeeting');
     navigate('/dashboard');
   };
 
   const handleNavigateToDashboard = () => {
+    // Clear meeting session when navigating to dashboard
+    localStorage.removeItem('currentMeeting');
     navigate('/dashboard');
   };
 

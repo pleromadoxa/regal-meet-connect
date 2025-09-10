@@ -1,7 +1,7 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface StoredMeeting {
   meetingId: string;
@@ -14,9 +14,34 @@ interface StoredMeeting {
 export const SessionManager = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const hasCheckedSessionRef = useRef(false);
+  const navigationTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    if (user?.id) {
+    // Track when navigation happens intentionally
+    const handleBeforeUnload = () => {
+      navigationTimeRef.current = Date.now();
+    };
+
+    const handlePopState = () => {
+      navigationTimeRef.current = Date.now();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Only check session once per app load and only for authenticated users
+    if (user?.id && !hasCheckedSessionRef.current) {
+      hasCheckedSessionRef.current = true;
+      
       const storedMeeting = localStorage.getItem('currentMeeting');
       
       if (storedMeeting) {
@@ -24,26 +49,43 @@ export const SessionManager = () => {
           const meetingData: StoredMeeting = JSON.parse(storedMeeting);
           const timeElapsed = Date.now() - meetingData.timestamp;
           const sessionTimeout = 4 * 60 * 60 * 1000; // 4 hours
+          const timeSinceNavigation = Date.now() - navigationTimeRef.current;
           
           // Check if session is still valid and user matches
           if (timeElapsed < sessionTimeout && meetingData.userId === user.id) {
-            console.log('Resuming previous meeting session:', meetingData);
+            const currentPath = location.pathname;
+            const isInMeeting = currentPath.includes('/meeting/');
+            const isOnDashboard = currentPath === '/dashboard';
+            const isOnAuth = currentPath === '/auth';
+            const isOnRoot = currentPath === '/';
             
-            const currentPath = window.location.pathname;
-            const targetPath = `/meeting/${meetingData.meetingId}`;
+            // Only restore meeting session if:
+            // 1. User is not already in a meeting
+            // 2. It's been less than 2 seconds since page load (indicating a refresh, not intentional navigation)
+            // 3. User is coming from root, auth, or dashboard after a refresh
+            const isPageRefresh = timeSinceNavigation < 2000 || performance.navigation?.type === 1;
             
-            // Only navigate if not already in the target meeting or on auth/dashboard pages
-            if (!currentPath.includes(targetPath) && 
-                (currentPath === '/' || currentPath === '/dashboard' || currentPath === '/auth')) {
-              // Small delay to avoid race conditions with other navigation
+            if (!isInMeeting && isPageRefresh && (isOnRoot || isOnDashboard || isOnAuth)) {
+              console.log('Restoring meeting session after page refresh:', meetingData);
+              
+              // Small delay to ensure auth state is settled
               setTimeout(() => {
-                navigate(`${targetPath}?userName=${encodeURIComponent(meetingData.userName)}&isHost=${meetingData.isHost}`, {
+                const targetPath = `/meeting/${meetingData.meetingId}`;
+                const params = new URLSearchParams({
+                  userName: meetingData.userName,
+                  ...(meetingData.isHost && { host: 'true' })
+                });
+                
+                navigate(`${targetPath}?${params.toString()}`, {
                   replace: true
                 });
-              }, 100);
+              }, 200);
+            } else if (!isPageRefresh) {
+              console.log('Skipping session restore - user navigated intentionally');
             }
           } else {
-            // Clear expired session
+            // Clear expired or invalid session
+            console.log('Clearing expired meeting session');
             localStorage.removeItem('currentMeeting');
           }
         } catch (error) {
@@ -52,7 +94,15 @@ export const SessionManager = () => {
         }
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, location.pathname]);
+
+  // Clear session when user signs out
+  useEffect(() => {
+    if (!user) {
+      hasCheckedSessionRef.current = false;
+      localStorage.removeItem('currentMeeting');
+    }
+  }, [user]);
 
   return null;
 };

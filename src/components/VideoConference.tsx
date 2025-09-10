@@ -330,6 +330,7 @@ export const VideoConference = ({
     // End background meeting management
     endBackgroundMeeting();
     
+    // Clear meeting session when leaving intentionally
     localStorage.removeItem('currentMeeting');
     cleanup();
     onLeaveMeeting();
