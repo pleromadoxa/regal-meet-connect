@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield, Volume2 } from 'lucide-react';
+import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield, Volume2, UserX } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -165,6 +165,58 @@ export const ParticipantsList = ({
     }
   };
 
+  const handleRemoveParticipant = async (participant: Participant) => {
+    if (!isCurrentUserHost || participant.user_id === currentUserId) return;
+
+    try {
+      // Remove from database
+      const { error } = await supabase
+        .from('meeting_participants')
+        .delete()
+        .eq('id', participant.id);
+
+      if (error) {
+        console.error('Error removing participant:', error);
+        toast({
+          title: "Error",
+          description: "Failed to remove participant",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update local state immediately
+      setParticipants(prev => 
+        prev.filter(p => p.id !== participant.id)
+      );
+
+      // Send signaling to notify the participant they've been removed
+      const channel = supabase.channel(`meeting-remove-${participant.user_id}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'participant-removed',
+        payload: {
+          participantId: participant.user_id,
+          fromHost: true,
+          reason: 'Removed by host'
+        }
+      });
+
+      toast({
+        title: "Participant Removed",
+        description: `${participant.user_name} has been removed from the meeting`
+      });
+
+    } catch (error) {
+      console.error('Error in handleRemoveParticipant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove participant",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Add current user to the list if not already present
   const allParticipants = React.useMemo(() => {
     const currentUserExists = participants.find(p => p.user_id === currentUserId);
@@ -260,14 +312,25 @@ export const ParticipantsList = ({
 
             {/* Host Controls */}
             {canMute && (
-              <Button
-                onClick={() => handleMuteToggle(participant)}
-                variant="outline"
-                size="sm"
-                className="h-8 w-16 text-xs bg-slate-700/60 border-slate-600/60 hover:bg-slate-600/60"
-              >
-                {participant.is_muted ? 'Unmute' : 'Mute'}
-              </Button>
+              <div className="flex space-x-1">
+                <Button
+                  onClick={() => handleMuteToggle(participant)}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-16 text-xs bg-slate-700/60 border-slate-600/60 hover:bg-slate-600/60"
+                >
+                  {participant.is_muted ? 'Unmute' : 'Mute'}
+                </Button>
+                <Button
+                  onClick={() => handleRemoveParticipant(participant)}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-xs bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
+                  title="Remove from meeting"
+                >
+                  <UserX className="h-3 w-3" />
+                </Button>
+              </div>
             )}
 
             {/* Contact Actions for Host */}

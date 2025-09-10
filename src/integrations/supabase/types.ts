@@ -7,10 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
@@ -127,6 +127,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_history: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       platform_usage_logs: {
         Row: {
           action: string
@@ -181,6 +214,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_push_tokens: {
+        Row: {
+          created_at: string | null
+          id: string
+          platform: string
+          push_token: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          platform: string
+          push_token: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          platform?: string
+          push_token?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_recent_meetings: {
+        Row: {
+          id: string
+          is_host: boolean
+          joined_at: string
+          last_accessed: string
+          meeting_id: string
+          meeting_title: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          last_accessed?: string
+          meeting_id: string
+          meeting_title?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_host?: boolean
+          joined_at?: string
+          last_accessed?: string
+          meeting_id?: string
+          meeting_title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_by: string | null
@@ -205,6 +295,54 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          camera_default_on: boolean | null
+          created_at: string | null
+          email_notifications: boolean | null
+          id: string
+          language: string | null
+          meeting_reminders: boolean | null
+          microphone_default_on: boolean | null
+          notifications_enabled: boolean | null
+          push_notifications: boolean | null
+          sound_enabled: boolean | null
+          theme: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          camera_default_on?: boolean | null
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          meeting_reminders?: boolean | null
+          microphone_default_on?: boolean | null
+          notifications_enabled?: boolean | null
+          push_notifications?: boolean | null
+          sound_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          camera_default_on?: boolean | null
+          created_at?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          meeting_reminders?: boolean | null
+          microphone_default_on?: boolean | null
+          notifications_enabled?: boolean | null
+          push_notifications?: boolean | null
+          sound_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -212,13 +350,13 @@ export type Database = {
     Functions: {
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
       log_platform_usage: {
-        Args: { _user_id: string; _action: string; _country?: string }
+        Args: { _action: string; _country?: string; _user_id: string }
         Returns: undefined
       }
     }

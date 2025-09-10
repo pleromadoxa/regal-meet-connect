@@ -6,13 +6,16 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { ProfileCard } from '@/components/dashboard/ProfileCard';
 import { CreateMeetingCard } from '@/components/dashboard/CreateMeetingCard';
 import { QuickJoinCard } from '@/components/dashboard/QuickJoinCard';
+import { RecentMeetingsCard } from '@/components/dashboard/RecentMeetingsCard';
 import { MeetingList } from '@/components/MeetingList';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 
 const Dashboard = () => {
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const { meetings, loading, fetchMeetings, removeMeeting } = useMeetingManagement();
+  const { addRecentMeeting } = useRecentMeetings();
   const navigate = useNavigate();
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState('');
@@ -62,11 +65,30 @@ const Dashboard = () => {
       userName: name,
       ...(hostStatus && { host: 'true' })
     });
+    
+    // Add to recent meetings
+    addRecentMeeting(roomId, `Meeting ${roomId}`, hostStatus || false);
+    
     navigate(`/meeting/${roomId}?${params.toString()}`);
+  };
+
+  const handleJoinRecentMeeting = (meetingId: string, isHost: boolean, title?: string) => {
+    const userName = profile?.display_name || user?.email || (isHost ? 'Host' : 'User');
+    const params = new URLSearchParams({
+      userName,
+      ...(isHost && { host: 'true' })
+    });
+    
+    // Update recent meeting access time
+    addRecentMeeting(meetingId, title, isHost);
+    
+    navigate(`/meeting/${meetingId}?${params.toString()}`);
   };
 
   const handleJoinAsHost = (meetingId: string, title: string) => {
     const userName = profile?.display_name || user?.email || 'Host';
+    // Add to recent meetings
+    addRecentMeeting(meetingId, title, true);
     handleJoinMeeting(userName, meetingId, true);
   };
 
@@ -111,6 +133,11 @@ const Dashboard = () => {
           />
           <CreateMeetingCard />
           <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
+        </div>
+
+        {/* Recent Meetings */}
+        <div className="mb-8 md:mb-12">
+          <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
         </div>
 
         <MeetingList 
