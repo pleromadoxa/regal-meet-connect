@@ -457,6 +457,18 @@ export type Database = {
         Args: { p_joined_at: string; p_left_at?: string }
         Returns: unknown
       }
+      get_all_users_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          email_confirmed_at: string
+          id: string
+          last_sign_in_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

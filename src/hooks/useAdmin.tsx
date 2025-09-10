@@ -97,13 +97,11 @@ export const useAdmin = () => {
 
   const fetchUsers = async () => {
     try {
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+      // Get all users using the admin function
+      const { data: users, error: usersError } = await supabase.rpc('get_all_users_admin');
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
         return;
       }
 
@@ -117,14 +115,14 @@ export const useAdmin = () => {
       }
 
       // Combine the data
-      const usersWithProfiles = profiles?.map((profile: any) => ({
-        id: profile.id,
-        email: '', // We can't access auth.users directly
-        created_at: profile.created_at,
+      const usersWithProfiles = users?.map((user: any) => ({
+        id: user.id,
+        email: user.email || '',
+        created_at: user.created_at,
         profile: {
-          display_name: profile.display_name
+          display_name: user.display_name
         },
-        roles: userRoles?.filter((role: any) => role.user_id === profile.id).map((role: any) => role.role) || []
+        roles: userRoles?.filter((role: any) => role.user_id === user.id).map((role: any) => role.role) || []
       })) || [];
 
       setUsers(usersWithProfiles);
