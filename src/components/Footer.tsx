@@ -14,7 +14,7 @@ export const Footer = ({ className = "" }: FooterProps) => {
           <span className="text-lg md:text-xl font-bold text-white">Regal Meet</span>
         </div>
         <p className="text-slate-400 text-sm md:text-base">
-          © 2024 Regal Meet. Connecting people across the globe.
+          © {new Date().getFullYear()} Regal Meet. Connecting people across the globe.
         </p>
         <p className="text-slate-500 text-xs md:text-sm">
           Powered By the LoveWorld Teens and Youth Ministry
