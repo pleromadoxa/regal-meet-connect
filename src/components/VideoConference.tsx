@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { BackgroundMeetingIndicator } from '@/components/BackgroundMeetingIndicator';
 
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +48,7 @@ export const VideoConference = ({
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
+  const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
 
   const {
     selectedVideoId,
@@ -157,6 +159,8 @@ export const VideoConference = ({
   // Enhanced toggle functions that broadcast state and return the new state
   const enhancedToggleVideo = async (): Promise<boolean> => {
     const newState = await toggleVideo();
+    // Log video toggle usage
+    logFeatureUsage('toggle_video', user?.id);
     const actualNewState = typeof newState === 'boolean' ? newState : !isVideoEnabled;
     if (currentParticipantId) {
       updateParticipantVideoState(currentParticipantId, actualNewState);
@@ -166,11 +170,25 @@ export const VideoConference = ({
 
   const enhancedToggleAudio = async (): Promise<boolean> => {
     const newState = await toggleAudio();
+    // Log audio toggle usage
+    logFeatureUsage('toggle_audio', user?.id);
     const actualNewState = typeof newState === 'boolean' ? newState : !isAudioEnabled;
     if (currentParticipantId) {
       updateParticipantAudioState(currentParticipantId, actualNewState);
     }
     return actualNewState;
+  };
+
+  const enhancedToggleScreenShare = async () => {
+    await toggleScreenShare();
+    // Log screen share toggle usage
+    logFeatureUsage('toggle_screen_share', user?.id);
+  };
+
+  const enhancedToggleCaptions = () => {
+    toggleCaptions();
+    // Log captions toggle usage
+    logFeatureUsage('toggle_captions', user?.id);
   };
 
   // Convert ParticipantState to database participant format
@@ -315,6 +333,7 @@ export const VideoConference = ({
 
   const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
+    logFeatureUsage('copy_meeting_id', user?.id);
     toast({
       title: "Meeting ID Copied",
       description: "Share this ID with others to join the meeting"
@@ -322,6 +341,9 @@ export const VideoConference = ({
   };
 
   const handleLeaveMeeting = () => {
+    // Log meeting leave activity
+    logMeetingLeave(meetingId, user?.id);
+    
     // Update participant leave time before leaving
     if (currentParticipantId) {
       updateParticipantLeaveTime(currentParticipantId);
@@ -472,11 +494,11 @@ export const VideoConference = ({
           currentVideoDevice={currentVideoDevice}
           onToggleVideo={enhancedToggleVideo}
           onToggleAudio={enhancedToggleAudio}
-          onToggleScreenShare={toggleScreenShare}
+          onToggleScreenShare={enhancedToggleScreenShare}
           onSwitchCamera={switchCamera}
           onLeaveMeeting={handleLeaveMeeting}
           onDeviceChange={handleDeviceChange}
-          onToggleCaptions={toggleCaptions}
+          onToggleCaptions={enhancedToggleCaptions}
           captionsEnabled={captionsEnabled}
           userName={userName}
           meetingId={meetingId}

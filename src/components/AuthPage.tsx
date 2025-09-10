@@ -7,6 +7,7 @@ import { Crown, Mail, Lock, User } from 'lucide-react';
 import { Footer } from './Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -19,6 +20,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { logActivity } = usePlatformLogging();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +58,11 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         });
 
         if (error) throw error;
+
+        // Log user signup activity (not sign in - that's handled in useAuth)
+        if (!isLogin) {
+          setTimeout(() => logActivity('user_signup', undefined), 1000);
+        }
 
         toast({
           title: "Account Created!",

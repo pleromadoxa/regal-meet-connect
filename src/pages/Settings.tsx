@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { supabase } from '@/integrations/supabase/client';
 import { Crown, Save, User, Bell, Video, Mic, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const { logPageView, logFeatureUsage } = usePlatformLogging();
   const [settings, setSettings] = useState<UserSettings>({
     notifications_enabled: true,
     auto_join_audio: true,
@@ -55,6 +57,8 @@ const Settings = () => {
   useEffect(() => {
     loadSettings();
     loadDevices();
+    // Log page view
+    logPageView('settings', user?.id);
   }, [user]);
 
   const loadSettings = async () => {
@@ -124,6 +128,9 @@ const Settings = () => {
       };
       
       localStorage.setItem(`user_settings_${user.id}`, JSON.stringify(settingsToSave));
+
+      // Log settings save activity
+      logFeatureUsage('save_settings', user.id);
 
       toast({
         title: "Settings Saved",
