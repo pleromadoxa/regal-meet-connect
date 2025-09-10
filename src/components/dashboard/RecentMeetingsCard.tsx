@@ -1,77 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Video, Crown, User, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Clock, Video, Crown, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-
-interface RecentMeeting {
-  id: string;
-  meeting_id: string;
-  meeting_title: string | null;
-  joined_at: string;
-  last_accessed: string;
-  is_host: boolean;
-}
+import { useRecentMeetings, RecentMeeting } from '@/hooks/useRecentMeetings';
 
 interface RecentMeetingsCardProps {
   onJoinMeeting: (meetingId: string, title: string, isHost: boolean) => void;
 }
 
 export const RecentMeetingsCard = ({ onJoinMeeting }: RecentMeetingsCardProps) => {
-  const [recentMeetings, setRecentMeetings] = useState<RecentMeeting[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-      fetchRecentMeetings();
-    }
-  }, [user]);
-
-  const fetchRecentMeetings = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('user_recent_meetings')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('last_accessed', { ascending: false })
-        .limit(5);
-
-      if (error) {
-        console.error('Error fetching recent meetings:', error);
-        return;
-      }
-
-      setRecentMeetings(data || []);
-    } catch (error) {
-      console.error('Error in fetchRecentMeetings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { recentMeetings, loading, addRecentMeeting, removeRecentMeeting } = useRecentMeetings();
 
   const handleJoinRecentMeeting = async (meeting: RecentMeeting) => {
     try {
-      // Update last accessed time
-      await supabase
-        .from('user_recent_meetings')
-        .update({ last_accessed: new Date().toISOString() })
-        .eq('id', meeting.id);
-
-      // Join the meeting
+      // Update recent meeting and join
+      await addRecentMeeting(meeting.meeting_id, meeting.meeting_title || 'Recent Meeting', meeting.is_host);
       onJoinMeeting(meeting.meeting_id, meeting.meeting_title || 'Recent Meeting', meeting.is_host);
     } catch (error) {
       console.error('Error joining recent meeting:', error);
       toast({
         title: "Error",
         description: "Failed to join recent meeting",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteRecentMeeting = async (meeting: RecentMeeting, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      await removeRecentMeeting(meeting.meeting_id);
+      toast({
+        title: "Success",
+        description: "Meeting removed from recent meetings"
+      });
+    } catch (error) {
+      console.error('Error deleting recent meeting:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove meeting from recent meetings",
         variant: "destructive"
       });
     }
@@ -162,6 +135,14 @@ export const RecentMeetingsCard = ({ onJoinMeeting }: RecentMeetingsCardProps) =
                     ID: {meeting.meeting_id}
                   </p>
                 </div>
+                <Button
+                  onClick={(e) => handleDeleteRecentMeeting(meeting, e)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-slate-400 hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
               <Button
                 onClick={() => handleJoinRecentMeeting(meeting)}
