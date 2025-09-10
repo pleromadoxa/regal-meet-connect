@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { User, Mic, MicOff, Crown, MapPin } from 'lucide-react';
+import { StableVideoElement } from './StableVideoElement';
 
 interface RemoteStream {
   id: string;
@@ -57,8 +58,8 @@ export const ResponsiveVideoGrid = ({
 
   const gridConfig = getGridConfig(totalParticipants);
 
-  // Get participant info from participants array
-  const getParticipantInfo = (streamUserName: string, isLocal = false) => {
+  // Get participant info from participants array with memoization
+  const getParticipantInfo = useCallback((streamUserName: string, isLocal = false) => {
     if (isLocal) {
       return {
         name: userName,
@@ -77,10 +78,10 @@ export const ResponsiveVideoGrid = ({
       country: participant?.country,
       city: participant?.city
     };
-  };
+  }, [userName, isCurrentUserHost, localStream, participants]);
 
-  // Combine all streams for uniform handling
-  const allStreams = [
+  // Combine all streams for uniform handling - memoized
+  const allStreams = useMemo(() => [
     { 
       id: 'local', 
       stream: localStream, 
@@ -88,7 +89,7 @@ export const ResponsiveVideoGrid = ({
       isLocal: true
     },
     ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
-  ];
+  ], [localStream, remoteStreams, userName]);
 
   const VideoTile = useCallback(({ 
     stream, 
@@ -101,18 +102,15 @@ export const ResponsiveVideoGrid = ({
     participantName: string;
     isLocal?: boolean;
   }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-    const currentStreamRef = useRef<MediaStream | null>(null);
-    const streamIdRef = useRef<string>('');
     
     // Memoize participant info with stable dependencies
     const participantInfo = useMemo(() => 
       getParticipantInfo(participantName, isLocal), 
-      [participantName, isLocal]
+      [participantName, isLocal, getParticipantInfo]
     );
     
-    // Memoize video/audio track states with stream ID tracking
+    // Memoize video/audio track states
     const trackStates = useMemo(() => {
       if (!stream) return { hasVideo: false, hasAudio: false };
       
@@ -123,103 +121,18 @@ export const ResponsiveVideoGrid = ({
         hasVideo: videoTracks.length > 0 && videoTracks[0].enabled,
         hasAudio: audioTracks.length > 0 && audioTracks[0].enabled
       };
-    }, [stream?.id, streamId]);
+    }, [stream?.id, stream?.getVideoTracks()?.length, stream?.getAudioTracks()?.length]);
 
     const { hasVideo, hasAudio } = trackStates;
     
-    useEffect(() => {
-      const videoElement = videoRef.current;
-      if (!videoElement || !stream) {
-        if (!stream && currentStreamRef.current) {
-          // Clean up when stream is removed
-          const cleanup = () => {
-            if (videoElement) {
-              videoElement.pause();
-              videoElement.srcObject = null;
-            }
-            currentStreamRef.current = null;
-            streamIdRef.current = '';
-            setIsVideoLoaded(false);
-          };
-          
-          // Use requestAnimationFrame to prevent race conditions
-          requestAnimationFrame(cleanup);
-        }
-        return;
-      }
-
-      // Only update srcObject if the stream ID actually changed
-      const currentStreamId = stream.id || streamId;
-      if (streamIdRef.current !== currentStreamId || currentStreamRef.current !== stream) {
-        // Prevent rapid updates by using a debounce-like approach
-        const updateTimeout = setTimeout(() => {
-          if (!videoElement || videoElement.srcObject === stream) return;
-          
-          streamIdRef.current = currentStreamId;
-          currentStreamRef.current = stream;
-          
-          const handleLoadedMetadata = () => {
-            setIsVideoLoaded(true);
-          };
-
-          const handleError = (error: Event) => {
-            // Suppress AbortError logs as they're normal during stream updates
-            if (error instanceof ErrorEvent && !error.message.includes('AbortError')) {
-              console.warn('Video error:', error);
-            }
-            setIsVideoLoaded(false);
-          };
-
-          videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-          videoElement.addEventListener('error', handleError, { once: true });
-
-          // Set stream and attempt play in a more controlled way
-          videoElement.srcObject = stream;
-          setIsVideoLoaded(false);
-
-          const playVideo = async () => {
-            try {
-              if (videoElement.readyState >= 2 && videoElement.srcObject === stream) {
-                const playPromise = videoElement.play();
-                if (playPromise) {
-                  await playPromise;
-                }
-              }
-            } catch (error) {
-              // Only log non-AbortError issues
-              if (error instanceof Error && !error.message.includes('AbortError')) {
-                console.warn('Video play failed:', error);
-              }
-            }
-          };
-
-          // Use longer timeout to allow stream to stabilize
-          const playTimeout = setTimeout(playVideo, 100);
-
-          return () => {
-            clearTimeout(playTimeout);
-            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            videoElement.removeEventListener('error', handleError);
-          };
-        }, 150); // Longer debounce to prevent rapid updates and video glitching
-
-        return () => clearTimeout(updateTimeout);
-      }
-    }, [stream?.id, streamId]); // More stable dependencies
-
-    // Always render video element but control visibility with CSS
     return (
       <Card className="relative overflow-hidden bg-slate-800/90 border border-slate-600/60 hover:border-slate-500/60 transition-all duration-200 aspect-video">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          preload="metadata"
-          webkit-playsinline="true"
-          x5-playsinline="true"
-          x5-video-player-type="h5"
-          x5-video-player-fullscreen="true"
+        <StableVideoElement
+          stream={stream}
+          streamId={streamId}
+          isLocal={isLocal}
+          onLoadedMetadata={() => setIsVideoLoaded(true)}
+          onError={() => setIsVideoLoaded(false)}
           className={`w-full h-full object-cover transition-opacity duration-200 ${
             hasVideo && isVideoLoaded ? 'opacity-100' : 'opacity-0'
           }`}
@@ -285,7 +198,7 @@ export const ResponsiveVideoGrid = ({
         </div>
       </Card>
     );
-  }, []);
+  }, [getParticipantInfo]);
 
   return (
     <div className="h-full w-full p-2 sm:p-4 pb-20 sm:pb-24">

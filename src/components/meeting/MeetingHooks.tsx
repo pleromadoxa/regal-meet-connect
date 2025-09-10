@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -98,12 +97,10 @@ export const useHandRaiseNotifications = (
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [meetingId, userName, toast, setHandNotifications]);
+  }, [meetingId, userName, setHandNotifications, toast]);
 };
 
 export const useFullscreenHandler = (setIsFullscreen: (fullscreen: boolean) => void) => {
-  const { toast } = useToast();
-
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -114,12 +111,7 @@ export const useFullscreenHandler = (setIsFullscreen: (fullscreen: boolean) => v
         setIsFullscreen(false);
       }
     } catch (error) {
-      console.error('Error toggling fullscreen:', error);
-      toast({
-        title: "Fullscreen Error",
-        description: "Unable to toggle fullscreen mode",
-        variant: "destructive"
-      });
+      console.error('Fullscreen toggle failed:', error);
     }
   };
 
@@ -140,44 +132,52 @@ export const useConnectionQuality = (
   participants: any[],
   setConnectionQuality: (quality: 'good' | 'poor' | 'offline') => void
 ) => {
+  // Reduce frequency of connection checks to prevent performance issues
   useEffect(() => {
-    const checkConnection = () => {
-      if (!navigator.onLine) {
-        setConnectionQuality('offline');
-        return;
-      }
-
-      const totalExpectedPeers = participants.length > 0 ? participants.length - 1 : 0;
+    let timeoutId: NodeJS.Timeout;
+    
+    const checkConnectionQuality = () => {
+      const totalExpectedPeers = Math.max(0, participants.length - 1); // -1 for current user
       const connectedPeerCount = connectedPeers.length;
-      
-      console.log('Connection check:', { 
-        totalExpectedPeers, 
-        connectedPeerCount, 
-        participantsLength: participants.length,
-        isOnline: navigator.onLine 
-      });
+      const isOnline = navigator.onLine;
 
-      if (totalExpectedPeers === 0) {
-        setConnectionQuality('good');
-      } else if (connectedPeerCount === totalExpectedPeers) {
-        setConnectionQuality('good');
-      } else if (connectedPeerCount > 0) {
-        setConnectionQuality('poor');
-      } else {
-        setConnectionQuality('poor');
+      // Only log occasionally to reduce spam
+      if (Math.random() < 0.1) { // Log 10% of the time
+        console.log('Connection check:', {
+          totalExpectedPeers,
+          connectedPeerCount,
+          participantsLength: participants.length,
+          isOnline
+        });
       }
+
+      let quality: 'good' | 'poor' | 'offline';
+
+      if (!isOnline) {
+        quality = 'offline';
+      } else if (totalExpectedPeers === 0) {
+        quality = 'good'; // Solo meeting
+      } else if (connectedPeerCount >= totalExpectedPeers * 0.8) {
+        quality = 'good'; // At least 80% connected
+      } else {
+        quality = 'poor';
+      }
+
+      setConnectionQuality(quality);
     };
 
-    checkConnection();
-    const interval = setInterval(checkConnection, 3000);
+    // Initial check
+    checkConnectionQuality();
 
+    // Set up interval with longer delay to reduce overhead
+    const intervalId = setInterval(checkConnectionQuality, 10000); // Every 10 seconds instead of 5
+
+    // Handle online/offline events
     const handleOnline = () => {
-      console.log('Browser back online');
       setConnectionQuality('good');
     };
-    
+
     const handleOffline = () => {
-      console.log('Browser went offline');
       setConnectionQuality('offline');
     };
 
@@ -185,9 +185,10 @@ export const useConnectionQuality = (
     window.addEventListener('offline', handleOffline);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [connectedPeers.length, participants.length, setConnectionQuality]);
+  }, [connectedPeers.length, participants.length, setConnectionQuality]); // More stable dependencies
 };

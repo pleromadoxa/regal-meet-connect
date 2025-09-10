@@ -1,7 +1,7 @@
-
-import React, { useRef, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Mic, MicOff, Video, VideoOff, MapPin } from 'lucide-react';
 import { ParticipantState } from '@/hooks/useMeetingState';
+import { StableVideoElement } from './StableVideoElement';
 
 interface ParticipantVideoProps {
   participant?: ParticipantState;
@@ -26,17 +26,20 @@ export const ParticipantVideo = ({
   onClick,
   showControls = true
 }: ParticipantVideoProps) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Memoize computed values to prevent unnecessary re-renders
+  const computedValues = useMemo(() => {
+    const displayVideoEnabled = participant?.isVideoEnabled ?? isVideoEnabled;
+    const displayAudioEnabled = participant?.isAudioEnabled ?? isAudioEnabled;
+    const displayName = participant?.userName || userName;
 
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
+    return {
+      displayVideoEnabled,
+      displayAudioEnabled,
+      displayName
+    };
+  }, [participant?.isVideoEnabled, participant?.isAudioEnabled, participant?.userName, isVideoEnabled, isAudioEnabled, userName]);
 
-  const displayVideoEnabled = participant?.isVideoEnabled ?? isVideoEnabled;
-  const displayAudioEnabled = participant?.isAudioEnabled ?? isAudioEnabled;
-  const displayName = participant?.userName || userName;
+  const { displayVideoEnabled, displayAudioEnabled, displayName } = computedValues;
 
   return (
     <div 
@@ -46,16 +49,10 @@ export const ParticipantVideo = ({
       onClick={onClick}
     >
       {displayVideoEnabled && stream ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocalUser}
-          preload="metadata"
-          webkit-playsinline="true"
-          x5-playsinline="true"
-          x5-video-player-type="h5"
-          x5-video-player-fullscreen="true"
+        <StableVideoElement
+          stream={stream}
+          streamId={stream.id || 'participant-video'}
+          isLocal={isLocalUser}
           className="w-full h-full object-cover"
         />
       ) : (

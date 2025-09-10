@@ -1,8 +1,7 @@
-
 import React from 'react';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Video, VideoOff, Crown, User, MapPin } from 'lucide-react';
+import { StableVideoElement } from './StableVideoElement';
 
 interface RemoteStream {
   id: string;
@@ -74,35 +73,10 @@ export const SpeakerView = ({
   return (
     <div className="flex-1 relative bg-slate-900 rounded-2xl overflow-hidden shadow-2xl">
       {hasVideo ? (
-        <video
-          ref={(video) => {
-            if (video && selectedStream.stream && video.srcObject !== selectedStream.stream) {
-              const playVideo = async () => {
-                try {
-                  video.srcObject = selectedStream.stream;
-                  if (video.readyState >= 2) {
-                    await video.play();
-                  }
-                } catch (error) {
-                  // Suppress AbortError as it's normal during stream updates
-                  if (error instanceof Error && !error.message.includes('AbortError')) {
-                    console.warn('Speaker video play failed:', error);
-                  }
-                }
-              };
-              
-              // Use requestAnimationFrame to prevent glitching
-              requestAnimationFrame(() => playVideo());
-            }
-          }}
-          autoPlay
-          playsInline
-          muted={selectedStream.isLocal}
-          preload="metadata"
-          webkit-playsinline="true"
-          x5-playsinline="true"
-          x5-video-player-type="h5"
-          x5-video-player-fullscreen="true"
+        <StableVideoElement
+          stream={selectedStream.stream}
+          streamId={selectedVideoId}
+          isLocal={selectedStream.isLocal}
           className="w-full h-full object-cover"
         />
       ) : (
