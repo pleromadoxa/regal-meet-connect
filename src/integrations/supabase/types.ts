@@ -115,7 +115,10 @@ export type Database = {
       }
       meeting_participants: {
         Row: {
+          city: string | null
+          country: string | null
           id: string
+          ip_address: string | null
           is_host: boolean
           is_muted: boolean
           joined_at: string
@@ -125,7 +128,10 @@ export type Database = {
           user_name: string
         }
         Insert: {
+          city?: string | null
+          country?: string | null
           id?: string
+          ip_address?: string | null
           is_host?: boolean
           is_muted?: boolean
           joined_at?: string
@@ -135,7 +141,10 @@ export type Database = {
           user_name: string
         }
         Update: {
+          city?: string | null
+          country?: string | null
           id?: string
+          ip_address?: string | null
           is_host?: boolean
           is_muted?: boolean
           joined_at?: string

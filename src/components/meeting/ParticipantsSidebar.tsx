@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { User, Mic, MicOff, Crown, Volume2, VolumeX } from 'lucide-react';
+import { User, Mic, MicOff, Crown, Volume2, VolumeX, MapPin } from 'lucide-react';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
 import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
 
@@ -36,33 +36,26 @@ export const ParticipantsSidebar = ({
   currentUserId,
   onToggleMute
 }: ParticipantsSidebarProps) => {
-  // Check if participant is host
-  const isParticipantHost = (participantName: string) => {
+  // Check if participant is host and get location info
+  const getParticipantInfo = (participantName: string) => {
     const participant = participants.find(p => p.user_name === participantName);
-    return participant?.is_host || false;
-  };
-
-  // Check if participant is muted
-  const isParticipantMuted = (participantName: string) => {
-    const participant = participants.find(p => p.user_name === participantName);
-    return participant?.is_muted || false;
-  };
-
-  // Get participant ID for mute controls
-  const getParticipantId = (participantName: string) => {
-    const participant = participants.find(p => p.user_name === participantName);
-    return participant?.id || participant?.user_id;
+    return {
+      isHost: participant?.is_host || false,
+      isMuted: participant?.is_muted || false,
+      id: participant?.id || participant?.user_id,
+      country: participant?.country,
+      city: participant?.city
+    };
   };
 
   // Handle mute toggle
   const handleMuteToggle = (participantName: string, streamId: string) => {
     if (!isCurrentUserHost || !onToggleMute) return;
     
-    const participantId = getParticipantId(participantName);
-    const isMuted = isParticipantMuted(participantName);
+    const participantInfo = getParticipantInfo(participantName);
     
-    if (participantId) {
-      onToggleMute(participantId, !isMuted);
+    if (participantInfo.id) {
+      onToggleMute(participantInfo.id, !participantInfo.isMuted);
     }
   };
 
@@ -81,11 +74,15 @@ export const ParticipantsSidebar = ({
     const currentStreamRef = React.useRef<MediaStream | null>(null);
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     
+    const participantInfo = isLocal 
+      ? { isHost: isCurrentUserHost, isMuted: false, country: undefined, city: undefined }
+      : getParticipantInfo(participantName);
+    
     const isSelected = selectedVideoId === streamId;
     const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
     const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
-    const isHost = isLocal ? isCurrentUserHost : isParticipantHost(participantName);
-    const isMuted = isLocal ? false : isParticipantMuted(participantName);
+    const isHost = participantInfo.isHost;
+    const isMuted = participantInfo.isMuted;
     
     // Audio visualization for this participant's stream
     const audioData = useAudioVisualizer(stream, hasAudio && !isMuted);
@@ -164,6 +161,20 @@ export const ParticipantsSidebar = ({
               }`}
             />
           ) : null}
+          
+          {/* Location display - top left corner */}
+          {(participantInfo.country || participantInfo.city) && !isLocal && (
+            <div className="absolute top-2 left-2 z-20">
+              <div className="flex items-center space-x-1 bg-black/70 backdrop-blur-sm rounded-md px-2 py-1">
+                <MapPin className="h-3 w-3 text-white/80" />
+                <span className="text-white/90 text-xs font-medium">
+                  {participantInfo.city && participantInfo.country 
+                    ? `${participantInfo.city}, ${participantInfo.country}`
+                    : participantInfo.country || participantInfo.city}
+                </span>
+              </div>
+            </div>
+          )}
           
           {/* Fallback content - always rendered but controlled by video visibility */}
           <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg transition-opacity duration-200 ${

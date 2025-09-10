@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Video, VideoOff, Crown, User } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Crown, User, MapPin } from 'lucide-react';
 
 interface RemoteStream {
   id: string;
@@ -55,13 +55,21 @@ export const SpeakerView = ({
     selectedStream.stream.getAudioTracks().length > 0 && 
     selectedStream.stream.getAudioTracks()[0].enabled;
 
-  // Check if participant is host
-  const isParticipantHost = (participantName: string) => {
+  // Check if participant is host and get location info
+  const getParticipantInfo = (participantName: string) => {
     const participant = participants.find(p => p.user_name === participantName);
-    return participant?.is_host || false;
+    return {
+      isHost: participant?.is_host || false,
+      country: participant?.country,
+      city: participant?.city
+    };
   };
 
-  const isSelectedHost = selectedStream.isLocal ? isCurrentUserHost : isParticipantHost(selectedStream.name);
+  const selectedParticipantInfo = selectedStream.isLocal 
+    ? { isHost: isCurrentUserHost, country: undefined, city: undefined }
+    : getParticipantInfo(selectedStream.name);
+
+  const isSelectedHost = selectedParticipantInfo.isHost;
 
   return (
     <div className="flex-1 relative bg-slate-900 rounded-2xl overflow-hidden shadow-2xl">
@@ -98,6 +106,20 @@ export const SpeakerView = ({
         </div>
       )}
 
+      {/* Location display - top left corner */}
+      {(selectedParticipantInfo.country || selectedParticipantInfo.city) && !selectedStream.isLocal && (
+        <div className="absolute top-6 left-6 z-10">
+          <div className="flex items-center space-x-2 bg-black/70 backdrop-blur-lg rounded-full px-4 py-2 border border-white/20">
+            <MapPin className="h-4 w-4 text-white/80" />
+            <span className="text-white font-medium text-sm">
+              {selectedParticipantInfo.city && selectedParticipantInfo.country 
+                ? `${selectedParticipantInfo.city}, ${selectedParticipantInfo.country}`
+                : selectedParticipantInfo.country || selectedParticipantInfo.city}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Overlay with participant info */}
       <div className="absolute bottom-6 left-6 right-6">
         <div className="bg-black/60 backdrop-blur-xl rounded-2xl p-4 border border-white/20">
@@ -112,6 +134,15 @@ export const SpeakerView = ({
                   <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-400/40 text-sm">
                     <Crown className="h-3 w-3 mr-1" />
                     Host
+                  </Badge>
+                )}
+                {/* Location info in bottom overlay for non-local participants */}
+                {(selectedParticipantInfo.country || selectedParticipantInfo.city) && !selectedStream.isLocal && (
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/40 text-sm">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {selectedParticipantInfo.city && selectedParticipantInfo.country 
+                      ? `${selectedParticipantInfo.city}, ${selectedParticipantInfo.country}`
+                      : selectedParticipantInfo.country || selectedParticipantInfo.city}
                   </Badge>
                 )}
               </div>

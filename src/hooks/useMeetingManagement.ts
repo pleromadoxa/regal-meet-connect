@@ -24,7 +24,37 @@ interface MeetingParticipant {
   is_host: boolean;
   is_muted: boolean;
   joined_at: string;
+  country?: string;
+  city?: string;
+  ip_address?: string;
 }
+
+// Enhanced edge function to get location data
+const getLocationFromIP = async (): Promise<{ country?: string; city?: string; ip?: string }> => {
+  try {
+    // Use the same log-activity function that already gets location data
+    const { data, error } = await supabase.functions.invoke('log-activity', {
+      body: {
+        action: 'get_location_info',
+        user_id: null // Just to get location data
+      }
+    });
+
+    if (error) {
+      console.error('Error getting location:', error);
+      return {};
+    }
+
+    return {
+      country: data?.data?.country,
+      city: data?.data?.city,
+      ip: data?.data?.ip_address
+    };
+  } catch (error) {
+    console.error('Failed to get location:', error);
+    return {};
+  }
+};
 
 export const useMeetingManagement = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -111,59 +141,39 @@ export const useMeetingManagement = () => {
   }, [removeMeetingAction, fetchMeetings]);
 
   const fetchParticipants = useCallback(async (meetingUuid: string) => {
+    if (!meetingUuid) {
+      console.log('No meeting UUID provided for participant fetch');
+      return [];
+    }
+
     try {
-      console.log('Fetching participants for meeting UUID:', meetingUuid);
-      
       const { data, error } = await supabase
         .from('meeting_participants')
-        .select('*')
+        .select('id, user_id, user_name, is_host, is_muted, joined_at, left_at, country, city')
         .eq('meeting_id', meetingUuid)
-        .order('joined_at', { ascending: true });
+        .is('left_at', null);
 
       if (error) {
         console.error('Error fetching participants:', error);
-        throw error;
+        return [];
       }
-      
-      console.log('Fetched participants:', data);
-      setParticipants(data || []);
-      
-      // Set up real-time subscription
-      const channel = supabase
-        .channel(`participants-${meetingUuid}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'meeting_participants',
-            filter: `meeting_id=eq.${meetingUuid}`
-          },
-          (payload) => {
-            console.log('Participant change:', payload);
-            fetchParticipants(meetingUuid);
-          }
-        )
-        .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      console.log('Fetched participants with location:', data);
+      return data || [];
     } catch (error) {
       console.error('Error in fetchParticipants:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch participants",
-        variant: "destructive"
-      });
+      return [];
     }
-  }, [toast]);
+  }, []);
 
   const joinMeeting = async (meetingIdText: string, userName: string) => {
     if (!user?.id) return null;
 
     try {
       console.log('Joining meeting:', { meetingIdText, userName, userId: user.id });
+      
+      // Get user location data
+      const locationData = await getLocationFromIP();
       
       // Find the meeting by meeting_id (text field) - ensure we use uppercase
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();
@@ -204,7 +214,7 @@ export const useMeetingManagement = () => {
         return existingParticipant;
       }
 
-      // Add user as participant using the meeting UUID (id field)
+      // Add user as participant using the meeting UUID (id field) with location
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -212,7 +222,10 @@ export const useMeetingManagement = () => {
           user_id: user.id,
           user_name: userName,
           is_host: false,
-          is_muted: false
+          is_muted: false,
+          country: locationData.country,
+          city: locationData.city,
+          ip_address: locationData.ip
         })
         .select()
         .single();
@@ -244,6 +257,9 @@ export const useMeetingManagement = () => {
 
     try {
       console.log('Joining as host:', { meetingIdText, userName, userId: user.id });
+      
+      // Get user location data
+      const locationData = await getLocationFromIP();
       
       // Find the meeting and verify user is the host using meeting_id (text field)
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();
@@ -283,7 +299,7 @@ export const useMeetingManagement = () => {
         return { meeting, participant: existingParticipant };
       }
 
-      // Add host as participant using meeting UUID (id field)
+      // Add host as participant using meeting UUID (id field) with location
       const { data, error } = await supabase
         .from('meeting_participants')
         .insert({
@@ -291,7 +307,10 @@ export const useMeetingManagement = () => {
           user_id: user.id,
           user_name: userName,
           is_host: true,
-          is_muted: false
+          is_muted: false,
+          country: locationData.country,
+          city: locationData.city,
+          ip_address: locationData.ip
         })
         .select()
         .single();

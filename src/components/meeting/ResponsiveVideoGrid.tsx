@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
-import { User, Mic, MicOff, Crown } from 'lucide-react';
+import { User, Mic, MicOff, Crown, MapPin } from 'lucide-react';
 
 interface RemoteStream {
   id: string;
@@ -15,6 +15,8 @@ interface Participant {
   is_host: boolean;
   is_muted: boolean;
   joined_at: string;
+  country?: string;
+  city?: string;
 }
 
 interface ResponsiveVideoGridProps {
@@ -61,7 +63,9 @@ export const ResponsiveVideoGrid = ({
       return {
         name: userName,
         isHost: isCurrentUserHost,
-        isMuted: !localStream?.getAudioTracks()?.[0]?.enabled
+        isMuted: !localStream?.getAudioTracks()?.[0]?.enabled,
+        country: undefined,
+        city: undefined
       };
     }
     
@@ -69,7 +73,9 @@ export const ResponsiveVideoGrid = ({
     return {
       name: participant?.user_name || streamUserName,
       isHost: participant?.is_host || false,
-      isMuted: participant?.is_muted || false
+      isMuted: participant?.is_muted || false,
+      country: participant?.country,
+      city: participant?.city
     };
   };
 
@@ -247,6 +253,20 @@ export const ResponsiveVideoGrid = ({
             </div>
           )}
         </div>
+
+        {/* Location display - top left corner */}
+        {(participantInfo.country || participantInfo.city) && !isLocal && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="flex items-center space-x-1 bg-black/70 backdrop-blur-sm rounded-md px-2 py-1">
+              <MapPin className="h-2 w-2 sm:h-3 sm:w-3 text-white/80" />
+              <span className="text-white text-xs font-medium">
+                {participantInfo.city && participantInfo.country 
+                  ? `${participantInfo.city}, ${participantInfo.country}`
+                  : participantInfo.country || participantInfo.city}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Name overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-2 z-10">

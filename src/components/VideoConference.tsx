@@ -198,7 +198,9 @@ export const VideoConference = ({
     user_name: participant.userName || participant.user_name,
     is_host: participant.isHost || participant.is_host,
     is_muted: participant.isMuted || participant.is_muted,
-    joined_at: participant.joinedAt || participant.joined_at
+    joined_at: participant.joinedAt || participant.joined_at,
+    country: participant.country,
+    city: participant.city
   });
 
   // Sync participants from database with state
@@ -212,7 +214,9 @@ export const VideoConference = ({
         isAudioEnabled: !p.is_muted,
         isHost: p.is_host,
         isMuted: p.is_muted,
-        joinedAt: p.joined_at
+        joinedAt: p.joined_at,
+        country: p.country,
+        city: p.city
       })));
     }
   }, [dbParticipants, setStateParticipants]);

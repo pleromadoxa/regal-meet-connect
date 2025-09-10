@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect } from 'react';
-import { Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MapPin } from 'lucide-react';
 import { ParticipantState } from '@/hooks/useMeetingState';
 
 interface ParticipantVideoProps {
@@ -65,6 +65,18 @@ export const ParticipantVideo = ({
               {displayName.charAt(0).toUpperCase()}
             </span>
           </div>
+        </div>
+      )}
+      
+      {/* Location display - top left corner */}
+      {(participant?.country || participant?.city) && (
+        <div className="absolute top-2 left-2 flex items-center space-x-1 bg-black/60 rounded-md px-2 py-1">
+          <MapPin className="h-3 w-3 text-white/80" />
+          <span className="text-white/90 text-xs font-medium">
+            {participant.city && participant.country 
+              ? `${participant.city}, ${participant.country}`
+              : participant.country || participant.city}
+          </span>
         </div>
       )}
       
