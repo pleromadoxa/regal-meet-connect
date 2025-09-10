@@ -90,6 +90,15 @@ export const VideoConference = ({
     sendReaction
   } = useMeetingState(meetingId, user?.id || '');
 
+  const { 
+    participants: dbParticipants, 
+    fetchParticipants, 
+    toggleMuteParticipant,
+    joinMeeting,
+    joinAsHost,
+    isUserHost
+  } = useMeetingManagement();
+
   // Convert Map to RemoteStream array for components
   const remoteStreamsArray = Array.from(remoteStreams.entries()).map(([id, stream]) => ({
     id,
@@ -99,15 +108,6 @@ export const VideoConference = ({
              dbParticipants.find(p => p.user_id === id)?.user_name ||
              `User ${id.slice(0, 8)}`
   }));
-
-  const { 
-    participants: dbParticipants, 
-    fetchParticipants, 
-    toggleMuteParticipant,
-    joinMeeting,
-    joinAsHost,
-    isUserHost
-  } = useMeetingManagement();
 
   const { 
     captions, 
