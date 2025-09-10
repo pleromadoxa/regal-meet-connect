@@ -74,7 +74,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex flex-col">
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md space-y-8">
           {/* Logo and Title */}
