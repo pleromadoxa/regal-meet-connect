@@ -5,6 +5,7 @@ import { useWebRTCSignaling } from './useWebRTCSignaling';
 import { useNetworkOptimization } from './useNetworkOptimization';
 import { useBandwidthAware } from './useBandwidthAware';
 import { usePageVisibility } from './usePageVisibility';
+import { useConnectionManager } from './useConnectionManager';
 
 interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
@@ -44,6 +45,18 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   // Bandwidth-aware constraints hook
   const { getOptimalConstraints, getScreenShareConstraints } = useBandwidthAware();
+
+  // Enhanced connection management
+  const {
+    getOptimizedRTCConfiguration,
+    monitorConnectionHealth,
+    handleConnectionRecovery,
+    getAdaptiveMediaConstraints
+  } = useConnectionManager({
+    enableHeartbeat: true,
+    heartbeatInterval: 5000,
+    maxReconnectAttempts: 3
+  });
 
   // Use the signaling hook
   const { 
@@ -122,15 +135,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
     const createPeerConnection = (remoteUserId: string) => {
       console.log('Creating peer connection for:', remoteUserId);
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-        ]
-      });
+      const pc = new RTCPeerConnection(getOptimizedRTCConfiguration());
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -166,8 +171,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
       peerConnectionsRef.current.set(remoteUserId, pc);
 
-      // Start network monitoring for this peer connection
+      // Start network monitoring and connection health checks
       startMonitoring(pc);
+      monitorConnectionHealth(pc, remoteUserId);
+      handleConnectionRecovery(pc, remoteUserId);
 
       return pc;
     };

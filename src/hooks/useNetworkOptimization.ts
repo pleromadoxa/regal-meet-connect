@@ -216,7 +216,7 @@ export const useNetworkOptimization = () => {
       if (stats && stats.qualityLevel !== connectionQuality.metrics.qualityLevel) {
         await applyAdaptiveBitrate(peerConnection, stats.qualityLevel);
       }
-    }, 2000); // Check every 2 seconds
+    }, 1000); // Check every second for faster optimization
 
   }, [monitorNetworkStats, applyAdaptiveBitrate, connectionQuality.metrics.qualityLevel]);
 

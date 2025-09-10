@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
 import { BackgroundMeetingIndicator } from '@/components/BackgroundMeetingIndicator';
-import { MeetingDebugInfo } from '@/components/MeetingDebugInfo';
+
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -46,7 +46,6 @@ export const VideoConference = ({
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
 
   const {
@@ -501,18 +500,6 @@ export const VideoConference = ({
         }
       />
 
-      {/* Debug Info Component */}
-      <MeetingDebugInfo
-        meetingId={meetingId}
-        userName={userName}
-        isHost={isHost}
-        currentUserId={user?.id || ''}
-        participants={stateParticipants}
-        dbParticipants={dbParticipants}
-        currentMeeting={currentMeeting}
-        isVisible={showDebugInfo}
-        onToggle={() => setShowDebugInfo(!showDebugInfo)}
-      />
     </div>
   );
 };
