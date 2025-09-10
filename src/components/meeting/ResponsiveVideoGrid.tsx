@@ -133,15 +133,20 @@ export const ResponsiveVideoGrid = ({
 
     return (
       <Card className="relative overflow-hidden bg-slate-800/90 border border-slate-600/60 hover:border-slate-500/60 transition-all duration-200 aspect-video">
-        {hasVideo && isVideoLoaded ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isLocal}
-            className="w-full h-full object-cover"
-          />
-        ) : (
+         {hasVideo && isVideoLoaded ? (
+           <video
+             ref={videoRef}
+             autoPlay
+             playsInline
+             muted={isLocal}
+             preload="metadata"
+             webkit-playsinline="true"
+             x5-playsinline="true"
+             x5-video-player-type="h5"
+             x5-video-player-fullscreen="true"
+             className="w-full h-full object-cover"
+           />
+         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
             <div className="flex flex-col items-center">
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-slate-600 rounded-full flex items-center justify-center mb-2">

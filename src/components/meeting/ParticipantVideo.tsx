@@ -51,6 +51,11 @@ export const ParticipantVideo = ({
           autoPlay
           playsInline
           muted={isLocalUser}
+          preload="metadata"
+          webkit-playsinline="true"
+          x5-playsinline="true"
+          x5-video-player-type="h5"
+          x5-video-player-fullscreen="true"
           className="w-full h-full object-cover"
         />
       ) : (

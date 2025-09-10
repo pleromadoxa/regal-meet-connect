@@ -404,11 +404,15 @@ export const VideoConference = ({
       {showParticipantsList && (
         <ParticipantsList
           participants={stateParticipants.map(convertToDbParticipant)}
+          remoteStreams={remoteStreamsArray}
+          localStream={localStream}
           isCurrentUserHost={isCurrentUserHost}
           currentUserId={user?.id || ''}
           userName={userName}
           onClose={() => setShowParticipantsList(false)}
           onToggleMute={handleToggleMute}
+          onSelectVideo={handleVideoSelect}
+          selectedVideoId={selectedVideoId}
         />
       )}
     </div>

@@ -20,20 +20,28 @@ interface Participant {
 
 interface ParticipantsListProps {
   participants: Participant[];
+  remoteStreams?: Array<{ id: string; stream: MediaStream; userName: string }>;
+  localStream?: MediaStream | null;
   isCurrentUserHost: boolean;
   currentUserId: string;
   userName: string;
   onClose: () => void;
   onToggleMute?: (participantId: string, isMuted: boolean) => void;
+  onSelectVideo?: (streamId: string) => void;
+  selectedVideoId?: string;
 }
 
 export const ParticipantsList = ({
   participants: initialParticipants,
+  remoteStreams = [],
+  localStream,
   isCurrentUserHost,
   currentUserId,
   userName,
   onClose,
-  onToggleMute
+  onToggleMute,
+  onSelectVideo,
+  selectedVideoId
 }: ParticipantsListProps) => {
   const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
   const { toast } = useToast();
@@ -317,6 +325,45 @@ export const ParticipantsList = ({
         {/* Participants List */}
         <ScrollArea className="h-[calc(100vh-80px)]">
           <div className="p-4 space-y-3">
+            {/* Host Bulk Controls */}
+            {isCurrentUserHost && allParticipants.length > 1 && (
+              <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
+                <p className="text-xs text-slate-400 mb-2">Host Controls</p>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => {
+                      allParticipants.forEach(p => {
+                        if (p.user_id !== currentUserId && !p.is_muted) {
+                          handleMuteToggle(p);
+                        }
+                      });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
+                  >
+                    <MicOff className="h-3 w-3 mr-1" />
+                    Mute All
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      allParticipants.forEach(p => {
+                        if (p.user_id !== currentUserId && p.is_muted) {
+                          handleMuteToggle(p);
+                        }
+                      });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 bg-green-500/20 border-green-500/40 text-green-400 hover:bg-green-500/30"
+                  >
+                    <Mic className="h-3 w-3 mr-1" />
+                    Unmute All
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {allParticipants.map((participant) => (
               <ParticipantCard
                 key={participant.id}
