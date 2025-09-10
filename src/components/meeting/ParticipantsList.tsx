@@ -239,6 +239,16 @@ export const ParticipantsList = ({
     const isCurrentUser = participant.user_id === currentUserId;
     const canViewEmail = isCurrentUserHost || isCurrentUser;
     const canMute = isCurrentUserHost && !isCurrentUser;
+    
+    console.log('ParticipantCard Debug:', {
+      participantName: participant.user_name,
+      isCurrentUserHost,
+      isCurrentUser,
+      canMute,
+      currentUserId,
+      participantUserId: participant.user_id,
+      urlParams: window.location.search
+    });
 
     // Get the actual user email if it's the current user, otherwise use a placeholder
     const displayEmail = isCurrentUser && user?.email 
@@ -372,6 +382,11 @@ export const ParticipantsList = ({
               <p className="text-xs text-slate-400 mt-1">
                 <Shield className="h-3 w-3 inline mr-1" />
                 As host, you can mute and remove participants
+              </p>
+            )}
+            {!isCurrentUserHost && (
+              <p className="text-xs text-slate-500 mt-1">
+                You are a participant. Only the host can control audio.
               </p>
             )}
           </div>
