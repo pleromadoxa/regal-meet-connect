@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from 'react';
+import { X, Users, Shield, Mic, MicOff, User, Upload, Files } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { User, Mic, MicOff, Crown, X, Mail, Phone, Shield, Volume2, UserX } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
+import { supabase } from '@/integrations/supabase/client';
+import { FileSharing } from './FileSharing';
 
 interface Participant {
   id: string;
@@ -25,6 +25,7 @@ interface ParticipantsListProps {
   isCurrentUserHost: boolean;
   currentUserId: string;
   userName: string;
+  meetingId: string;
   onClose: () => void;
   onToggleMute?: (participantId: string, isMuted: boolean) => void;
   onSelectVideo?: (streamId: string) => void;
@@ -38,6 +39,7 @@ export const ParticipantsList = ({
   isCurrentUserHost,
   currentUserId,
   userName,
+  meetingId,
   onClose,
   onToggleMute,
   onSelectVideo,
@@ -52,78 +54,27 @@ export const ParticipantsList = ({
     setParticipants(initialParticipants);
   }, [initialParticipants]);
 
-  // Real-time updates for participants
-  useEffect(() => {
-    if (participants.length === 0) return;
-
-    const meetingId = participants[0]?.id ? participants[0].id.split('-')[0] : null;
-    if (!meetingId) return;
-
-    const channel = supabase
-      .channel(`participants-realtime-${meetingId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'meeting_participants'
-        },
-        (payload) => {
-          console.log('Participant update:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            setParticipants(prev => 
-              prev.map(p => 
-                p.id === payload.new.id 
-                  ? { ...p, ...payload.new }
-                  : p
-              )
-            );
-          } else if (payload.eventType === 'INSERT') {
-            setParticipants(prev => {
-              const exists = prev.find(p => p.id === payload.new.id);
-              if (!exists) {
-                return [...prev, payload.new as Participant];
-              }
-              return prev;
-            });
-          } else if (payload.eventType === 'DELETE') {
-            setParticipants(prev => 
-              prev.filter(p => p.id !== payload.old.id)
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [participants.length]);
-
   const handleMuteToggle = async (participant: Participant) => {
-    if (!isCurrentUserHost || participant.user_id === currentUserId) return;
+    if (!isCurrentUserHost) {
+      toast({
+        title: "Permission denied",
+        description: "Only the host can mute/unmute participants",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    const newMutedState = !participant.is_muted;
+    
     try {
-      const newMutedState = !participant.is_muted;
-      
-      // Update in database
       const { error } = await supabase
         .from('meeting_participants')
         .update({ is_muted: newMutedState })
         .eq('id', participant.id);
 
-      if (error) {
-        console.error('Error updating mute status:', error);
-        toast({
-          title: "Error",
-          description: "Failed to update mute status",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
-      // Update local state immediately for better UX
+      // Update local state
       setParticipants(prev => 
         prev.map(p => 
           p.id === participant.id 
@@ -132,82 +83,51 @@ export const ParticipantsList = ({
         )
       );
 
-      // Send signaling to participant to mute/unmute
-      const channel = supabase.channel(`meeting-mute-${participant.user_id}`);
-      channel.send({
-        type: 'broadcast',
-        event: 'mute-toggle',
-        payload: {
-          participantId: participant.user_id,
-          isMuted: newMutedState,
-          fromHost: true
-        }
-      });
-
       // Call the callback if provided
       if (onToggleMute) {
-        onToggleMute(participant.id, newMutedState);
+        onToggleMute(participant.user_id, newMutedState);
       }
 
       toast({
-        title: newMutedState ? "Participant Muted" : "Participant Unmuted",
+        title: newMutedState ? "Participant muted" : "Participant unmuted",
         description: `${participant.user_name} has been ${newMutedState ? 'muted' : 'unmuted'}`
       });
-
-    } catch (error) {
-      console.error('Error in handleMuteToggle:', error);
+    } catch (error: any) {
+      console.error('Error toggling mute:', error);
       toast({
         title: "Error",
-        description: "Failed to update participant mute status",
+        description: `Failed to ${newMutedState ? 'mute' : 'unmute'} participant`,
         variant: "destructive"
       });
     }
   };
 
-  const handleRemoveUser = async (participant: Participant) => {
-    if (!isCurrentUserHost || participant.user_id === currentUserId) return;
+  const handleRemoveParticipant = async (participant: Participant) => {
+    if (!isCurrentUserHost) {
+      toast({
+        title: "Permission denied", 
+        description: "Only the host can remove participants",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      // Remove from database
       const { error } = await supabase
         .from('meeting_participants')
         .delete()
         .eq('id', participant.id);
 
-      if (error) {
-        console.error('Error removing participant:', error);
-        toast({
-          title: "Error",
-          description: "Failed to remove participant",
-          variant: "destructive"
-        });
-        return;
-      }
+      if (error) throw error;
 
-      // Update local state immediately
-      setParticipants(prev => 
-        prev.filter(p => p.id !== participant.id)
-      );
-
-      // Send signaling to participant to disconnect
-      const channel = supabase.channel(`meeting-remove-${participant.user_id}`);
-      channel.send({
-        type: 'broadcast',
-        event: 'user-removed',
-        payload: {
-          participantId: participant.user_id,
-          fromHost: true,
-          message: 'You have been removed from the meeting by the host'
-        }
-      });
+      setParticipants(prev => prev.filter(p => p.id !== participant.id));
 
       toast({
-        title: "Participant Removed",
+        title: "Participant removed",
         description: `${participant.user_name} has been removed from the meeting`
       });
-
-    } catch (error) {
-      console.error('Error in handleRemoveUser:', error);
+    } catch (error: any) {
+      console.error('Error removing participant:', error);
       toast({
         title: "Error",
         description: "Failed to remove participant",
@@ -216,24 +136,20 @@ export const ParticipantsList = ({
     }
   };
 
-  // Add current user to the list if not already present
-  const allParticipants = React.useMemo(() => {
-    const currentUserExists = participants.find(p => p.user_id === currentUserId);
-    if (!currentUserExists) {
-      return [
-        {
-          id: `current-${currentUserId}`,
-          user_name: userName,
-          user_id: currentUserId,
-          is_host: isCurrentUserHost,
-          is_muted: false,
-          joined_at: new Date().toISOString()
-        },
-        ...participants
-      ];
-    }
-    return participants;
-  }, [participants, currentUserId, userName, isCurrentUserHost]);
+  // Include current user in participants list if not already there
+  const currentUserParticipant: Participant = {
+    id: `local-${currentUserId}`,
+    user_id: currentUserId,
+    user_name: userName,
+    is_host: isCurrentUserHost,
+    is_muted: false,
+    joined_at: new Date().toISOString()
+  };
+
+  const allParticipants = [
+    currentUserParticipant,
+    ...participants.filter(p => p.user_id !== currentUserId)
+  ];
 
   const ParticipantCard = ({ participant }: { participant: Participant }) => {
     const isCurrentUser = participant.user_id === currentUserId;
@@ -253,213 +169,212 @@ export const ParticipantsList = ({
     // Get the actual user email if it's the current user, otherwise use a placeholder
     const displayEmail = isCurrentUser && user?.email 
       ? user.email 
-      : `${participant.user_name.toLowerCase().replace(' ', '.')}@example.com`;
+      : canViewEmail 
+        ? `${participant.user_name.toLowerCase().replace(' ', '.')}@email.com`
+        : 'Hidden';
 
     return (
-      <Card className="p-4 bg-slate-800/60 border-slate-700/60 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            {/* Avatar */}
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <User className="h-5 w-5 text-white" />
+      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-600/30 hover:bg-slate-800/60 transition-all duration-200">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
+              participant.is_host 
+                ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' 
+                : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white'
+            }`}>
+              {participant.user_name.charAt(0).toUpperCase()}
             </div>
-
-            {/* User Info */}
-            <div className="flex-1">
+            
+            <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-2">
-                <h4 className="font-semibold text-white">
+                <h4 className="text-white font-medium text-sm truncate">
                   {participant.user_name}
                   {isCurrentUser && " (You)"}
                 </h4>
-                
                 {participant.is_host && (
-                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-400/40">
-                    <Crown className="h-3 w-3 mr-1" />
+                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 text-xs">
+                    <Shield className="h-3 w-3 mr-1" />
                     Host
                   </Badge>
                 )}
               </div>
-
-              {/* Email - Only visible to host or current user */}
-              {canViewEmail && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <Mail className="h-3 w-3 text-slate-400" />
-                  <span className="text-xs text-slate-400">
-                    {displayEmail}
-                  </span>
-                </div>
-              )}
-
-              {/* Privacy indicator for non-hosts */}
-              {!canViewEmail && (
-                <div className="flex items-center space-x-1 mt-1">
-                  <Shield className="h-3 w-3 text-slate-500" />
-                  <span className="text-xs text-slate-500">Contact info hidden</span>
-                </div>
-              )}
-
-              <p className="text-xs text-slate-500 mt-1">
-                Joined {new Date(participant.joined_at).toLocaleTimeString()}
+              
+              <p className="text-slate-400 text-xs truncate">
+                {displayEmail}
               </p>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center space-x-2">
-            {/* Mute Status */}
-            <div className={`p-2 rounded-full ${
-              participant.is_muted 
-                ? 'bg-red-500/20 text-red-400' 
-                : 'bg-green-500/20 text-green-400'
-            }`}>
-              {participant.is_muted ? (
-                <MicOff className="h-4 w-4" />
-              ) : (
-                <Mic className="h-4 w-4" />
-              )}
-            </div>
-
-            {/* Host Controls */}
-            {canMute && (
-              <>
-                <Button
-                  onClick={() => handleMuteToggle(participant)}
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-16 text-xs bg-slate-700/60 border-slate-600/60 hover:bg-slate-600/60"
-                >
-                  {participant.is_muted ? 'Unmute' : 'Mute'}
-                </Button>
-                <Button
-                  onClick={() => handleRemoveUser(participant)}
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-xs bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
-                  title="Remove from meeting"
-                >
-                  <UserX className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-
-            {/* Contact Actions for Host */}
-            {isCurrentUserHost && !isCurrentUser && (
-              <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-blue-500/20"
-                  title="Send Message"
-                >
-                  <Mail className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-green-500/20"
-                  title="Call"
-                >
-                  <Phone className="h-3 w-3" />
-                </Button>
+              
+              <div className="flex items-center space-x-2 mt-1">
+                <div className={`flex items-center space-x-1 text-xs ${
+                  participant.is_muted ? 'text-red-400' : 'text-green-400'
+                }`}>
+                  {participant.is_muted ? (
+                    <MicOff className="h-3 w-3" />
+                  ) : (
+                    <Mic className="h-3 w-3" />
+                  )}
+                  <span>{participant.is_muted ? 'Muted' : 'Unmuted'}</span>
+                </div>
               </div>
-            )}
+            </div>
           </div>
+
+          {/* Control buttons for host */}
+          {canMute && (
+            <div className="flex items-center space-x-1">
+              <Button
+                onClick={() => handleMuteToggle(participant)}
+                variant="ghost"
+                size="sm"
+                className={`h-8 w-8 p-0 ${
+                  participant.is_muted 
+                    ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10' 
+                    : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                }`}
+              >
+                {participant.is_muted ? (
+                  <Mic className="h-3 w-3" />
+                ) : (
+                  <MicOff className="h-3 w-3" />
+                )}
+              </Button>
+
+              <Button
+                onClick={() => handleRemoveParticipant(participant)}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
-      </Card>
+      </div>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-      <div className="fixed right-0 top-0 h-full w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-700/60 shadow-2xl">
-        {/* Header with close button */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-slate-900/95 backdrop-blur-lg border border-slate-700/50 shadow-2xl w-full max-w-md h-full flex flex-col">
+        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-700/60">
-          <div>
-            <h2 className="text-lg font-semibold text-white">
-              Participants ({allParticipants.length})
-            </h2>
-            {isCurrentUserHost && (
-              <p className="text-xs text-slate-400 mt-1">
-                <Shield className="h-3 w-3 inline mr-1" />
-                As host, you can mute and remove participants
-              </p>
-            )}
-            {!isCurrentUserHost && (
-              <p className="text-xs text-slate-500 mt-1">
-                You are a participant. Only the host can control audio.
-              </p>
-            )}
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Users className="h-4 w-4 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Meeting Hub</h2>
+              <p className="text-sm text-slate-400">Participants & Files</p>
+            </div>
           </div>
           <Button
             onClick={onClose}
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-slate-700/60 text-white"
+            className="text-slate-400 hover:text-white hover:bg-slate-700/50"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Participants List */}
-        <ScrollArea className="h-[calc(100vh-80px)]">
-          <div className="p-4 space-y-3">
-            {/* Host Bulk Controls */}
-            {isCurrentUserHost && allParticipants.length > 1 && (
-              <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                <p className="text-xs text-slate-400 mb-2">Host Controls</p>
-                <div className="flex space-x-2">
-                  <Button
-                    onClick={() => {
-                      allParticipants.forEach(p => {
-                        if (p.user_id !== currentUserId && !p.is_muted) {
-                          handleMuteToggle(p);
-                        }
-                      });
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
-                  >
-                    <MicOff className="h-3 w-3 mr-1" />
-                    Mute All
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      allParticipants.forEach(p => {
-                        if (p.user_id !== currentUserId && p.is_muted) {
-                          handleMuteToggle(p);
-                        }
-                      });
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-green-500/20 border-green-500/40 text-green-400 hover:bg-green-500/30"
-                  >
-                    <Mic className="h-3 w-3 mr-1" />
-                    Unmute All
-                  </Button>
-                </div>
-              </div>
-            )}
+        {/* Tabs */}
+        <Tabs defaultValue="participants" className="flex-1 flex flex-col">
+          <TabsList className="grid w-full grid-cols-2 mx-4 mt-4 bg-slate-800/50">
+            <TabsTrigger value="participants" className="data-[state=active]:bg-slate-700">
+              <Users className="h-4 w-4 mr-2" />
+              Participants ({allParticipants.length})
+            </TabsTrigger>
+            <TabsTrigger value="files" className="data-[state=active]:bg-slate-700">
+              <Files className="h-4 w-4 mr-2" />
+              Files
+            </TabsTrigger>
+          </TabsList>
 
-            {allParticipants.map((participant) => (
-              <ParticipantCard
-                key={participant.id}
-                participant={participant}
-              />
-            ))}
+          {/* Participants Tab */}
+          <TabsContent value="participants" className="flex-1 mt-0">
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="p-4 space-y-3">
+                {/* Host Instructions */}
+                {isCurrentUserHost && (
+                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
+                    <p className="text-xs text-slate-400 mb-2 flex items-center">
+                      <Shield className="h-3 w-3 mr-1" />
+                      As host, you can mute and remove participants
+                    </p>
+                  </div>
+                )}
+                {!isCurrentUserHost && (
+                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
+                    <p className="text-xs text-slate-500 mb-2">
+                      You are a participant. Only the host can control audio.
+                    </p>
+                  </div>
+                )}
 
-            {allParticipants.length === 0 && (
-              <div className="text-center py-8">
-                <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-                <p className="text-slate-400">No participants found</p>
+                {/* Host Bulk Controls */}
+                {isCurrentUserHost && allParticipants.length > 1 && (
+                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
+                    <p className="text-xs text-slate-400 mb-2">Host Controls</p>
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => {
+                          allParticipants.forEach(p => {
+                            if (p.user_id !== currentUserId && !p.is_muted) {
+                              handleMuteToggle(p);
+                            }
+                          });
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
+                      >
+                        <MicOff className="h-3 w-3 mr-1" />
+                        Mute All
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          allParticipants.forEach(p => {
+                            if (p.user_id !== currentUserId && p.is_muted) {
+                              handleMuteToggle(p);
+                            }
+                          });
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-green-500/20 border-green-500/40 text-green-400 hover:bg-green-500/30"
+                      >
+                        <Mic className="h-3 w-3 mr-1" />
+                        Unmute All
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {allParticipants.map((participant) => (
+                  <ParticipantCard
+                    key={participant.id}
+                    participant={participant}
+                  />
+                ))}
+
+                {allParticipants.length === 0 && (
+                  <div className="text-center py-8">
+                    <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                    <p className="text-slate-400">No participants found</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </ScrollArea>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Files Tab */}
+          <TabsContent value="files" className="flex-1 mt-0 p-4">
+            <FileSharing meetingId={meetingId} isHost={isCurrentUserHost} />
+          </TabsContent>
+        </Tabs>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700/60 bg-slate-900/80">
+        <div className="p-4 border-t border-slate-700/60 bg-slate-900/80">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>Meeting in progress</span>
             <span>{new Date().toLocaleTimeString()}</span>

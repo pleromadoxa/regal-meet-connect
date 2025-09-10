@@ -428,6 +428,7 @@ export const VideoConference = ({
           isCurrentUserHost={isCurrentUserHost}
           currentUserId={user?.id || ''}
           userName={userName}
+          meetingId={meetingId}
           onClose={() => setShowParticipantsList(false)}
           onToggleMute={handleToggleMute}
           onSelectVideo={handleVideoSelect}
