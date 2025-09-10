@@ -119,6 +119,7 @@ export type Database = {
           is_host: boolean
           is_muted: boolean
           joined_at: string
+          left_at: string | null
           meeting_id: string
           user_id: string
           user_name: string
@@ -128,6 +129,7 @@ export type Database = {
           is_host?: boolean
           is_muted?: boolean
           joined_at?: string
+          left_at?: string | null
           meeting_id: string
           user_id: string
           user_name: string
@@ -137,6 +139,7 @@ export type Database = {
           is_host?: boolean
           is_muted?: boolean
           joined_at?: string
+          left_at?: string | null
           meeting_id?: string
           user_id?: string
           user_name?: string
@@ -450,6 +453,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_participation_duration: {
+        Args: { p_joined_at: string; p_left_at?: string }
+        Returns: unknown
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
