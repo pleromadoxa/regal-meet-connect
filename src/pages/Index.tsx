@@ -4,8 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Video, Users, Shield, Zap } from 'lucide-react';
-import { CreateMeetingSection } from '@/components/landing/CreateMeetingSection';
-import { QuickJoinSection } from '@/components/landing/QuickJoinSection';
 import { Footer } from '@/components/Footer';
 
 const Index = () => {
@@ -18,13 +16,6 @@ const Index = () => {
     }
   }, [user, navigate]);
 
-  const handleJoinMeeting = (name: string, roomId: string, hostStatus?: boolean) => {
-    const params = new URLSearchParams({
-      userName: name,
-      ...(hostStatus && { host: 'true' })
-    });
-    navigate(`/meeting/${roomId}?${params.toString()}`);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800">
@@ -116,11 +107,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Quick Join Section */}
-      <QuickJoinSection onJoinMeeting={handleJoinMeeting} />
-
-      {/* Create Meeting Section */}
-      <CreateMeetingSection />
 
       {/* Footer */}
       <Footer />
