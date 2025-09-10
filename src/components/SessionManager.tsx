@@ -28,10 +28,19 @@ export const SessionManager = () => {
           // Check if session is still valid and user matches
           if (timeElapsed < sessionTimeout && meetingData.userId === user.id) {
             console.log('Resuming previous meeting session:', meetingData);
-            // Only navigate if not already in a meeting
-            if (!window.location.pathname.includes('/meeting/')) {
-              // Navigate back to the meeting
-              navigate(`/meeting/${meetingData.meetingId}?userName=${encodeURIComponent(meetingData.userName)}&isHost=${meetingData.isHost}`);
+            
+            const currentPath = window.location.pathname;
+            const targetPath = `/meeting/${meetingData.meetingId}`;
+            
+            // Only navigate if not already in the target meeting or on auth/dashboard pages
+            if (!currentPath.includes(targetPath) && 
+                (currentPath === '/' || currentPath === '/dashboard' || currentPath === '/auth')) {
+              // Small delay to avoid race conditions with other navigation
+              setTimeout(() => {
+                navigate(`${targetPath}?userName=${encodeURIComponent(meetingData.userName)}&isHost=${meetingData.isHost}`, {
+                  replace: true
+                });
+              }, 100);
             }
           } else {
             // Clear expired session

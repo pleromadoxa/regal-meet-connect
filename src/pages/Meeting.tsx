@@ -1,6 +1,6 @@
 
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
@@ -12,39 +12,55 @@ const Meeting = () => {
   const { user, loading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const { validateMeetingId } = useMeetingValidation();
+  const hasValidatedRef = useRef(false);
 
   const userName = searchParams.get('userName') || '';
   const isHost = searchParams.get('host') === 'true';
 
   useEffect(() => {
+    // Prevent multiple validations 
+    if (hasValidatedRef.current) return;
+    
     if (!loading && meetingId && userName) {
       if (!user) {
         navigate('/auth');
         return;
       }
 
+      // Mark as validating to prevent SessionManager conflicts
+      hasValidatedRef.current = true;
+      
       // Validate the meeting ID before proceeding
       const validateAndProceed = async () => {
         console.log('Validating meeting ID:', meetingId);
         setIsValidating(true);
+        setValidationError(null);
         
         try {
-          const isValid = await validateMeetingId(meetingId);
+          // Start validation immediately without waiting for auth
+          const isValid = await validateMeetingId(meetingId, true); // Skip toast since we handle it here
+          
           if (isValid) {
             console.log('Meeting ID is valid, proceeding to meeting');
             setIsReady(true);
           } else {
             console.log('Meeting ID validation failed');
-            // Validation failed, user will see error toast from useMeetingValidation
-            // Redirect to dashboard after a short delay
+            setValidationError('Meeting not found or no longer active');
+            
+            // Redirect to dashboard after showing error
             setTimeout(() => {
-              navigate('/dashboard');
-            }, 2000);
+              navigate('/dashboard', { replace: true });
+            }, 3000);
           }
         } catch (error) {
           console.error('Error during meeting validation:', error);
-          navigate('/dashboard');
+          setValidationError('Failed to validate meeting. Please try again.');
+          
+          setTimeout(() => {
+            navigate('/dashboard', { replace: true });
+          }, 3000);
         } finally {
           setIsValidating(false);
         }
@@ -65,8 +81,21 @@ const Meeting = () => {
   if (loading || isValidating) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white text-xl">
-          {loading ? 'Loading...' : 'Validating meeting...'}
+        <div className="text-center text-white">
+          <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="text-xl mb-2">
+            {loading ? 'Loading...' : 'Validating meeting...'}
+          </div>
+          {isValidating && (
+            <div className="text-sm opacity-75">
+              Checking meeting ID: {meetingId}
+            </div>
+          )}
+          {validationError && (
+            <div className="text-red-300 text-sm mt-2">
+              {validationError}
+            </div>
+          )}
         </div>
       </div>
     );
