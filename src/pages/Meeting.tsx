@@ -17,14 +17,19 @@ const Meeting = () => {
   const hasValidatedRef = useRef(false);
   const { logPageView, logMeetingJoin } = usePlatformLogging();
 
-  const userName = searchParams.get('userName') || '';
+  const userName = searchParams.get('userName') || searchParams.get('name') || '';
   const isHost = searchParams.get('host') === 'true';
 
   useEffect(() => {
     // Prevent multiple validations 
     if (hasValidatedRef.current) return;
     
-    if (!loading && meetingId && userName) {
+    if (!loading && meetingId) {
+      // If no userName provided, redirect to join page with meeting ID
+      if (!userName.trim()) {
+        navigate(`/?join=${meetingId}`);
+        return;
+      }
       if (!user) {
         navigate('/auth');
         return;
