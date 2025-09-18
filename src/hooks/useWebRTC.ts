@@ -6,6 +6,7 @@ import { useNetworkOptimization } from './useNetworkOptimization';
 import { useBandwidthAware } from './useBandwidthAware';
 import { usePageVisibility } from './usePageVisibility';
 import { useConnectionManager } from './useConnectionManager';
+import { useManyParticipantsOptimization } from './useManyParticipantsOptimization';
 
 interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
@@ -58,6 +59,15 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     maxReconnectAttempts: 3
   });
 
+  // Many participants optimization
+  const {
+    optimizationSettings,
+    updateParticipantCount,
+    getOptimizedMediaConstraints,
+    applyOptimizedBitrate,
+    shouldRenderVideo
+  } = useManyParticipantsOptimization();
+
   // Use the signaling hook
   const { 
     initializeSignaling, 
@@ -70,10 +80,19 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   // Page visibility for background handling
   const { isVisible } = usePageVisibility();
 
-  // Update connected peers from signaling
+  // Update connected peers from signaling and apply optimizations
   useEffect(() => {
+    const peerCount = Array.from(signalingPeers).length + 1; // +1 for local user
     setConnectedPeers(Array.from(signalingPeers));
-  }, [signalingPeers]);
+    
+    // Update participant count for optimization
+    updateParticipantCount(peerCount);
+    
+    // Apply bitrate optimizations if there are many participants
+    if (peerCount > 4 && peerConnectionsRef.current.size > 0) {
+      applyOptimizedBitrate(peerConnectionsRef.current);
+    }
+  }, [signalingPeers, updateParticipantCount, applyOptimizedBitrate]);
 
   // Handle background state changes
   useEffect(() => {
@@ -346,10 +365,10 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   const initialize = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacingMode },
-        audio: true,
-      });
+      // Get optimized constraints based on current participant count
+      const constraints = getOptimizedMediaConstraints(true);
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       localStreamRef.current = stream;
       setLocalStream(stream);
@@ -365,6 +384,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       if (videoTrack) {
         setCurrentVideoDevice(videoTrack.label);
       }
+
+      console.log('WebRTC initialized with optimized constraints for participant count:', optimizationSettings.participantCount);
     } catch (error) {
       console.error('Error accessing media devices:', error);
       toast({
@@ -373,7 +394,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         variant: "destructive"
       });
     }
-  }, [currentFacingMode, toast]);
+  }, [toast, getOptimizedMediaConstraints, optimizationSettings.participantCount]);
 
   const toggleVideo = useCallback(async (): Promise<boolean> => {
     if (localStreamRef.current) {
@@ -693,7 +714,7 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     }
   }, [cleanupSignaling, stopMonitoring]);
 
-  return {
+    return {
     localStream,
     remoteStreams,
     isVideoEnabled,
@@ -713,6 +734,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     handleDeviceChange,
     initialize,
     cleanup,
-    setQualityOverride
+    setQualityOverride,
+    optimizationSettings,
+    shouldRenderVideo
   };
 };

@@ -24,6 +24,7 @@ import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { BackgroundMeetingIndicator } from '@/components/BackgroundMeetingIndicator';
+import { useMultiParticipantSpeakingDetection } from '@/hooks/useSpeakingDetection';
 
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,8 +89,16 @@ export const VideoConference = ({
     peerUserNames,
     connectionQuality,
     isOptimizing,
-    setQualityOverride
+    setQualityOverride,
+    optimizationSettings
   } = useWebRTC(meetingId, userName, user?.id || '');
+
+  // Speaking detection for many participants
+  const {
+    speakingParticipants,
+    addParticipant: addSpeakingParticipant,
+    removeParticipant: removeSpeakingParticipant
+  } = useMultiParticipantSpeakingDetection();
 
   // Meeting state management for synchronization
   const {
@@ -220,6 +229,29 @@ export const VideoConference = ({
       })));
     }
   }, [dbParticipants, setStateParticipants]);
+
+  // Setup speaking detection for all participants
+  useEffect(() => {
+    // Add local stream for speaking detection
+    if (localStream && user?.id) {
+      addSpeakingParticipant(user.id, localStream);
+    }
+
+    // Add remote streams for speaking detection
+    remoteStreamsArray.forEach((remoteStreamObj) => {
+      addSpeakingParticipant(remoteStreamObj.id, remoteStreamObj.stream);
+    });
+
+    // Cleanup removed participants
+    return () => {
+      if (user?.id) {
+        removeSpeakingParticipant(user.id);
+      }
+      remoteStreamsArray.forEach((remoteStreamObj) => {
+        removeSpeakingParticipant(remoteStreamObj.id);
+      });
+    };
+  }, [localStream, remoteStreamsArray, user?.id, addSpeakingParticipant, removeSpeakingParticipant]);
 
   useEffect(() => {
     if (meetingId && userName && user?.id) {
@@ -463,6 +495,7 @@ export const VideoConference = ({
             showParticipants={showParticipants}
             currentUserId={user?.id || ''}
             onToggleMute={handleToggleMute}
+            speakingParticipants={speakingParticipants}
           />
 
           {/* Network Quality Indicator - Top Right of Video Feed */}

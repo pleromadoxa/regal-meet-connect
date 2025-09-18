@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { SpeakerView } from './SpeakerView';
+import { OptimizedVideoGrid } from './OptimizedVideoGrid';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
-import { MobileParticipantGrid } from './MobileParticipantGrid';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface RemoteStream {
@@ -23,6 +22,7 @@ interface NewMeetingLayoutProps {
   showParticipants: boolean;
   currentUserId: string;
   onToggleMute: (participantId: string, isMuted: boolean) => void;
+  speakingParticipants?: Set<string>;
 }
 
 export const NewMeetingLayout = ({
@@ -36,14 +36,51 @@ export const NewMeetingLayout = ({
   participants,
   showParticipants,
   currentUserId,
-  onToggleMute
+  onToggleMute,
+  speakingParticipants = new Set()
 }: NewMeetingLayoutProps) => {
   const isMobile = useIsMobile();
 
-  if (isMobile) {
+  // For many participants, always use the optimized grid layout
+  const totalParticipants = remoteStreams.length + 1;
+  const useSpeakerView = totalParticipants <= 8 && !isMobile;
+
+  if (isMobile || totalParticipants > 8) {
     return (
       <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <MobileParticipantGrid
+        <OptimizedVideoGrid
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          isVideoEnabled={isVideoEnabled}
+          participants={participants}
+          currentUserId={currentUserId}
+          isCurrentUserHost={isCurrentUserHost}
+          speakingParticipants={speakingParticipants}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 gap-4 overflow-hidden">
+      {/* For smaller meetings, use optimized grid in main area */}
+      <div className="flex-1">
+        <OptimizedVideoGrid
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          isVideoEnabled={isVideoEnabled}
+          participants={participants}
+          currentUserId={currentUserId}
+          isCurrentUserHost={isCurrentUserHost}
+          speakingParticipants={speakingParticipants}
+        />
+      </div>
+
+      {/* Participants sidebar for desktop small meetings */}
+      {showParticipants && (
+        <ParticipantsSidebar
           localStream={localStream}
           remoteStreams={remoteStreams}
           userName={userName}
@@ -52,35 +89,8 @@ export const NewMeetingLayout = ({
           isCurrentUserHost={isCurrentUserHost}
           participants={participants}
           currentUserId={currentUserId}
-          isVideoEnabled={isVideoEnabled}
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 flex bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 gap-4 overflow-hidden">
-      {/* Main speaker view */}
-      <SpeakerView
-        localStream={localStream}
-        remoteStreams={remoteStreams}
-        userName={userName}
-        selectedVideoId={selectedVideoId}
-        isCurrentUserHost={isCurrentUserHost}
-        participants={participants}
-      />
-
-      {/* Participants sidebar */}
-      <ParticipantsSidebar
-        localStream={localStream}
-        remoteStreams={remoteStreams}
-        userName={userName}
-        selectedVideoId={selectedVideoId}
-        onVideoSelect={onVideoSelect}
-        isCurrentUserHost={isCurrentUserHost}
-        participants={participants}
-        currentUserId={currentUserId}
-      />
+      )}
     </div>
   );
 };
