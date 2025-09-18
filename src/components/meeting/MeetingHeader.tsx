@@ -8,7 +8,9 @@ import {
   Maximize, 
   Settings, 
   Menu,
-  LogOut
+  LogOut,
+  Video,
+  Mic
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -19,9 +21,11 @@ interface MeetingHeaderProps {
   handNotifications: any[];
   isFullscreen: boolean;
   showParticipants: boolean;
+  isVideoMode: boolean;
   onCopyMeetingId: () => void;
   onToggleFullscreen: () => void;
   onToggleParticipants: () => void;
+  onToggleVideoMode: () => void;
   onNavigateToSettings: () => void;
   onSignOut: () => void;
 }
@@ -33,9 +37,11 @@ export const MeetingHeader = ({
   handNotifications,
   isFullscreen,
   showParticipants,
+  isVideoMode,
   onCopyMeetingId,
   onToggleFullscreen,
   onToggleParticipants,
+  onToggleVideoMode,
   onNavigateToSettings,
   onSignOut
 }: MeetingHeaderProps) => {
@@ -149,6 +155,16 @@ export const MeetingHeader = ({
           >
             <Copy className="h-4 w-4 mr-2" />
             Copy Meeting ID
+          </Button>
+
+          <Button
+            onClick={onToggleVideoMode}
+            size="sm"
+            variant={isVideoMode ? "secondary" : "ghost"}
+            className={isVideoMode ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "text-slate-300 hover:bg-slate-700/50"}
+          >
+            {isVideoMode ? <Video className="h-4 w-4 mr-2" /> : <Mic className="h-4 w-4 mr-2" />}
+            {isVideoMode ? "Video" : "Audio Only"}
           </Button>
 
           <Button

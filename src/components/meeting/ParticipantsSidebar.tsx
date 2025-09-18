@@ -87,6 +87,23 @@ export const ParticipantsSidebar = ({
     // Audio visualization for this participant's stream
     const audioData = useAudioVisualizer(stream, hasAudio && !isMuted);
 
+    // Debug logging
+    React.useEffect(() => {
+      if (stream) {
+        console.log(`ParticipantThumbnail ${participantName}:`, {
+          streamId,
+          hasVideo,
+          hasAudio,
+          videoTracks: stream.getVideoTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+          audioTracks: stream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
+          participantInfo,
+          audioData: { volume: audioData.volume, isActive: audioData.isActive }
+        });
+      } else {
+        console.log(`ParticipantThumbnail ${participantName}: No stream provided`);
+      }
+    }, [stream, participantName, hasVideo, hasAudio, audioData.volume, audioData.isActive]);
+
     // Optimize video stream handling to prevent blinking
     React.useEffect(() => {
       const videoElement = videoRef.current;
@@ -284,6 +301,13 @@ export const ParticipantsSidebar = ({
       </div>
 
       <div className="space-y-3">
+        {/* Debug info */}
+        <div className="text-xs text-slate-400 p-2 bg-slate-800/20 rounded border border-slate-700/30">
+          <div>Local: {localStream ? `${localStream.getVideoTracks().length}V/${localStream.getAudioTracks().length}A` : 'None'}</div>
+          <div>Remote: {remoteStreams.length} participants</div>
+          <div>Selected: {selectedVideoId}</div>
+        </div>
+
         {/* Local user */}
         <ParticipantThumbnail
           stream={localStream}

@@ -306,9 +306,11 @@ export const AudioOnlyMeeting = ({
           handNotifications={handNotifications}
           isFullscreen={isFullscreen}
           showParticipants={showParticipantsList}
+          isVideoMode={false}
           onCopyMeetingId={copyMeetingId}
           onToggleFullscreen={toggleFullscreen}
           onToggleParticipants={handleToggleParticipantsList}
+          onToggleVideoMode={() => {}}
           onNavigateToSettings={navigateToSettings}
           onSignOut={handleSignOut}
         />

@@ -48,6 +48,7 @@ export const VideoConference = ({
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
+  const [isVideoMode, setIsVideoMode] = useState(true);
   const { addRecentMeeting } = useRecentMeetings();
   const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
 
@@ -445,6 +446,31 @@ export const VideoConference = ({
     setShowParticipantsList(!showParticipantsList);
   };
 
+  const handleToggleVideoMode = () => {
+    const newMode = !isVideoMode;
+    setIsVideoMode(newMode);
+    
+    // Toggle video for the current user
+    if (newMode) {
+      // Switching to video mode - enable video if it was off
+      if (!isVideoEnabled) {
+        enhancedToggleVideo();
+      }
+    } else {
+      // Switching to audio-only mode - disable video if it's on
+      if (isVideoEnabled) {
+        enhancedToggleVideo();
+      }
+    }
+    
+    // Show toast notification
+    toast({
+      title: newMode ? "Switched to Video Mode" : "Switched to Audio-Only Mode",
+      description: newMode ? "Video is now enabled for the meeting" : "Meeting is now audio-only",
+      duration: 3000,
+    });
+  };
+
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
   const totalParticipantCount = connectedPeers.length + 1;
 
@@ -464,9 +490,11 @@ export const VideoConference = ({
           handNotifications={handNotifications}
           isFullscreen={isFullscreen}
           showParticipants={showParticipantsList}
+          isVideoMode={isVideoMode}
           onCopyMeetingId={copyMeetingId}
           onToggleFullscreen={toggleFullscreen}
           onToggleParticipants={handleToggleParticipantsList}
+          onToggleVideoMode={handleToggleVideoMode}
           onNavigateToSettings={navigateToSettings}
           onSignOut={handleSignOut}
         />
@@ -484,7 +512,7 @@ export const VideoConference = ({
             localStream={localStream}
             remoteStreams={remoteStreamsArray}
             userName={userName}
-            isVideoEnabled={isVideoEnabled}
+            isVideoEnabled={isVideoEnabled && isVideoMode}
             selectedVideoId={selectedVideoId}
             onVideoSelect={handleVideoSelect}
             isCurrentUserHost={isCurrentUserHost}
