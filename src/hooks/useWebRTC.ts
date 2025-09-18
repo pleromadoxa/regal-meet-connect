@@ -385,10 +385,20 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
   const initialize = useCallback(async () => {
     try {
+      console.log('🎥 Initializing WebRTC media...');
+      
       // Get optimized constraints based on current participant count
       const constraints = getOptimizedMediaConstraints(true);
+      console.log('📋 Using media constraints:', constraints);
       
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log('✅ Got media stream:', {
+        id: stream.id,
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        videoSettings: stream.getVideoTracks()[0]?.getSettings(),
+        audioSettings: stream.getAudioTracks()[0]?.getSettings()
+      });
 
       localStreamRef.current = stream;
       setLocalStream(stream);
@@ -400,17 +410,20 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
 
       if (audioTrack) {
         setCurrentAudioDevice(audioTrack.label);
-      }
-      if (videoTrack) {
-        setCurrentVideoDevice(videoTrack.label);
+        console.log('🎤 Audio track ready:', audioTrack.label);
       }
 
-      console.log('WebRTC initialized with optimized constraints for participant count:', optimizationSettings.participantCount);
+      if (videoTrack) {
+        setCurrentVideoDevice(videoTrack.label);
+        console.log('📹 Video track ready:', videoTrack.label);
+      }
+
+      console.log('🚀 WebRTC media initialization complete');
     } catch (error) {
-      console.error('Error accessing media devices:', error);
+      console.error('❌ WebRTC initialization failed:', error);
       toast({
-        title: "Error",
-        description: "Failed to access media devices. Please check your permissions.",
+        title: "Media Access Error",
+        description: "Failed to access camera and microphone. Please check permissions.",
         variant: "destructive"
       });
     }

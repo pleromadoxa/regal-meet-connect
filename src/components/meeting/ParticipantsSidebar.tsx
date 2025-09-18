@@ -94,22 +94,37 @@ export const ParticipantsSidebar = ({
     // Optimize video stream handling to prevent blinking
     React.useEffect(() => {
       const videoElement = videoRef.current;
-      if (!videoElement || !stream) {
+      console.log(`🎥 Video setup for ${participantName}:`, {
+        hasVideoElement: !!videoElement,
+        hasStream: !!stream,
+        hasVideo,
+        streamId,
+        videoTracks: stream?.getVideoTracks().length || 0,
+        videoEnabled: stream?.getVideoTracks()[0]?.enabled
+      });
+
+      if (!videoElement || !stream || !hasVideo) {
         setIsVideoLoaded(false);
+        if (videoElement) {
+          videoElement.srcObject = null;
+        }
         return;
       }
 
       // Only update srcObject if the stream actually changed
       if (currentStreamRef.current !== stream) {
+        console.log(`🔄 Setting new video stream for ${participantName}`);
         currentStreamRef.current = stream;
         videoElement.srcObject = stream;
         setIsVideoLoaded(false);
         
         const handleLoadedMetadata = () => {
+          console.log(`✅ Video loaded for ${participantName}`);
           setIsVideoLoaded(true);
         };
 
-        const handleError = () => {
+        const handleError = (e: any) => {
+          console.error(`❌ Video error for ${participantName}:`, e);
           setIsVideoLoaded(false);
         };
 
@@ -121,10 +136,10 @@ export const ParticipantsSidebar = ({
           try {
             if (videoElement.readyState >= 2) {
               await videoElement.play();
+              console.log(`▶️ Video playing for ${participantName}`);
             }
           } catch (error) {
-            // Silently handle autoplay restrictions
-            console.warn('Video play failed for participant:', participantName, error);
+            console.warn(`⚠️ Video autoplay failed for ${participantName}:`, error);
           }
         };
 
@@ -137,7 +152,7 @@ export const ParticipantsSidebar = ({
           videoElement.removeEventListener('error', handleError);
         };
       }
-    }, [stream, participantName]);
+    }, [stream, participantName, hasVideo, streamId]);
 
     return (
       <Card 
@@ -149,6 +164,11 @@ export const ParticipantsSidebar = ({
         onClick={() => onVideoSelect(streamId)}
       >
         <div className="aspect-video relative min-h-[120px]">
+          {/* Debug info */}
+          <div className="absolute top-1 left-1 z-30 bg-red-500/80 text-white text-xs px-1 rounded">
+            {hasVideo ? 'HAS_VIDEO' : 'NO_VIDEO'} | {isVideoLoaded ? 'LOADED' : 'LOADING'}
+          </div>
+
           {hasVideo ? (
             <video
               ref={videoRef}
@@ -163,6 +183,7 @@ export const ParticipantsSidebar = ({
               className={`w-full h-full object-cover rounded-lg transition-opacity duration-200 ${
                 isVideoLoaded ? 'opacity-100' : 'opacity-0'
               }`}
+              style={{ background: 'blue' }} // Temporary background to see video element
             />
           ) : null}
           
@@ -180,11 +201,16 @@ export const ParticipantsSidebar = ({
             </div>
           )}
           
-          {/* Fallback content - always rendered but controlled by video visibility */}
+          {/* Fallback content when no video or video not loaded */}
           <div className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg transition-opacity duration-200 ${
             hasVideo && isVideoLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
-            <User className="h-8 w-8 text-slate-400" />
+            <div className="text-center">
+              <User className="h-12 w-12 text-slate-400 mx-auto mb-2" />
+              <p className="text-slate-400 text-xs">
+                {hasVideo ? 'Loading video...' : 'Camera off'}
+              </p>
+            </div>
           </div>
 
           {/* Status indicators */}
