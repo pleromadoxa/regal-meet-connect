@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Loader2, Video } from 'lucide-react';
+import { Plus, Loader2, Video, Phone } from 'lucide-react';
 import { useMeetingActions } from '@/hooks/useMeetingActions';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +13,7 @@ export const CreateMeetingCard = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [meetingType, setMeetingType] = useState<'video' | 'audio'>('video');
   const { createMeeting } = useMeetingActions();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -38,7 +39,8 @@ export const CreateMeetingCard = () => {
       
       if (result) {
         // Navigate to the meeting as host
-        navigate(`/meeting/${meetingId}?host=true&userName=${encodeURIComponent(user?.email || 'Host')}`);
+        const route = meetingType === 'audio' ? 'audio-meeting' : 'meeting';
+        navigate(`/${route}/${meetingId}?host=true&userName=${encodeURIComponent(user?.email || 'Host')}`);
       }
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -56,6 +58,32 @@ export const CreateMeetingCard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 md:space-y-4">
+        <div className="space-y-2">
+          <label className="text-foreground text-xs md:text-sm font-medium">
+            Meeting Type *
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={meetingType === 'video' ? 'default' : 'outline'}
+              onClick={() => setMeetingType('video')}
+              className="h-11 md:h-12"
+            >
+              <Video className="w-4 h-4 mr-2" />
+              Video
+            </Button>
+            <Button
+              type="button"
+              variant={meetingType === 'audio' ? 'default' : 'outline'}
+              onClick={() => setMeetingType('audio')}
+              className="h-11 md:h-12"
+            >
+              <Phone className="w-4 h-4 mr-2" />
+              Audio Only
+            </Button>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <label className="text-foreground text-xs md:text-sm font-medium">
             Meeting Title *
@@ -95,7 +123,7 @@ export const CreateMeetingCard = () => {
           ) : (
             <>
               <Plus className="h-4 w-4 mr-2" />
-              Create & Start Meeting
+              Create & Start {meetingType === 'audio' ? 'Audio' : 'Video'} Meeting
             </>
           )}
         </Button>

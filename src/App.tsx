@@ -14,6 +14,8 @@ import Auth from "./pages/Auth";
 import Meeting from "./pages/Meeting";
 import { SessionManager } from "./components/SessionManager";
 
+import { AudioMeeting } from "./pages/AudioMeeting";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,6 +33,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/meeting/:meetingId" element={<Meeting />} />
+            <Route path="/audio-meeting/:meetingId" element={<AudioMeeting />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
