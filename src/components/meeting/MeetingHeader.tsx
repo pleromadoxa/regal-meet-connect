@@ -64,6 +64,14 @@ export const MeetingHeader = ({
           
           <div className="flex items-center space-x-2">
             <Button
+              onClick={onToggleVideoMode}
+              size="sm"
+              variant={isVideoMode ? "secondary" : "ghost"}
+              className={isVideoMode ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "text-slate-300 hover:bg-slate-700/50"}
+            >
+              {isVideoMode ? <Video className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </Button>
+            <Button
               onClick={onNavigateToSettings}
               size="sm"
               variant="ghost"

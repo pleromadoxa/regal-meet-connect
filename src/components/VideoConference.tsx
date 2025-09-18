@@ -520,6 +520,7 @@ export const VideoConference = ({
             currentUserId={user?.id || ''}
             onToggleMute={handleToggleMute}
             speakingParticipants={speakingParticipants}
+            isVideoMode={isVideoMode}
           />
 
           {/* Network Quality Indicator - Top Right of Video Feed */}

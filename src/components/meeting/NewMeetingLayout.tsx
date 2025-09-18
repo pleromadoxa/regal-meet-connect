@@ -2,6 +2,7 @@
 import React from 'react';
 import { OptimizedVideoGrid } from './OptimizedVideoGrid';
 import { ParticipantsSidebar } from './ParticipantsSidebar';
+import { AudioOnlyGrid } from './AudioOnlyGrid';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface RemoteStream {
@@ -22,6 +23,7 @@ interface NewMeetingLayoutProps {
   currentUserId: string;
   onToggleMute: (participantId: string, isMuted: boolean) => void;
   speakingParticipants?: Set<string>;
+  isVideoMode?: boolean;
 }
 
 export const NewMeetingLayout = ({
@@ -35,11 +37,30 @@ export const NewMeetingLayout = ({
   participants,
   currentUserId,
   onToggleMute,
-  speakingParticipants = new Set()
+  speakingParticipants = new Set(),
+  isVideoMode = true
 }: NewMeetingLayoutProps) => {
   const isMobile = useIsMobile();
 
   const totalParticipants = remoteStreams.length + 1;
+
+  // If in audio-only mode, show the audio-only grid interface
+  if (!isVideoMode) {
+    return (
+      <div className="flex-1">
+        <AudioOnlyGrid
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          isCurrentUserHost={isCurrentUserHost}
+          participants={participants}
+          currentUserId={currentUserId}
+          onToggleMute={onToggleMute}
+          speakingParticipants={speakingParticipants}
+        />
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
