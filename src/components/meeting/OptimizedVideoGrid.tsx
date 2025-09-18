@@ -308,12 +308,9 @@ export const OptimizedVideoGrid = ({
               {isLocal && " (You)"}
             </span>
             <div className="flex items-center space-x-2">
-              {/* Audio Indicator */}
-              {hasAudio && stream && (
+              {/* Audio Visualizer - Always show when stream exists */}
+              {stream && (
                 <AudioIndicator stream={stream} className="opacity-90" />
-              )}
-              {participantInfo.isSpeaking && (
-                <div className="w-1 h-1 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></div>
               )}
             </div>
           </div>
