@@ -47,7 +47,6 @@ export const VideoConference = ({
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [showParticipantsList, setShowParticipantsList] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
   const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
 
@@ -445,7 +444,7 @@ export const VideoConference = ({
   };
 
   const handleToggleParticipantsList = () => {
-    setShowParticipantsList(!showParticipantsList);
+    setShowParticipants(!showParticipants);
   };
 
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
@@ -544,7 +543,7 @@ export const VideoConference = ({
       </div>
 
       {/* Participants List Modal */}
-      {showParticipantsList && (
+      {showParticipants && (
         <ParticipantsList
           participants={stateParticipants.map(convertToDbParticipant)}
           remoteStreams={remoteStreamsArray}
@@ -553,7 +552,7 @@ export const VideoConference = ({
           currentUserId={user?.id || ''}
           userName={userName}
           meetingId={meetingId}
-          onClose={() => setShowParticipantsList(false)}
+          onClose={() => setShowParticipants(false)}
           onToggleMute={handleToggleMute}
           onSelectVideo={handleVideoSelect}
           selectedVideoId={selectedVideoId}
