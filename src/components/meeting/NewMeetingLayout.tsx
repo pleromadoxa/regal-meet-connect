@@ -41,11 +41,17 @@ export const NewMeetingLayout = ({
 }: NewMeetingLayoutProps) => {
   const isMobile = useIsMobile();
 
-  // For many participants, always use the optimized grid layout
   const totalParticipants = remoteStreams.length + 1;
-  const useSpeakerView = totalParticipants <= 8 && !isMobile;
 
-  if (isMobile || totalParticipants > 8) {
+  // Debug logging for sidebar state
+  console.log('NewMeetingLayout render:', {
+    isMobile,
+    totalParticipants,
+    showParticipants,
+    remoteStreamsCount: remoteStreams.length
+  });
+
+  if (isMobile) {
     return (
       <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <OptimizedVideoGrid
@@ -78,7 +84,7 @@ export const NewMeetingLayout = ({
         />
       </div>
 
-      {/* Participants sidebar for desktop small meetings */}
+      {/* Participants sidebar - now available for all desktop meetings */}
       {showParticipants && (
         <ParticipantsSidebar
           localStream={localStream}
