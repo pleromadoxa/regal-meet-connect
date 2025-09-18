@@ -52,7 +52,7 @@ export const ParticipantVideo = ({
       {displayVideoEnabled && stream ? (
         <StableVideoElement
           stream={stream}
-          streamId={stream.id || 'participant-video'}
+          streamId={`${displayName}-${isLocalUser ? 'local' : 'remote'}`}
           isLocal={isLocalUser}
           className="w-full h-full object-cover"
         />

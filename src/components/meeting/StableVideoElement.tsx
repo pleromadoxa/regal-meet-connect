@@ -58,19 +58,22 @@ export const StableVideoElement = memo(({
       return;
     }
 
-    // Don't update if it's the same stream
-    if (currentStreamRef.current === stream && streamIdRef.current === streamId) {
+    // Don't update if it's the same stream and stream ID
+    if (currentStreamRef.current === stream && streamIdRef.current === streamId && stream) {
       return;
     }
 
-    console.log(`🎥 Video setup for ${streamId}:`, {
-      hasVideoElement: !!videoElement,
-      hasStream: !!stream,
-      hasVideo: !!stream?.getVideoTracks()?.length,
-      streamId,
-      videoTracks: stream?.getVideoTracks()?.length || 0,
-      videoEnabled: stream?.getVideoTracks()?.[0]?.enabled
-    });
+    // Don't process if no stream and already cleared
+    if (!stream && !currentStreamRef.current) {
+      return;
+    }
+
+    if (stream) {
+      console.log(`🎥 Setting video stream for ${streamId}:`, {
+        hasVideoTracks: stream.getVideoTracks().length > 0,
+        videoEnabled: stream.getVideoTracks()[0]?.enabled
+      });
+    }
 
     // Reset playing state when changing streams
     isPlayingRef.current = false;
