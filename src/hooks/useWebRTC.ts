@@ -97,19 +97,22 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     };
   }, []);
 
-  // Update connected peers from signaling and apply optimizations
+  // Update participant count for optimization (prevent infinite loops)
   useEffect(() => {
-    const peerCount = Array.from(signalingPeers).length + 1; // +1 for local user
-    setConnectedPeers(Array.from(signalingPeers));
+    const newPeerCount = Array.from(signalingPeers).length + 1; // +1 for local user
     
-    // Update participant count for optimization
-    updateParticipantCount(peerCount);
-    
-    // Apply bitrate optimizations if there are many participants
-    if (peerCount > 4 && peerConnectionsRef.current.size > 0) {
-      applyOptimizedBitrate(peerConnectionsRef.current);
+    // Only update if the count actually changed
+    if (connectedPeers.length !== Array.from(signalingPeers).length) {
+      setConnectedPeers(Array.from(signalingPeers));
     }
-  }, [signalingPeers, updateParticipantCount, applyOptimizedBitrate]);
+    
+    // Throttle optimization updates to prevent loops
+    const timeoutId = setTimeout(() => {
+      updateParticipantCount(newPeerCount);
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [signalingPeers.size]); // Only depend on size, not the set contents
 
   // Page visibility for background handling
   const { isVisible } = usePageVisibility();

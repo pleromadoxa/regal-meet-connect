@@ -1,10 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { User, Crown, Mic, MicOff, Volume2, VolumeX, MapPin } from 'lucide-react';
-import { AudioVisualizer } from '@/components/AudioVisualizer';
-import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
+import { User, Mic, MicOff, Crown, MapPin } from 'lucide-react';
+import { AudioIndicator } from '@/components/AudioIndicator';
 
 interface RemoteStream {
   id: string;
@@ -12,13 +9,24 @@ interface RemoteStream {
   userName: string;
 }
 
+interface Participant {
+  id: string;
+  user_id: string;
+  user_name: string;
+  is_host: boolean;
+  is_muted: boolean;
+  joined_at: string;
+  country?: string;
+  city?: string;
+}
+
 interface AudioOnlyGridProps {
   localStream: MediaStream | null;
   remoteStreams: RemoteStream[];
   userName: string;
-  isCurrentUserHost: boolean;
-  participants: any[];
+  participants: Participant[];
   currentUserId: string;
+  isCurrentUserHost: boolean;
   onToggleMute?: (participantId: string, isMuted: boolean) => void;
   speakingParticipants?: Set<string>;
 }
@@ -27,30 +35,44 @@ export const AudioOnlyGrid = ({
   localStream,
   remoteStreams,
   userName,
-  isCurrentUserHost,
   participants,
   currentUserId,
+  isCurrentUserHost,
   onToggleMute,
-  speakingParticipants = new Set()
+  speakingParticipants
 }: AudioOnlyGridProps) => {
-  // Helper function to get participant info
-  const getParticipantInfo = (participantName: string) => {
-    const participant = participants.find(p => p.user_name === participantName || p.userName === participantName);
+  // Get participant info
+  const getParticipantInfo = (streamUserName: string, isLocal = false) => {
+    if (isLocal) {
+      return {
+        name: userName,
+        isHost: isCurrentUserHost,
+        isMuted: !localStream?.getAudioTracks()?.[0]?.enabled,
+        country: undefined,
+        city: undefined
+      };
+    }
+    
+    const participant = participants.find(p => p.user_name === streamUserName);
     return {
-      isHost: participant?.is_host || participant?.isHost || false,
-      isMuted: participant?.is_muted || participant?.isMuted || false,
-      id: participant?.id || participant?.user_id || participant?.userId,
+      name: participant?.user_name || streamUserName,
+      isHost: participant?.is_host || false,
+      isMuted: participant?.is_muted || false,
       country: participant?.country,
       city: participant?.city
     };
   };
 
-  const handleMuteToggle = (participantName: string, streamId: string) => {
-    const participantInfo = getParticipantInfo(participantName);
-    if (participantInfo.id && onToggleMute) {
-      onToggleMute(participantInfo.id, !participantInfo.isMuted);
-    }
-  };
+  // Combine all streams for uniform handling
+  const allStreams = useMemo(() => [
+    { 
+      id: 'local', 
+      stream: localStream, 
+      userName: userName,
+      isLocal: true
+    },
+    ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
+  ], [localStream, remoteStreams, userName]);
 
   const AudioParticipantCard = ({ 
     stream, 
@@ -63,194 +85,130 @@ export const AudioOnlyGrid = ({
     participantName: string;
     isLocal?: boolean;
   }) => {
-    const participantInfo = isLocal 
-      ? { isHost: isCurrentUserHost, isMuted: false, country: undefined, city: undefined }
-      : getParticipantInfo(participantName);
+    const participantInfo = getParticipantInfo(participantName, isLocal);
+    const hasAudio = stream?.getAudioTracks()?.[0]?.enabled || false;
     
-    const hasAudio = stream && stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
-    const isHost = participantInfo.isHost;
-    const isMuted = participantInfo.isMuted;
-    const isSpeaking = speakingParticipants.has(streamId) || speakingParticipants.has(participantName);
-    
-    // Audio visualization for this participant's stream
-    const audioData = useAudioVisualizer(stream, hasAudio && !isMuted);
-
     return (
-      <Card className={`relative p-6 transition-all duration-300 ${
-        isSpeaking || audioData.isActive
-          ? 'ring-2 ring-green-400 bg-green-500/10 border-green-400/40' 
-          : 'bg-slate-800/60 border-slate-700/60 hover:bg-slate-700/60'
-      } backdrop-blur-sm`}>
-        <div className="flex flex-col items-center space-y-4">
-          {/* Avatar with audio activity indicator */}
-          <div className={`relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ${
-            isSpeaking || audioData.isActive
-              ? 'bg-green-500/20 ring-4 ring-green-400/50 animate-pulse'
-              : 'bg-slate-700'
-          }`}>
-            <User className={`h-8 w-8 ${
-              isSpeaking || audioData.isActive ? 'text-green-300' : 'text-slate-300'
-            }`} />
-            
-            {/* Host crown */}
-            {isHost && (
-              <div className="absolute -top-2 -right-2 p-1 bg-yellow-500 rounded-full">
-                <Crown className="h-3 w-3 text-white" />
-              </div>
-            )}
-          </div>
-
-          {/* Participant name with speaking indicator */}
-          <div className="text-center">
-            <h3 className={`font-medium transition-colors duration-300 ${
-              isSpeaking || audioData.isActive ? 'text-green-300' : 'text-white'
-            }`}>
-              {participantName}
-              {isLocal && " (You)"}
-            </h3>
-            
-            {/* Location info */}
-            {(participantInfo.country || participantInfo.city) && !isLocal && (
-              <div className="flex items-center justify-center space-x-1 mt-1">
-                <MapPin className="h-3 w-3 text-slate-400" />
-                <span className="text-xs text-slate-400">
-                  {participantInfo.city && participantInfo.country 
-                    ? `${participantInfo.city}, ${participantInfo.country}`
-                    : participantInfo.country || participantInfo.city}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Audio controls and indicators */}
-          <div className="flex items-center space-x-3">
-            {/* Audio level indicator */}
-            <div className="flex items-center space-x-2">
-              <div className={`p-2 rounded-full ${
-                hasAudio && !isMuted ? 'bg-green-500/20' : 'bg-red-500/20'
-              }`}>
-                <AudioVisualizer
-                  volume={audioData.volume}
-                  isActive={audioData.isActive}
-                  avgVolume={audioData.avgVolume}
-                  hasAudio={hasAudio && !isMuted}
-                  size="md"
-                />
-              </div>
-              
-              {/* Volume percentage */}
-              {audioData.isActive && hasAudio && (
-                <span className="text-xs text-green-400 font-mono min-w-[3ch]">
-                  {audioData.avgVolume}%
-                </span>
-              )}
-            </div>
-
-            {/* Mute/Unmute control for host */}
-            {isCurrentUserHost && !isLocal && onToggleMute && (
-              <Button
-                onClick={() => handleMuteToggle(participantName, streamId)}
-                variant="ghost"
-                size="sm"
-                className={`h-8 w-8 p-0 ${
-                  isMuted 
-                    ? 'bg-red-500/80 hover:bg-red-500/60 text-white' 
-                    : 'bg-green-500/80 hover:bg-green-500/60 text-white'
-                } backdrop-blur-sm rounded-full`}
-                title={isMuted ? 'Unmute participant' : 'Mute participant'}
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4" />
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </Button>
-            )}
-
-            {/* Mute status indicator */}
-            <div className={`p-1 rounded-full ${
-              hasAudio && !isMuted ? 'bg-green-500/80' : 'bg-red-500/80'
-            }`}>
-              {hasAudio && !isMuted ? (
-                <Mic className="h-3 w-3 text-white" />
-              ) : (
-                <MicOff className="h-3 w-3 text-white" />
-              )}
-            </div>
-          </div>
+      <Card className="relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-600/60 hover:border-slate-500/60 transition-all duration-300 aspect-square flex flex-col items-center justify-center p-6">
+        {/* Profile Circle */}
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all duration-300 ${
+          participantInfo.isHost 
+            ? 'bg-gradient-to-br from-orange-400 to-orange-600' 
+            : 'bg-gradient-to-br from-blue-500 to-blue-700'
+        }`}>
+          <span className="text-white font-bold text-2xl">
+            {participantInfo.name.charAt(0).toUpperCase()}
+          </span>
         </div>
+
+        {/* Name */}
+        <h3 className="text-white font-semibold text-lg mb-2 text-center truncate max-w-full">
+          {participantInfo.name}
+          {isLocal && " (You)"}
+        </h3>
+
+        {/* Status indicators */}
+        <div className="flex items-center space-x-3 mb-4">
+          {/* Audio indicator */}
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${
+            hasAudio ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+          }`}>
+            {hasAudio ? (
+              <Mic className="h-3 w-3" />
+            ) : (
+              <MicOff className="h-3 w-3" />
+            )}
+            <span className="text-xs font-medium">
+              {hasAudio ? 'Unmuted' : 'Muted'}
+            </span>
+          </div>
+
+          {/* Host indicator */}
+          {participantInfo.isHost && (
+            <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
+              <Crown className="h-3 w-3" />
+              <span className="text-xs font-medium">Host</span>
+            </div>
+          )}
+        </div>
+
+        {/* Location */}
+        {(participantInfo.country || participantInfo.city) && !isLocal && (
+          <div className="flex items-center space-x-1 text-slate-400 text-sm mb-2">
+            <MapPin className="h-3 w-3" />
+            <span>
+              {participantInfo.city && participantInfo.country 
+                ? `${participantInfo.city}, ${participantInfo.country}`
+                : participantInfo.country || participantInfo.city}
+            </span>
+          </div>
+        )}
+
+        {/* Audio Visualizer */}
+        {stream && (
+          <div className="absolute bottom-4 right-4">
+            <AudioIndicator stream={stream} className="opacity-90" />
+          </div>
+        )}
+
+        {/* Speaking indicator */}
+        {hasAudio && (
+          <div className="absolute top-4 right-4">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          </div>
+        )}
       </Card>
     );
   };
 
-  const allParticipants = [
-    // Local participant first
-    {
-      stream: localStream,
-      streamId: currentUserId,
-      participantName: userName,
-      isLocal: true
-    },
-    // Remote participants
-    ...remoteStreams.map(remote => ({
-      stream: remote.stream,
-      streamId: remote.id,
-      participantName: remote.userName,
-      isLocal: false
-    }))
-  ];
+  // Calculate grid layout
+  const totalParticipants = allStreams.length;
+  const getGridCols = (count: number) => {
+    if (count <= 1) return 1;
+    if (count <= 4) return 2;
+    if (count <= 9) return 3;
+    if (count <= 16) return 4;
+    return 5;
+  };
+
+  const gridCols = getGridCols(totalParticipants);
 
   return (
-    <div className="flex-1 p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Audio meeting header */}
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center space-x-2 mb-2">
-          <Mic className="h-6 w-6 text-green-400" />
-          <h2 className="text-2xl font-bold text-white">Audio Meeting</h2>
-        </div>
+    <div className="h-full w-full p-4 pb-24">
+      <div className="text-center mb-6">
+        <h2 className="text-white text-2xl font-bold mb-2">Audio-Only Meeting</h2>
         <p className="text-slate-400">
-          {allParticipants.length} participant{allParticipants.length !== 1 ? 's' : ''} connected
+          {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''} in the meeting
         </p>
       </div>
 
-      {/* Participants grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
-        {allParticipants.map((participant) => (
+      <div 
+        className="grid gap-4 justify-items-center"
+        style={{
+          gridTemplateColumns: `repeat(${gridCols}, minmax(200px, 1fr))`,
+          maxWidth: '1200px',
+          margin: '0 auto'
+        }}
+      >
+        {allStreams.map((streamData) => (
           <AudioParticipantCard
-            key={participant.streamId}
-            stream={participant.stream}
-            streamId={participant.streamId}
-            participantName={participant.participantName}
-            isLocal={participant.isLocal}
+            key={streamData.id}
+            stream={streamData.stream}
+            streamId={streamData.id}
+            participantName={streamData.userName}
+            isLocal={streamData.isLocal}
           />
         ))}
       </div>
 
-      {/* Audio controls legend */}
-      <div className="mt-8 max-w-2xl mx-auto">
-        <Card className="p-4 bg-slate-800/60 border-slate-700/60">
-          <h4 className="text-sm font-medium text-slate-300 mb-3 text-center">Audio Indicators</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-slate-400">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <span>Speaking</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Mic className="h-3 w-3 text-green-400" />
-              <span>Unmuted</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <MicOff className="h-3 w-3 text-red-400" />
-              <span>Muted</span>
-            </div>
-            {isCurrentUserHost && (
-              <div className="flex items-center space-x-2">
-                <Volume2 className="h-3 w-3 text-blue-400" />
-                <span>Host Controls</span>
-              </div>
-            )}
-          </div>
-        </Card>
+      {/* Audio-only meeting tips */}
+      <div className="mt-8 text-center">
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 max-w-md mx-auto">
+          <h3 className="text-white font-medium mb-2">Audio-Only Mode</h3>
+          <p className="text-slate-400 text-sm">
+            Turn on your camera to switch to video mode, or enjoy the focused audio experience.
+          </p>
+        </div>
       </div>
     </div>
   );
