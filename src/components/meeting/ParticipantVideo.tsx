@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Mic, MicOff, Video, VideoOff, MapPin } from 'lucide-react';
 import { ParticipantState } from '@/hooks/useMeetingState';
 import { StableVideoElement } from './StableVideoElement';
+import { AudioIndicator } from '@/components/AudioIndicator';
 
 interface ParticipantVideoProps {
   participant?: ParticipantState;
@@ -78,21 +79,31 @@ export const ParticipantVideo = ({
       )}
       
       {showControls && (
-        <div className="absolute bottom-2 left-2 flex space-x-1">
-          <div className={`p-1 rounded-full ${displayAudioEnabled ? 'bg-green-500' : 'bg-red-500'}`}>
-            {displayAudioEnabled ? (
-              <Mic className="h-3 w-3 text-white" />
-            ) : (
-              <MicOff className="h-3 w-3 text-white" />
-            )}
+        <div className="absolute bottom-2 left-2 flex space-x-2 items-center">
+          <div className="flex space-x-1">
+            <div className={`p-1 rounded-full ${displayAudioEnabled ? 'bg-green-500' : 'bg-red-500'}`}>
+              {displayAudioEnabled ? (
+                <Mic className="h-3 w-3 text-white" />
+              ) : (
+                <MicOff className="h-3 w-3 text-white" />
+              )}
+            </div>
+            <div className={`p-1 rounded-full ${displayVideoEnabled ? 'bg-green-500' : 'bg-red-500'}`}>
+              {displayVideoEnabled ? (
+                <Video className="h-3 w-3 text-white" />
+              ) : (
+                <VideoOff className="h-3 w-3 text-white" />
+              )}
+            </div>
           </div>
-          <div className={`p-1 rounded-full ${displayVideoEnabled ? 'bg-green-500' : 'bg-red-500'}`}>
-            {displayVideoEnabled ? (
-              <Video className="h-3 w-3 text-white" />
-            ) : (
-              <VideoOff className="h-3 w-3 text-white" />
-            )}
-          </div>
+          
+          {/* Audio Indicator */}
+          {displayAudioEnabled && stream && (
+            <AudioIndicator
+              stream={stream}
+              className="ml-2"
+            />
+          )}
         </div>
       )}
       

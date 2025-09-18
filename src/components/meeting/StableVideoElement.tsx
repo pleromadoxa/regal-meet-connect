@@ -45,9 +45,10 @@ export const StableVideoElement = memo(({
         await videoElement.play();
       }
     } catch (error) {
+      console.error('Video play failed:', error);
       isPlayingRef.current = false;
     }
-  }, [streamId]);
+  }, []);
 
   // Effect to handle stream changes with stability checks
   useEffect(() => {
@@ -62,6 +63,14 @@ export const StableVideoElement = memo(({
       return;
     }
 
+    console.log(`🎥 Video setup for ${streamId}:`, {
+      hasVideoElement: !!videoElement,
+      hasStream: !!stream,
+      hasVideo: !!stream?.getVideoTracks()?.length,
+      streamId,
+      videoTracks: stream?.getVideoTracks()?.length || 0,
+      videoEnabled: stream?.getVideoTracks()?.[0]?.enabled
+    });
 
     // Reset playing state when changing streams
     isPlayingRef.current = false;

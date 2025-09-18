@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { Card } from '@/components/ui/card';
 import { User, Mic, MicOff, Crown, MapPin } from 'lucide-react';
 import { StableVideoElement } from './StableVideoElement';
+import { AudioIndicator } from '@/components/AudioIndicator';
 
 interface RemoteStream {
   id: string;
@@ -188,12 +189,13 @@ export const ResponsiveVideoGrid = ({
               {participantInfo.name}
               {isLocal && " (You)"}
             </span>
-            {hasAudio && (
-              <div className="flex items-center space-x-1">
-                <Mic className="h-3 w-3 text-green-400" />
-                <div className="w-1 h-1 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></div>
-              </div>
-            )}
+            <div className="flex items-center space-x-2">
+              {/* Audio Indicator */}
+              {hasAudio && stream && (
+                <AudioIndicator stream={stream} className="opacity-90" />
+              )}
+              <div className="w-1 h-1 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></div>
+            </div>
           </div>
         </div>
       </Card>
