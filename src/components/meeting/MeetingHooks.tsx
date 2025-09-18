@@ -11,7 +11,6 @@ interface HandNotification {
 
 export const useMeetingState = (meetingId: string, userName: string) => {
   const [selectedVideoId, setSelectedVideoId] = useState<string>('local');
-  const [showParticipants, setShowParticipants] = useState(true); // Show by default
   const [currentParticipantId, setCurrentParticipantId] = useState<string>('');
   const [currentMeeting, setCurrentMeeting] = useState<any>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -22,8 +21,6 @@ export const useMeetingState = (meetingId: string, userName: string) => {
   return {
     selectedVideoId,
     setSelectedVideoId,
-    showParticipants,
-    setShowParticipants,
     currentParticipantId,
     setCurrentParticipantId,
     currentMeeting,

@@ -19,7 +19,6 @@ interface NewMeetingLayoutProps {
   onVideoSelect: (streamId: string) => void;
   isCurrentUserHost: boolean;
   participants: any[];
-  showParticipants: boolean;
   currentUserId: string;
   onToggleMute: (participantId: string, isMuted: boolean) => void;
   speakingParticipants?: Set<string>;
@@ -34,7 +33,6 @@ export const NewMeetingLayout = ({
   onVideoSelect,
   isCurrentUserHost,
   participants,
-  showParticipants,
   currentUserId,
   onToggleMute,
   speakingParticipants = new Set()
@@ -42,14 +40,6 @@ export const NewMeetingLayout = ({
   const isMobile = useIsMobile();
 
   const totalParticipants = remoteStreams.length + 1;
-
-  // Debug logging for sidebar state
-  console.log('NewMeetingLayout render:', {
-    isMobile,
-    totalParticipants,
-    showParticipants,
-    remoteStreamsCount: remoteStreams.length
-  });
 
   if (isMobile) {
     return (
@@ -84,19 +74,17 @@ export const NewMeetingLayout = ({
         />
       </div>
 
-      {/* Participants sidebar - now available for all desktop meetings */}
-      {showParticipants && (
-        <ParticipantsSidebar
-          localStream={localStream}
-          remoteStreams={remoteStreams}
-          userName={userName}
-          selectedVideoId={selectedVideoId}
-          onVideoSelect={onVideoSelect}
-          isCurrentUserHost={isCurrentUserHost}
-          participants={participants}
-          currentUserId={currentUserId}
-        />
-      )}
+      {/* Participants sidebar - always visible on desktop */}
+      <ParticipantsSidebar
+        localStream={localStream}
+        remoteStreams={remoteStreams}
+        userName={userName}
+        selectedVideoId={selectedVideoId}
+        onVideoSelect={onVideoSelect}
+        isCurrentUserHost={isCurrentUserHost}
+        participants={participants}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 };

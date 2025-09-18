@@ -47,14 +47,13 @@ export const VideoConference = ({
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [showParticipantsList, setShowParticipantsList] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
   const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
 
   const {
     selectedVideoId,
     setSelectedVideoId,
-    showParticipants,
-    setShowParticipants,
     currentParticipantId,
     setCurrentParticipantId,
     currentMeeting,
@@ -357,9 +356,8 @@ export const VideoConference = ({
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setShowParticipants(false);
-      }
+      // No longer need to hide participants sidebar on resize
+      // since it's always visible on desktop now
     };
 
     window.addEventListener('resize', handleResize);
@@ -444,7 +442,7 @@ export const VideoConference = ({
   };
 
   const handleToggleParticipantsList = () => {
-    setShowParticipants(!showParticipants);
+    setShowParticipantsList(!showParticipantsList);
   };
 
   const isCurrentUserHost = isHost || (currentMeeting && isUserHost(currentMeeting));
@@ -465,7 +463,7 @@ export const VideoConference = ({
           totalParticipantCount={totalParticipantCount}
           handNotifications={handNotifications}
           isFullscreen={isFullscreen}
-          showParticipants={showParticipants}
+          showParticipants={showParticipantsList}
           onCopyMeetingId={copyMeetingId}
           onToggleFullscreen={toggleFullscreen}
           onToggleParticipants={handleToggleParticipantsList}
@@ -491,7 +489,6 @@ export const VideoConference = ({
             onVideoSelect={handleVideoSelect}
             isCurrentUserHost={isCurrentUserHost}
             participants={stateParticipants}
-            showParticipants={showParticipants}
             currentUserId={user?.id || ''}
             onToggleMute={handleToggleMute}
             speakingParticipants={speakingParticipants}
@@ -543,7 +540,7 @@ export const VideoConference = ({
       </div>
 
       {/* Participants List Modal */}
-      {showParticipants && (
+      {showParticipantsList && (
         <ParticipantsList
           participants={stateParticipants.map(convertToDbParticipant)}
           remoteStreams={remoteStreamsArray}
@@ -552,7 +549,7 @@ export const VideoConference = ({
           currentUserId={user?.id || ''}
           userName={userName}
           meetingId={meetingId}
-          onClose={() => setShowParticipants(false)}
+          onClose={() => setShowParticipantsList(false)}
           onToggleMute={handleToggleMute}
           onSelectVideo={handleVideoSelect}
           selectedVideoId={selectedVideoId}
