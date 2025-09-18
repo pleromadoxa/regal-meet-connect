@@ -29,84 +29,69 @@ export const StableVideoElement = memo(({
   const isPlayingRef = useRef<boolean>(false);
 
   const handleError = useCallback((error: Event) => {
-    // Suppress AbortError logs as they're normal during stream updates
-    if (error instanceof ErrorEvent && !error.message.includes('AbortError')) {
-      console.warn('Video error:', error);
-    }
+    console.warn('❌ Video error for stream:', streamId, error);
     onError?.(error);
-  }, [onError]);
+  }, [onError, streamId]);
 
   const handleLoadedMetadata = useCallback(() => {
+    console.log('✅ Video metadata loaded for stream:', streamId);
     onLoadedMetadata?.();
-  }, [onLoadedMetadata]);
+  }, [onLoadedMetadata, streamId]);
 
   const playVideo = useCallback(async (videoElement: HTMLVideoElement) => {
     if (isPlayingRef.current || !videoElement.srcObject) return;
     
     try {
       if (videoElement.readyState >= 2) {
+        console.log('▶️ Playing video for stream:', streamId);
         isPlayingRef.current = true;
         await videoElement.play();
       }
     } catch (error) {
+      console.warn('⚠️ Video autoplay failed for stream:', streamId, error);
       isPlayingRef.current = false;
-      // Only log non-AbortError issues
-      if (error instanceof Error && !error.message.includes('AbortError')) {
-        console.warn('Video play failed:', error);
-      }
     }
-  }, []);
+  }, [streamId]);
 
+  // Effect to handle stream changes with stability checks
   useEffect(() => {
     const videoElement = videoRef.current;
-    if (!videoElement) return;
-
-    // Only update srcObject if the stream actually changed
-    const currentStreamId = stream?.id || streamId;
-    const streamChanged = streamIdRef.current !== currentStreamId || currentStreamRef.current !== stream;
     
-    if (!streamChanged) return;
-
-    // Clean up previous stream
-    if (currentStreamRef.current) {
-      videoElement.pause();
-      isPlayingRef.current = false;
-    }
-
-    if (!stream) {
-      videoElement.srcObject = null;
-      currentStreamRef.current = null;
-      streamIdRef.current = '';
+    if (!videoElement) {
+      console.warn('⚠️ No video element available for stream:', streamId);
       return;
     }
 
-    // Set new stream with debounce to prevent rapid updates
-    const updateTimeout = setTimeout(() => {
-      if (!videoElement || videoElement.srcObject === stream) return;
-      
-      streamIdRef.current = currentStreamId;
-      currentStreamRef.current = stream;
-      
-      videoElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-      videoElement.addEventListener('error', handleError, { once: true });
+    // Don't update if it's the same stream
+    if (currentStreamRef.current === stream && streamIdRef.current === streamId) {
+      return;
+    }
 
-      videoElement.srcObject = stream;
-      isPlayingRef.current = false;
+    console.log('🔄 Setting video stream:', {
+      streamId,
+      hasStream: !!stream,
+      videoTracks: stream?.getVideoTracks().length || 0,
+      audioTracks: stream?.getAudioTracks().length || 0,
+      videoEnabled: stream?.getVideoTracks()[0]?.enabled
+    });
 
-      // Use requestAnimationFrame for smooth updates
-      requestAnimationFrame(() => {
-        if (autoPlay) {
-          playVideo(videoElement);
-        }
-      });
-    }, 100); // Debounce rapid stream changes
+    // Reset playing state when changing streams
+    isPlayingRef.current = false;
 
-    return () => {
-      clearTimeout(updateTimeout);
-      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      videoElement.removeEventListener('error', handleError);
-    };
-  }, [stream, streamId, autoPlay, handleError, handleLoadedMetadata, playVideo]);
+    // Set new stream
+    videoElement.srcObject = stream;
+    currentStreamRef.current = stream;
+    streamIdRef.current = streamId;
+
+    if (stream && autoPlay) {
+      // Delay play to ensure stream is ready
+      const playTimeout = setTimeout(() => {
+        playVideo(videoElement);
+      }, 100);
+
+      return () => clearTimeout(playTimeout);
+    }
+  }, [stream, streamId, autoPlay, playVideo]);
 
   // Handle play/pause state changes
   useEffect(() => {
@@ -123,25 +108,37 @@ export const StableVideoElement = memo(({
 
     videoElement.addEventListener('play', handlePlay);
     videoElement.addEventListener('pause', handlePause);
+    videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+    videoElement.addEventListener('error', handleError);
 
     return () => {
       videoElement.removeEventListener('play', handlePlay);
       videoElement.removeEventListener('pause', handlePause);
+      videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      videoElement.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [handleLoadedMetadata, handleError]);
 
   return (
     <video
       ref={videoRef}
+      className={className}
+      muted={muted || isLocal}
       autoPlay={autoPlay}
       playsInline={playsInline}
-      muted={muted || isLocal}
       preload="metadata"
       webkit-playsinline="true"
       x5-playsinline="true"
-      x5-video-player-type="h5"
-      x5-video-player-fullscreen="true"
-      className={className}
+      onCanPlay={() => {
+        const video = videoRef.current;
+        if (video && autoPlay && !isPlayingRef.current) {
+          playVideo(video);
+        }
+      }}
+      style={{
+        display: 'block',
+        background: 'linear-gradient(45deg, #1e293b, #334155)'
+      }}
     />
   );
 });
