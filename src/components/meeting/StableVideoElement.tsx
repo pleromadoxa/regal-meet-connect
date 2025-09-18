@@ -68,13 +68,6 @@ export const StableVideoElement = memo(({
       return;
     }
 
-    if (stream) {
-      console.log(`🎥 Setting video stream for ${streamId}:`, {
-        hasVideoTracks: stream.getVideoTracks().length > 0,
-        videoEnabled: stream.getVideoTracks()[0]?.enabled
-      });
-    }
-
     // Reset playing state when changing streams
     isPlayingRef.current = false;
 

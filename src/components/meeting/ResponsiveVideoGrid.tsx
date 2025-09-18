@@ -190,7 +190,7 @@ export const ResponsiveVideoGrid = ({
               {isLocal && " (You)"}
             </span>
             <div className="flex items-center space-x-2">
-              {/* Audio Visualizer - Always show when stream exists */}
+              {/* Audio Visualizer - Bottom right corner */}
               {stream && (
                 <AudioIndicator stream={stream} className="opacity-90" />
               )}

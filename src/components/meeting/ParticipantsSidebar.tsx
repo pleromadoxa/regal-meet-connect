@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { User, Mic, MicOff, Crown, Volume2, VolumeX, MapPin } from 'lucide-react';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
+import { AudioIndicator } from '@/components/AudioIndicator';
 import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
 
 interface RemoteStream {
@@ -94,14 +95,6 @@ export const ParticipantsSidebar = ({
     // Optimize video stream handling to prevent blinking
     React.useEffect(() => {
       const videoElement = videoRef.current;
-      console.log(`🎥 Video setup for ${participantName}:`, {
-        hasVideoElement: !!videoElement,
-        hasStream: !!stream,
-        hasVideo,
-        streamId,
-        videoTracks: stream?.getVideoTracks().length || 0,
-        videoEnabled: stream?.getVideoTracks()[0]?.enabled
-      });
 
       if (!videoElement || !stream || !hasVideo) {
         setIsVideoLoaded(false);
@@ -113,13 +106,11 @@ export const ParticipantsSidebar = ({
 
       // Only update srcObject if the stream actually changed
       if (currentStreamRef.current !== stream) {
-        console.log(`🔄 Setting new video stream for ${participantName}`);
         currentStreamRef.current = stream;
         videoElement.srcObject = stream;
         setIsVideoLoaded(false);
         
         const handleLoadedMetadata = () => {
-          console.log(`✅ Video loaded for ${participantName}`);
           setIsVideoLoaded(true);
         };
 
@@ -164,11 +155,6 @@ export const ParticipantsSidebar = ({
         onClick={() => onVideoSelect(streamId)}
       >
         <div className="aspect-video relative min-h-[120px]">
-          {/* Debug info */}
-          <div className="absolute top-1 left-1 z-30 bg-red-500/80 text-white text-xs px-1 rounded">
-            {hasVideo ? 'HAS_VIDEO' : 'NO_VIDEO'} | {isVideoLoaded ? 'LOADED' : 'LOADING'}
-          </div>
-
           {hasVideo ? (
             <video
               ref={videoRef}
@@ -270,6 +256,13 @@ export const ParticipantsSidebar = ({
                 {participantName}
                 {isLocal && " (You)"}
               </p>
+              
+              {/* Audio Visualizer - Bottom right corner */}
+              {stream && (
+                <div className="absolute bottom-2 right-2 z-20">
+                  <AudioIndicator stream={stream} className="opacity-90" />
+                </div>
+              )}
               
               {/* Real-time audio level indicator */}
               {audioData.isActive && hasAudio && (

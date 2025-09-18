@@ -78,6 +78,13 @@ export const ParticipantVideo = ({
         </div>
       )}
       
+      {/* Audio Visualizer - Bottom right corner */}
+      {stream && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <AudioIndicator stream={stream} className="opacity-90" />
+        </div>
+      )}
+      
       {showControls && (
         <div className="absolute bottom-2 left-2 flex space-x-2 items-center bg-black/60 rounded-lg px-2 py-1">
           <div className="flex space-x-1">
@@ -96,16 +103,6 @@ export const ParticipantVideo = ({
               )}
             </div>
           </div>
-          
-          {/* Audio Visualizer - Always show when audio track exists */}
-          {stream && (
-            <div className="flex items-center space-x-1">
-              <AudioIndicator
-                stream={stream}
-                className="ml-1"
-              />
-            </div>
-          )}
         </div>
       )}
       
