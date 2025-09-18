@@ -230,10 +230,12 @@ export const VideoConference = ({
     }
   }, [dbParticipants, setStateParticipants]);
 
-  // Setup speaking detection for all participants
-  useEffect(() => {
+  // Setup speaking detection for all participants - optimize to prevent loops
+  React.useEffect(() => {
+    if (!user?.id) return;
+
     // Add local stream for speaking detection
-    if (localStream && user?.id) {
+    if (localStream) {
       addSpeakingParticipant(user.id, localStream);
     }
 
@@ -242,7 +244,7 @@ export const VideoConference = ({
       addSpeakingParticipant(remoteStreamObj.id, remoteStreamObj.stream);
     });
 
-    // Cleanup removed participants
+    // Cleanup function
     return () => {
       if (user?.id) {
         removeSpeakingParticipant(user.id);
@@ -251,7 +253,7 @@ export const VideoConference = ({
         removeSpeakingParticipant(remoteStreamObj.id);
       });
     };
-  }, [localStream, remoteStreamsArray, user?.id, addSpeakingParticipant, removeSpeakingParticipant]);
+  }, [localStream?.id, remoteStreamsArray.map(r => r.id).join(','), user?.id]); // Stable dependencies
 
   useEffect(() => {
     if (meetingId && userName && user?.id) {

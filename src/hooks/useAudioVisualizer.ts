@@ -19,36 +19,7 @@ export const useAudioVisualizer = (stream: MediaStream | null, isEnabled: boolea
   const animationFrameRef = useRef<number | null>(null);
   const volumeHistoryRef = useRef<number[]>([]);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-  const initAudioContext = useCallback(async () => {
-    if (!stream || !isEnabled) return;
-
-    try {
-      // Clean up existing context
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      analyserRef.current = audioContextRef.current.createAnalyser();
-      
-      // Configure analyser
-      analyserRef.current.fftSize = 256;
-      analyserRef.current.smoothingTimeConstant = 0.8;
-      
-      const bufferLength = analyserRef.current.frequencyBinCount;
-      dataArrayRef.current = new Uint8Array(bufferLength);
-
-      // Connect stream to analyser
-      sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
-      sourceRef.current.connect(analyserRef.current);
-
-      console.log('Audio context initialized for audio visualization');
-      startAnalyzing();
-    } catch (error) {
-      console.error('Error initializing audio context:', error);
-    }
-  }, [stream, isEnabled]);
+  const streamIdRef = useRef<string | null>(null);
 
   const startAnalyzing = useCallback(() => {
     if (!analyserRef.current || !dataArrayRef.current) return;
@@ -103,7 +74,7 @@ export const useAudioVisualizer = (stream: MediaStream | null, isEnabled: boolea
       sourceRef.current = null;
     }
     
-    if (audioContextRef.current) {
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
@@ -111,6 +82,7 @@ export const useAudioVisualizer = (stream: MediaStream | null, isEnabled: boolea
     analyserRef.current = null;
     dataArrayRef.current = null;
     volumeHistoryRef.current = [];
+    streamIdRef.current = null;
     
     setAudioData({
       volume: 0,
@@ -119,15 +91,50 @@ export const useAudioVisualizer = (stream: MediaStream | null, isEnabled: boolea
     });
   }, [stopAnalyzing]);
 
-  useEffect(() => {
-    if (stream && isEnabled) {
-      initAudioContext();
-    } else {
+  const initAudioContext = useCallback(async () => {
+    if (!stream || !isEnabled) {
       cleanup();
+      return;
     }
 
+    const currentStreamId = stream.id;
+    
+    // Don't re-initialize if same stream
+    if (streamIdRef.current === currentStreamId && audioContextRef.current) {
+      return;
+    }
+
+    // Cleanup previous context
+    cleanup();
+
+    try {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      
+      // Configure analyser
+      analyserRef.current.fftSize = 256;
+      analyserRef.current.smoothingTimeConstant = 0.8;
+      
+      const bufferLength = analyserRef.current.frequencyBinCount;
+      dataArrayRef.current = new Uint8Array(bufferLength);
+
+      // Connect stream to analyser
+      sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
+      sourceRef.current.connect(analyserRef.current);
+
+      streamIdRef.current = currentStreamId;
+      startAnalyzing();
+    } catch (error) {
+      console.error('Error initializing audio context:', error);
+      cleanup();
+    }
+  }, [stream?.id, isEnabled, cleanup, startAnalyzing]);
+
+  // Initialize audio context when stream changes
+  useEffect(() => {
+    initAudioContext();
     return cleanup;
-  }, [stream, isEnabled, initAudioContext, cleanup]);
+  }, [initAudioContext, cleanup]);
 
   return {
     ...audioData,

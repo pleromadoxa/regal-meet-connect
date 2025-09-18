@@ -38,11 +38,15 @@ export const ParticipantsSidebar = ({
 }: ParticipantsSidebarProps) => {
   // Check if participant is host and get location info
   const getParticipantInfo = (participantName: string) => {
-    const participant = participants.find(p => p.user_name === participantName);
+    const participant = participants.find(p => 
+      p.user_name === participantName || 
+      p.userName === participantName ||
+      (participantName === userName && (p.user_name === userName || p.userName === userName))
+    );
     return {
-      isHost: participant?.is_host || false,
-      isMuted: participant?.is_muted || false,
-      id: participant?.id || participant?.user_id,
+      isHost: participant?.is_host || participant?.isHost || (participantName === userName && isCurrentUserHost),
+      isMuted: participant?.is_muted || participant?.isMuted || false,
+      id: participant?.id || participant?.user_id || participant?.userId,
       country: participant?.country,
       city: participant?.city
     };
@@ -86,23 +90,6 @@ export const ParticipantsSidebar = ({
     
     // Audio visualization for this participant's stream
     const audioData = useAudioVisualizer(stream, hasAudio && !isMuted);
-
-    // Debug logging
-    React.useEffect(() => {
-      if (stream) {
-        console.log(`ParticipantThumbnail ${participantName}:`, {
-          streamId,
-          hasVideo,
-          hasAudio,
-          videoTracks: stream.getVideoTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
-          audioTracks: stream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState })),
-          participantInfo,
-          audioData: { volume: audioData.volume, isActive: audioData.isActive }
-        });
-      } else {
-        console.log(`ParticipantThumbnail ${participantName}: No stream provided`);
-      }
-    }, [stream, participantName, hasVideo, hasAudio, audioData.volume, audioData.isActive]);
 
     // Optimize video stream handling to prevent blinking
     React.useEffect(() => {
@@ -301,13 +288,6 @@ export const ParticipantsSidebar = ({
       </div>
 
       <div className="space-y-3">
-        {/* Debug info */}
-        <div className="text-xs text-slate-400 p-2 bg-slate-800/20 rounded border border-slate-700/30">
-          <div>Local: {localStream ? `${localStream.getVideoTracks().length}V/${localStream.getAudioTracks().length}A` : 'None'}</div>
-          <div>Remote: {remoteStreams.length} participants</div>
-          <div>Selected: {selectedVideoId}</div>
-        </div>
-
         {/* Local user */}
         <ParticipantThumbnail
           stream={localStream}
