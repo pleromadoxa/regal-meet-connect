@@ -9,7 +9,7 @@ import { ParticipantsList } from '@/components/meeting/ParticipantsList';
 import { ReactionsOverlay } from '@/components/meeting/ReactionsOverlay';
 import { NetworkQualityIndicator } from '@/components/NetworkQualityIndicator';
 import { MediaPermissionsButton } from '@/components/meeting/MediaPermissionsButton';
-import { SimpleVideoTest } from '@/components/meeting/SimpleVideoTest';
+
 import { 
   useMeetingState as useMeetingHooks, 
   useHandRaiseNotifications, 
@@ -530,22 +530,6 @@ export const VideoConference = ({
         )}
 
         <div className="relative flex-1">
-          {/* Debug info for video streams */}
-          <div className="absolute top-4 left-4 z-50 bg-black/70 text-white p-2 rounded text-xs font-mono">
-            <div>Local Stream: {localStream ? '✅' : '❌'}</div>
-            <div>Video Enabled: {isVideoEnabled ? '✅' : '❌'}</div>
-            <div>Video Mode: {isVideoMode ? '✅' : '❌'}</div>
-            <div>Final Video: {(isVideoEnabled && isVideoMode) ? '✅' : '❌'}</div>
-            <div>Remote Streams: {remoteStreamsArray.length}</div>
-            <div>Stream ID: {localStream?.id?.slice(0, 8) || 'None'}</div>
-          </div>
-
-          {/* Simple Video Test */}
-          {localStream && (
-            <div className="absolute top-20 left-4 z-40">
-              <SimpleVideoTest stream={localStream} userName={userName} />
-            </div>
-          )}
 
           <NewMeetingLayout
             localStream={localStream}

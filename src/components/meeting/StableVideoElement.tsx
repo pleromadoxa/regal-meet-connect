@@ -29,12 +29,10 @@ export const StableVideoElement = memo(({
   const isPlayingRef = useRef<boolean>(false);
 
   const handleError = useCallback((error: Event) => {
-    console.warn('❌ Video error for stream:', streamId, error);
     onError?.(error);
   }, [onError, streamId]);
 
   const handleLoadedMetadata = useCallback(() => {
-    console.log('✅ Video metadata loaded for stream:', streamId);
     onLoadedMetadata?.();
   }, [onLoadedMetadata, streamId]);
 
@@ -43,12 +41,10 @@ export const StableVideoElement = memo(({
     
     try {
       if (videoElement.readyState >= 2) {
-        console.log('▶️ Playing video for stream:', streamId);
         isPlayingRef.current = true;
         await videoElement.play();
       }
     } catch (error) {
-      console.warn('⚠️ Video autoplay failed for stream:', streamId, error);
       isPlayingRef.current = false;
     }
   }, [streamId]);
@@ -58,7 +54,6 @@ export const StableVideoElement = memo(({
     const videoElement = videoRef.current;
     
     if (!videoElement) {
-      console.warn('⚠️ No video element available for stream:', streamId);
       return;
     }
 
@@ -67,13 +62,6 @@ export const StableVideoElement = memo(({
       return;
     }
 
-    console.log('🔄 Setting video stream:', {
-      streamId,
-      hasStream: !!stream,
-      videoTracks: stream?.getVideoTracks().length || 0,
-      audioTracks: stream?.getAudioTracks().length || 0,
-      videoEnabled: stream?.getVideoTracks()[0]?.enabled
-    });
 
     // Reset playing state when changing streams
     isPlayingRef.current = false;

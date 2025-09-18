@@ -13,36 +13,22 @@ export const SimpleVideoTest = ({ stream, userName }: SimpleVideoTestProps) => {
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !stream) {
-      console.log('❌ SimpleVideoTest: No video element or stream');
       return;
     }
 
-    console.log('🎥 SimpleVideoTest setup for:', userName, {
-      streamId: stream.id,
-      videoTracks: stream.getVideoTracks().length,
-      audioTracks: stream.getAudioTracks().length,
-      videoTrackEnabled: stream.getVideoTracks()[0]?.enabled,
-      videoTrackState: stream.getVideoTracks()[0]?.readyState
-    });
 
     const handleLoadedMetadata = () => {
-      console.log('✅ Video metadata loaded for:', userName);
       setIsLoaded(true);
       setError(null);
     };
 
     const handleError = (e: any) => {
-      console.error('❌ Video error for:', userName, e);
       setError('Video load error');
     };
 
-    const handleLoadStart = () => {
-      console.log('🔄 Video load started for:', userName);
-    };
+    const handleLoadStart = () => {};
 
-    const handleCanPlay = () => {
-      console.log('▶️ Video can play for:', userName);
-    };
+    const handleCanPlay = () => {};
 
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('error', handleError);
@@ -54,9 +40,8 @@ export const SimpleVideoTest = ({ stream, userName }: SimpleVideoTestProps) => {
     
     // Try to play
     video.play().then(() => {
-      console.log('✅ Video playing for:', userName);
+      // Video playing successfully
     }).catch(err => {
-      console.warn('⚠️ Video autoplay failed for:', userName, err);
       setError('Autoplay failed - click to play');
     });
 
@@ -84,14 +69,7 @@ export const SimpleVideoTest = ({ stream, userName }: SimpleVideoTestProps) => {
     <div className="bg-slate-800 p-4 rounded border border-slate-600">
       <h3 className="text-white font-medium mb-2">Video Test: {userName}</h3>
       
-      {/* Debug info */}
-      <div className="text-xs text-slate-400 mb-2 space-y-1">
-        <div>Stream ID: {stream.id}</div>
-        <div>Video Tracks: {videoTracks.length}</div>
-        <div>Has Video: {hasVideo ? '✅' : '❌'}</div>
-        <div>Is Loaded: {isLoaded ? '✅' : '❌'}</div>
-        {error && <div className="text-red-400">Error: {error}</div>}
-      </div>
+      {error && <div className="text-xs text-red-400 mb-2">Error: {error}</div>}
 
       {/* Video element */}
       <div className="relative bg-slate-700 rounded aspect-video">
