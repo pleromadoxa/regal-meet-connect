@@ -8,6 +8,7 @@ import { NewMeetingLayout } from '@/components/meeting/NewMeetingLayout';
 import { ParticipantsList } from '@/components/meeting/ParticipantsList';
 import { ReactionsOverlay } from '@/components/meeting/ReactionsOverlay';
 import { NetworkQualityIndicator } from '@/components/NetworkQualityIndicator';
+import { MediaPermissionsButton } from '@/components/meeting/MediaPermissionsButton';
 import { 
   useMeetingState as useMeetingHooks, 
   useHandRaiseNotifications, 
@@ -506,6 +507,24 @@ export const VideoConference = ({
           connectionQuality={networkQuality}
           meetingId={meetingId}
         />
+
+        {/* Media Permissions Check - Show if no local stream */}
+        {!localStream && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30">
+            <div className="bg-slate-800/90 backdrop-blur-md rounded-lg p-4 border border-slate-700/50">
+              <div className="text-center">
+                <h3 className="text-white font-medium mb-2">Media Access Required</h3>
+                <p className="text-slate-300 text-sm mb-4">Allow camera and microphone access to join the meeting</p>
+                <MediaPermissionsButton 
+                  onPermissionsGranted={() => {
+                    // Re-initialize media after permissions are granted
+                    setTimeout(() => initialize(), 500);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="relative flex-1">
           <NewMeetingLayout

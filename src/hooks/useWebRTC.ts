@@ -77,8 +77,25 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     cleanup: cleanupSignaling 
   } = useWebRTCSignaling(meetingId, userId, userName);
 
-  // Page visibility for background handling
-  const { isVisible } = usePageVisibility();
+  // Add device change monitoring
+  useEffect(() => {
+    const handleDeviceChange = () => {
+      console.log('🔄 Media devices changed, re-enumerating...');
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        const audioDevices = devices.filter(device => device.kind === 'audioinput');
+        console.log('📱 Updated devices:', {
+          video: videoDevices.length,
+          audio: audioDevices.length
+        });
+      });
+    };
+
+    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    return () => {
+      navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+    };
+  }, []);
 
   // Update connected peers from signaling and apply optimizations
   useEffect(() => {
@@ -93,6 +110,9 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       applyOptimizedBitrate(peerConnectionsRef.current);
     }
   }, [signalingPeers, updateParticipantCount, applyOptimizedBitrate]);
+
+  // Page visibility for background handling
+  const { isVisible } = usePageVisibility();
 
   // Handle background state changes
   useEffect(() => {
