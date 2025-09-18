@@ -36,6 +36,9 @@ export const VideoConference = ({
   const [selectedVideoId, setSelectedVideoId] = useState('local');
   const [showParticipants, setShowParticipants] = useState(false);
   const [showMediaPermissions, setShowMediaPermissions] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isVideoMode, setIsVideoMode] = useState(true);
+  const [handNotifications, setHandNotifications] = useState<any[]>([]);
 
   // Media permissions management
   const {
@@ -76,7 +79,19 @@ export const VideoConference = ({
     isVisible,
     startMeeting,
     endMeeting
-  } = useBackgroundMeeting(meetingId, !!localStream);
+  } = useBackgroundMeeting({
+    onVisibilityChange: (visible) => {
+      if (!visible) {
+        toast({
+          title: "Meeting in Background",
+          description: "Meeting will continue running while minimized",
+          duration: 3000,
+        });
+      }
+    },
+    enableWakeLock: true,
+    maintainConnection: true
+  });
 
   // Captions
   const { 
@@ -190,6 +205,45 @@ export const VideoConference = ({
     // Device changes would be handled in the WebRTC hook
   };
 
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  const handleToggleVideoMode = () => {
+    const newMode = !isVideoMode;
+    setIsVideoMode(newMode);
+    
+    if (newMode && !isVideoEnabled) {
+      toggleVideo();
+    } else if (!newMode && isVideoEnabled) {
+      toggleVideo();
+    }
+    
+    toast({
+      title: newMode ? "Switched to Video Mode" : "Switched to Audio-Only Mode",
+      description: newMode ? "Video is now enabled" : "Meeting is now audio-only",
+      duration: 3000,
+    });
+  };
+
+  const handleNavigateToSettings = () => {
+    // Navigate to settings or show settings modal
+    toast({
+      title: "Settings",
+      description: "Settings panel would open here",
+    });
+  };
+
+  const handleSignOut = () => {
+    handleLeaveMeeting();
+  };
+
   const totalParticipantCount = connectedPeers.length + 1;
   const showBackgroundIndicator = !isVisible && !!localStream;
 
@@ -201,8 +255,16 @@ export const VideoConference = ({
           meetingId={meetingId}
           isCurrentUserHost={isHost}
           totalParticipantCount={totalParticipantCount}
+          handNotifications={handNotifications}
+          isFullscreen={isFullscreen}
+          showParticipants={showParticipants}
+          isVideoMode={isVideoMode}
           onCopyMeetingId={copyMeetingId}
+          onToggleFullscreen={handleToggleFullscreen}
           onToggleParticipants={() => setShowParticipants(!showParticipants)}
+          onToggleVideoMode={handleToggleVideoMode}
+          onNavigateToSettings={handleNavigateToSettings}
+          onSignOut={handleSignOut}
         />
 
         {/* Meeting Layout */}
