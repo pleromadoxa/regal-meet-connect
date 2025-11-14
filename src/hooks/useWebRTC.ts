@@ -476,68 +476,86 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
   }, [isAudioEnabled, toast]);
 
   const switchCamera = useCallback(async () => {
-    if (!localStreamRef.current) return;
+    if (!localStreamRef.current) {
+      console.warn('No local stream available for camera switch');
+      return;
+    }
 
-    const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';
-    
     try {
+      console.log('🔄 Switching camera from:', currentFacingMode);
+      const newFacingMode: "user" | "environment" = currentFacingMode === 'user' ? 'environment' : 'user';
+      
       // Get new video stream with different facing mode using adaptive constraints
       const constraints = getOptimalConstraints(
         connectionQuality.metrics.qualityLevel,
         newFacingMode
       );
+      
+      console.log('📹 Requesting new camera with constraints:', constraints);
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      const newVideoTrack = newStream.getVideoTracks()[0];
+
+      if (!newVideoTrack) {
+        console.error('No video track in new stream');
+        return;
+      }
 
       // Stop old video track
       const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
       if (oldVideoTrack) {
         oldVideoTrack.stop();
+        console.log('✅ Stopped old video track');
       }
 
       // Replace video track in local stream
-      const newVideoTrack = newStream.getVideoTracks()[0];
-      if (newVideoTrack) {
-        // Update peer connections with new video track
-        peerConnectionsRef.current.forEach(async (pc) => {
-          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-          if (sender) {
-            try {
-              await sender.replaceTrack(newVideoTrack);
-              console.log('Replaced video track for peer connection');
-            } catch (error) {
-              console.error('Error replacing video track:', error);
-            }
-          }
-        });
-
-        // Update local stream ref
-        localStreamRef.current.removeTrack(oldVideoTrack);
+      if (localStreamRef.current) {
+        // Remove old video track
+        if (oldVideoTrack) {
+          localStreamRef.current.removeTrack(oldVideoTrack);
+        }
+        // Add new video track
         localStreamRef.current.addTrack(newVideoTrack);
-        
-        // Update state
-        setLocalStream(new MediaStream([...localStreamRef.current.getTracks()]));
-        setCurrentFacingMode(newFacingMode);
-
-        toast({
-          title: "Camera Switched",
-          description: `Switched to ${newFacingMode === 'user' ? 'front' : 'back'} camera`
-        });
+        console.log('✅ Updated local stream with new video track');
       }
 
-      // Stop the temporary stream
-      newStream.getTracks().forEach(track => {
-        if (track.kind === 'audio') track.stop(); // Stop audio from temp stream
+      // Update peer connections with new video track
+      const replacePromises: Promise<void>[] = [];
+      peerConnectionsRef.current.forEach((pc) => {
+        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) {
+          const promise = sender.replaceTrack(newVideoTrack)
+            .then(() => console.log('✅ Replaced video track for peer'))
+            .catch((error) => {
+              console.error('❌ Error replacing video track:', error);
+            });
+          replacePromises.push(promise);
+        }
       });
 
+      // Wait for all tracks to be replaced
+      await Promise.all(replacePromises);
+
+      // Update state
+      setCurrentFacingMode(newFacingMode);
+      setCurrentVideoDevice(newVideoTrack.label);
+      setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
+      
+      console.log('✅ Camera switched successfully to:', newFacingMode);
+      
+      toast({
+        title: "Camera Switched",
+        description: `Now using ${newFacingMode === 'user' ? 'front' : 'back'} camera`,
+        duration: 2000
+      });
     } catch (error) {
-      console.error('Error switching camera:', error);
+      console.error('❌ Error switching camera:', error);
       toast({
         title: "Camera Switch Failed",
-        description: "Failed to switch camera. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to switch camera. Please try again.",
         variant: "destructive"
       });
     }
-  }, [currentFacingMode, toast, getOptimalConstraints, connectionQuality.metrics.qualityLevel]);
+  }, [currentFacingMode, getOptimalConstraints, connectionQuality.metrics.qualityLevel, toast]);
 
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {

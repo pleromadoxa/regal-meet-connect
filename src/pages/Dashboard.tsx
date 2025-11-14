@@ -137,30 +137,38 @@ const Dashboard = () => {
           />
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
-            <ProfileCard 
-              userName={profile?.display_name || ''}
-              displayName={displayName}
-              userEmail={user?.email || ''}
-              isEditingProfile={isEditingProfile}
-              onSetUserName={setDisplayName}
-              onSetDisplayName={setDisplayName}
-              onSetIsEditingProfile={setIsEditingProfile}
-              onUpdateProfile={handleUpdateProfile}
-            />
-            <CreateMeetingCard />
-            <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
+            <div className="animate-fade-in" style={{animationDelay: '0.1s'}}>
+              <ProfileCard 
+                userName={profile?.display_name || ''}
+                displayName={displayName}
+                userEmail={user?.email || ''}
+                isEditingProfile={isEditingProfile}
+                onSetUserName={setDisplayName}
+                onSetDisplayName={setDisplayName}
+                onSetIsEditingProfile={setIsEditingProfile}
+                onUpdateProfile={handleUpdateProfile}
+              />
+            </div>
+            <div className="animate-fade-in" style={{animationDelay: '0.2s'}}>
+              <CreateMeetingCard />
+            </div>
+            <div className="animate-fade-in" style={{animationDelay: '0.3s'}}>
+              <QuickJoinCard onJoinMeeting={handleJoinMeeting} />
+            </div>
           </div>
 
-          <div className="mb-8">
+          <div className="mb-8 animate-fade-in" style={{animationDelay: '0.4s'}}>
             <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
           </div>
 
-          <MeetingList 
-            meetings={meetings} 
-            loading={loading} 
-            onJoinAsHost={handleJoinAsHost}
-            onDeleteMeeting={handleDeleteMeeting}
-          />
+          <div className="animate-fade-in" style={{animationDelay: '0.5s'}}>
+            <MeetingList 
+              meetings={meetings} 
+              loading={loading} 
+              onJoinAsHost={handleJoinAsHost}
+              onDeleteMeeting={handleDeleteMeeting}
+            />
+          </div>
         </div>
       </div>
       

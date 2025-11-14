@@ -71,7 +71,8 @@ export const VideoConference = ({
     toggleScreenShare,
     switchCamera,
     cleanup,
-    connectedPeers
+    connectedPeers,
+    peerUserNames
   } = useWebRTC(meetingId, userName, user?.id || '');
 
   // Background meeting management
@@ -101,11 +102,15 @@ export const VideoConference = ({
   } = useCaptions(meetingId, user?.id || '');
 
   // Convert Map to RemoteStream array for components
-  const remoteStreamsArray = Array.from(remoteStreams?.entries() || []).map(([id, stream]) => ({
-    id,
-    stream,
-    userName: dbParticipants.find(p => p.user_id === id)?.user_name || `User ${id.slice(0, 8)}`
-  }));
+  const remoteStreamsArray = Array.from(remoteStreams?.entries() || []).map(([id, stream]) => {
+    const participant = dbParticipants.find(p => p.user_id === id);
+    const peerUserName = peerUserNames[id];
+    return {
+      id,
+      stream,
+      userName: participant?.user_name || peerUserName || 'Guest User'
+    };
+  });
 
   // Check media permissions on mount
   useEffect(() => {
