@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Users, Trash2, Play } from 'lucide-react';
+import { Calendar, Users, Trash2, Play, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Meeting {
@@ -52,58 +52,71 @@ export const MeetingList = ({ meetings, onJoinAsHost, onDeleteMeeting, loading }
   }
 
   return (
-    <div className="space-y-4">
-      {meetings.map((meeting) => (
-        <Card key={meeting.id} className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-white text-lg">{meeting.title}</CardTitle>
-                <div className="flex items-center space-x-4 text-sm text-white/70">
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>{format(new Date(meeting.created_at), 'MMM d, yyyy')}</span>
+    <Card className="glass-morphism hover:glass-morphism-elevated transition-all duration-500 border-border/40 hover:border-primary/20 shadow-card hover:shadow-elevated">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-foreground flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <CalendarDays className="h-5 w-5 text-primary animate-pulse" />
+            <span>Your Meetings</span>
+          </div>
+          <Badge variant="secondary" className="bg-gradient-primary text-primary-foreground shadow-glow">
+            {meetings.length}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {meetings.map((meeting) => (
+          <Card key={meeting.id} className="glass-morphism border-border/30 hover:border-primary/30 transition-all duration-300">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="text-foreground text-lg">{meeting.title}</CardTitle>
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{format(new Date(meeting.created_at), 'MMM d, yyyy')}</span>
+                    </div>
+                    <Badge 
+                      variant={meeting.is_active ? "default" : "secondary"}
+                      className={meeting.is_active ? "bg-gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
+                    >
+                      {meeting.is_active ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-                  <Badge 
-                    variant={meeting.is_active ? "default" : "secondary"}
-                    className={meeting.is_active ? "bg-green-500/80" : "bg-gray-500/80"}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() => onJoinAsHost(meeting.meeting_id, meeting.title)}
+                    size="sm"
+                    className="bg-gradient-primary hover:opacity-90 text-primary-foreground shadow-glow"
                   >
-                    {meeting.is_active ? "Active" : "Inactive"}
-                  </Badge>
+                    <Play className="h-4 w-4 mr-1" />
+                    Join as Host
+                  </Button>
+                  <Button
+                    onClick={() => onDeleteMeeting(meeting.id)}
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/20"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={() => onJoinAsHost(meeting.meeting_id, meeting.title)}
-                  size="sm"
-                  className="bg-orange-500/80 hover:bg-orange-600/80 text-white"
-                >
-                  <Play className="h-4 w-4 mr-1" />
-                  Join as Host
-                </Button>
-                <Button
-                  onClick={() => onDeleteMeeting(meeting.id)}
-                  size="sm"
-                  variant="outline"
-                  className="border-red-400/40 text-red-300 hover:bg-red-500/20"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                <p className="text-sm text-foreground">
+                  <strong>Meeting ID:</strong> {meeting.meeting_id}
+                </p>
+                {meeting.description && (
+                  <p className="text-sm text-muted-foreground">{meeting.description}</p>
+                )}
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              <p className="text-sm text-white/80">
-                <strong>Meeting ID:</strong> {meeting.meeting_id}
-              </p>
-              {meeting.description && (
-                <p className="text-sm text-white/70">{meeting.description}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            </CardContent>
+          </Card>
+        ))}
+      </CardContent>
+    </Card>
   );
 };
