@@ -128,12 +128,12 @@ export const VideoControlsDock = ({
             </Button>
           </div>
 
-          <div className={cn(
+        <div className={cn(
             "transition-all duration-300 overflow-hidden",
-            isCollapsed ? "max-h-16" : "max-h-32"
+            isCollapsed ? "max-h-20" : "max-h-40"
           )}>
             {/* Essential Controls - Always Visible */}
-            <div className="flex items-center justify-center gap-3 px-4 py-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 px-3 py-3">
               {essentialControls.map((control) => {
                 const Icon = control.icon;
                 return (
@@ -151,7 +151,7 @@ export const VideoControlsDock = ({
 
             {/* Additional Controls - Hidden when collapsed */}
             {!isCollapsed && (
-              <div className="flex items-center justify-center gap-2 px-4 pb-2 overflow-x-auto scrollbar-hide">
+              <div className="flex flex-wrap items-center justify-center gap-2 px-3 pb-3 max-w-full">
                 {additionalControls.map((control) => {
                   const Icon = control.icon;
                   return (
