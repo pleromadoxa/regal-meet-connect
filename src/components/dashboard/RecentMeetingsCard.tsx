@@ -90,14 +90,14 @@ export const RecentMeetingsCard = ({ onJoinMeeting }: RecentMeetingsCardProps) =
   }
 
   return (
-    <Card className="h-full bg-white/5 border-white/10 backdrop-blur-lg">
+    <Card className="glass-morphism hover:glass-morphism-elevated transition-all duration-500 border-border/40 hover:border-secondary/30">
       <CardHeader className="pb-3">
-        <CardTitle className="text-white flex items-center justify-between">
+        <CardTitle className="text-foreground flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Clock className="h-5 w-5 text-blue-400" />
+            <Clock className="h-5 w-5 text-secondary animate-pulse" />
             <span>Recent Meetings</span>
           </div>
-          <Badge variant="secondary" className="bg-blue-500/20 text-blue-300">
+          <Badge variant="secondary" className="bg-gradient-secondary text-secondary-foreground shadow-glow-secondary">
             {recentMeetings.length}
           </Badge>
         </CardTitle>

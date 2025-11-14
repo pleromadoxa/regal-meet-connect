@@ -9,44 +9,46 @@
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 3.9%;
+    --card: 240 15% 9%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 3.9%;
+    --popover: 240 15% 9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 20 14.3% 4.1%;
-    --primary-foreground: 0 0% 98%;
-    --primary-glow: 24 100% 50%;
+    --primary: 24 100% 50%;
+    --primary-foreground: 240 10% 3.9%;
+    --primary-glow: 24 100% 60%;
     --primary-accent: 16 85% 55%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 240 100% 50%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 240 15% 15%;
+    --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 280 100% 60%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 72.2% 50.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 20 14.3% 4.1%;
+    --border: 240 15% 12%;
+    --input: 240 15% 12%;
+    --ring: 24 100% 50%;
 
     --radius: 0.75rem;
 
-    /* Enhanced Design Tokens */
+    /* Enhanced Design Tokens with vibrant colors */
     --gradient-primary: linear-gradient(135deg, hsl(24 100% 50%), hsl(16 85% 55%));
     --gradient-secondary: linear-gradient(135deg, hsl(240 100% 50%), hsl(280 100% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(240 10% 3.9%), hsl(260 15% 8%), hsl(240 10% 3.9%));
+    --gradient-hero: linear-gradient(135deg, hsl(240 10% 3.9%) 0%, hsl(260 15% 8%) 50%, hsl(240 10% 3.9%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(240 15% 9% / 0.6), hsl(260 20% 12% / 0.8));
+    --gradient-accent: linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 60%));
     --gradient-button: linear-gradient(135deg, hsl(24 100% 50%), hsl(16 85% 55%));
-    --gradient-button-secondary: linear-gradient(135deg, hsl(240 100% 50%), hsl(280 100% 60%));
+    --gradient-button-hover: linear-gradient(135deg, hsl(24 100% 55%), hsl(16 85% 60%));
     
     --shadow-glow: 0 0 40px hsl(24 100% 50% / 0.3);
+    --shadow-glow-secondary: 0 0 40px hsl(240 100% 50% / 0.3);
     --shadow-card: 0 10px 40px -10px hsl(240 10% 3.9% / 0.4);
     --shadow-elevated: 0 20px 60px -10px hsl(240 10% 3.9% / 0.6);
     
