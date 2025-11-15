@@ -113,6 +113,44 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_invitations: {
+        Row: {
+          created_at: string
+          id: string
+          invitee_email: string
+          invitee_name: string | null
+          scheduled_meeting_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invitee_email: string
+          invitee_name?: string | null
+          scheduled_meeting_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invitee_email?: string
+          invitee_name?: string | null
+          scheduled_meeting_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_invitations_scheduled_meeting_id_fkey"
+            columns: ["scheduled_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_participants: {
         Row: {
           city: string | null
@@ -328,6 +366,60 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_meetings: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          host_id: string
+          id: string
+          is_recurring: boolean
+          meeting_id: string
+          meeting_link: string | null
+          recurrence_end_date: string | null
+          recurrence_pattern: string | null
+          scheduled_time: string
+          status: string
+          timezone: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_id: string
+          id?: string
+          is_recurring?: boolean
+          meeting_id: string
+          meeting_link?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          scheduled_time: string
+          status?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_id?: string
+          id?: string
+          is_recurring?: boolean
+          meeting_id?: string
+          meeting_link?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          scheduled_time?: string
+          status?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_push_tokens: {
         Row: {
           created_at: string | null
@@ -467,7 +559,7 @@ export type Database = {
         Returns: unknown
       }
       get_all_users_admin: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avatar_url: string
           created_at: string
