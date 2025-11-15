@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { ScheduleMeetingCard } from '@/components/dashboard/ScheduleMeetingCard';
+import { ScheduledMeetingsList } from '@/components/dashboard/ScheduledMeetingsList';
 
 const Dashboard = () => {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -163,8 +164,12 @@ const Dashboard = () => {
             <RecentMeetingsCard onJoinMeeting={handleJoinRecentMeeting} />
           </div>
 
-          <div className="animate-fade-in" style={{animationDelay: '0.5s'}}>
-            <MeetingList 
+          <div className="mb-8 animate-fade-in" style={{animationDelay: '0.5s'}}>
+            <ScheduledMeetingsList />
+          </div>
+
+          <div className="animate-fade-in" style={{animationDelay: '0.6s'}}>
+            <MeetingList
               meetings={meetings} 
               loading={loading} 
               onJoinAsHost={handleJoinAsHost}
