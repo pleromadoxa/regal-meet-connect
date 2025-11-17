@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Video, Users, Shield, Zap } from 'lucide-react';
+import { ArrowRight, Video, Users, Shield, Zap, Phone, Mic, VideoIcon, PhoneCall, Volume2 } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import heroImage from '@/assets/hero-conference.png';
 
@@ -19,7 +19,47 @@ const Index = () => {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 relative overflow-hidden">
+      {/* Floating Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Video Call Icons */}
+        <div className="absolute top-20 left-10 animate-float" style={{ animationDelay: '0s' }}>
+          <div className="glass-morphism p-4 rounded-full">
+            <Video className="h-8 w-8 text-orange-400" />
+          </div>
+        </div>
+        <div className="absolute top-40 right-20 animate-float" style={{ animationDelay: '2s' }}>
+          <div className="glass-morphism p-3 rounded-full">
+            <PhoneCall className="h-6 w-6 text-purple-400" />
+          </div>
+        </div>
+        <div className="absolute bottom-32 left-1/4 animate-float" style={{ animationDelay: '1s' }}>
+          <div className="glass-morphism p-5 rounded-full">
+            <Mic className="h-10 w-10 text-blue-400" />
+          </div>
+        </div>
+        <div className="absolute top-1/3 right-10 animate-float" style={{ animationDelay: '3s' }}>
+          <div className="glass-morphism p-4 rounded-full">
+            <Volume2 className="h-7 w-7 text-pink-400" />
+          </div>
+        </div>
+        <div className="absolute bottom-40 right-1/3 animate-float" style={{ animationDelay: '1.5s' }}>
+          <div className="glass-morphism p-3 rounded-full">
+            <Phone className="h-6 w-6 text-green-400" />
+          </div>
+        </div>
+        <div className="absolute top-1/2 left-20 animate-float" style={{ animationDelay: '2.5s' }}>
+          <div className="glass-morphism p-4 rounded-full">
+            <VideoIcon className="h-8 w-8 text-orange-300" />
+          </div>
+        </div>
+        
+        {/* Decorative Circles */}
+        <div className="absolute top-10 right-1/3 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 left-1/3 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 right-20 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+
       {/* Header */}
       <header className="container mx-auto px-4 py-4 md:py-6 safe-area-inset-top">
         <nav className="flex items-center justify-between">
