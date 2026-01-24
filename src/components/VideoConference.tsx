@@ -34,11 +34,17 @@ export const VideoConference = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedVideoId, setSelectedVideoId] = useState('local');
-  const [showParticipants, setShowParticipants] = useState(false);
+  const [activeSidePanel, setActiveSidePanel] = useState<'chat' | 'participants' | 'settings' | null>(null);
   const [showMediaPermissions, setShowMediaPermissions] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handNotifications, setHandNotifications] = useState<any[]>([]);
+
+  const showParticipants = activeSidePanel === 'participants';
+
+  const togglePanel = useCallback((panel: 'chat' | 'participants' | 'settings') => {
+    setActiveSidePanel(current => current === panel ? null : panel);
+  }, []);
 
   // Media permissions management
   const {
@@ -253,98 +259,113 @@ export const VideoConference = ({
   const showBackgroundIndicator = !isVisible && !!localStream;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
-      <div className="relative z-10 flex flex-col h-screen">
-        {/* Meeting Header */}
-        <MeetingHeader
-          meetingId={meetingId}
-          isCurrentUserHost={isHost}
-          totalParticipantCount={totalParticipantCount}
-          handNotifications={handNotifications}
-          isFullscreen={isFullscreen}
-          showParticipants={showParticipants}
-          isVideoMode={isVideoMode}
-          onCopyMeetingId={copyMeetingId}
-          onToggleFullscreen={handleToggleFullscreen}
-          onToggleParticipants={() => setShowParticipants(!showParticipants)}
-          onToggleVideoMode={handleToggleVideoMode}
-          onNavigateToSettings={handleNavigateToSettings}
-          onSignOut={handleSignOut}
-        />
+    <div className="min-h-screen bg-zinc-950 relative overflow-hidden flex flex-col">
+      {/* Meeting Header */}
+      <MeetingHeader
+        meetingId={meetingId}
+        isCurrentUserHost={isHost}
+        totalParticipantCount={totalParticipantCount}
+        handNotifications={handNotifications}
+        isFullscreen={isFullscreen}
+        showParticipants={showParticipants}
+        isVideoMode={isVideoMode}
+        onCopyMeetingId={copyMeetingId}
+        onToggleFullscreen={handleToggleFullscreen}
+        onToggleParticipants={() => togglePanel('participants')}
+        onToggleVideoMode={handleToggleVideoMode}
+        onNavigateToSettings={handleNavigateToSettings}
+        onSignOut={handleSignOut}
+      />
 
-        {/* Meeting Layout */}
-        <MeetingLayout
-          localStream={localStream}
-          remoteStreams={remoteStreamsArray}
-          userName={userName}
-          isVideoEnabled={isVideoEnabled}
-          selectedVideoId={selectedVideoId}
-          onVideoSelect={setSelectedVideoId}
-          isCurrentUserHost={isHost}
-          participants={dbParticipants}
-          showParticipants={showParticipants}
-          currentUserId={user?.id || ''}
-          onToggleMute={handleToggleMute}
-        />
+      <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex flex-col relative min-w-0">
+          {/* Meeting Layout */}
+          <MeetingLayout
+            localStream={localStream}
+            remoteStreams={remoteStreamsArray}
+            userName={userName}
+            isVideoEnabled={isVideoEnabled}
+            selectedVideoId={selectedVideoId}
+            onVideoSelect={setSelectedVideoId}
+            isCurrentUserHost={isHost}
+            participants={dbParticipants}
+            showParticipants={showParticipants}
+            currentUserId={user?.id || ''}
+            onToggleMute={handleToggleMute}
+          />
 
-        {/* Connection Quality Indicator */}
-        <div className="fixed top-4 left-4 z-40">
-          <ConnectionQualityIndicator 
-            peerConnections={new Map()} 
+          {/* Connection Quality Indicator */}
+          <div className="absolute top-4 left-4 z-40">
+            <ConnectionQualityIndicator
+              peerConnections={new Map()}
+            />
+          </div>
+
+          {/* Join/Leave Notifications */}
+          <ParticipantJoinLeaveNotifications
+            participants={dbParticipants}
+            currentUserId={user?.id || ''}
+          />
+
+          {/* Captions Display */}
+          <CaptionsDisplay
+            captions={captions}
+            participants={dbParticipants}
+            isVisible={captionsEnabled}
           />
         </div>
 
-        {/* Join/Leave Notifications */}
-        <ParticipantJoinLeaveNotifications
-          participants={dbParticipants}
-          currentUserId={user?.id || ''}
-        />
-
-        {/* Video Controls */}
-        <VideoControls
-          isVideoEnabled={isVideoEnabled}
-          isAudioEnabled={isAudioEnabled}
-          isScreenSharing={isScreenSharing}
-          currentFacingMode={currentFacingMode}
-          currentAudioDevice={currentAudioDevice}
-          currentVideoDevice={currentVideoDevice}
-          onToggleVideo={toggleVideo}
-          onToggleAudio={toggleAudio}
-          onToggleScreenShare={toggleScreenShare}
-          onSwitchCamera={switchCamera}
-          onLeaveMeeting={handleLeaveMeeting}
-          onDeviceChange={handleDeviceChange}
-          onToggleCaptions={toggleCaptions}
-          captionsEnabled={captionsEnabled}
-          userName={userName}
-          meetingId={meetingId}
-          onNavigateToDashboard={onNavigateToDashboard}
-        />
-
-        {/* Captions Display */}
-        <CaptionsDisplay
-          captions={captions}
-          participants={dbParticipants}
-          isVisible={captionsEnabled}
-        />
-
-        {/* Background Meeting Indicator */}
-        {showBackgroundIndicator && (
-          <BackgroundMeetingIndicator />
+        {/* Chat Side Panel */}
+        {activeSidePanel === 'chat' && (
+          <div className="w-80 h-full border-l border-white/10 bg-slate-900 z-20 shrink-0">
+            <InMeetingChat
+              userName={userName}
+              onClose={() => setActiveSidePanel(null)}
+            />
+          </div>
         )}
-
-        {/* Media Permissions Modal */}
-        <MediaPermissionsModal
-          isOpen={showMediaPermissions}
-          permissions={permissions}
-          onRequestPermissions={handleMediaPermissionRequest}
-          onClose={() => setShowMediaPermissions(false)}
-          onRetry={() => {
-            setShowMediaPermissions(false);
-            setTimeout(() => setShowMediaPermissions(true), 100);
-          }}
-        />
       </div>
+
+      {/* Video Controls */}
+      <VideoControls
+        isVideoEnabled={isVideoEnabled}
+        isAudioEnabled={isAudioEnabled}
+        isScreenSharing={isScreenSharing}
+        currentFacingMode={currentFacingMode}
+        currentAudioDevice={currentAudioDevice}
+        currentVideoDevice={currentVideoDevice}
+        onToggleVideo={toggleVideo}
+        onToggleAudio={toggleAudio}
+        onToggleScreenShare={toggleScreenShare}
+        onSwitchCamera={switchCamera}
+        onLeaveMeeting={handleLeaveMeeting}
+        onDeviceChange={handleDeviceChange}
+        onToggleCaptions={toggleCaptions}
+        captionsEnabled={captionsEnabled}
+        userName={userName}
+        meetingId={meetingId}
+        onNavigateToDashboard={onNavigateToDashboard}
+        showChat={activeSidePanel === 'chat'}
+        onToggleChat={() => togglePanel('chat')}
+        onToggleParticipants={() => togglePanel('participants')}
+      />
+
+      {/* Background Meeting Indicator */}
+      {showBackgroundIndicator && (
+        <BackgroundMeetingIndicator />
+      )}
+
+      {/* Media Permissions Modal */}
+      <MediaPermissionsModal
+        isOpen={showMediaPermissions}
+        permissions={permissions}
+        onRequestPermissions={handleMediaPermissionRequest}
+        onClose={() => setShowMediaPermissions(false)}
+        onRetry={() => {
+          setShowMediaPermissions(false);
+          setTimeout(() => setShowMediaPermissions(true), 100);
+        }}
+      />
     </div>
   );
 };

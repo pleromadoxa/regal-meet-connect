@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface ChatMessage {
   id: string;
@@ -19,9 +20,10 @@ interface InMeetingChatProps {
   onSendMessage?: (message: string) => void;
   messages?: ChatMessage[];
   onClose: () => void;
+  className?: string;
 }
 
-export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose }: InMeetingChatProps) => {
+export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose, className }: InMeetingChatProps) => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(messages);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,9 +57,9 @@ export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose 
   };
 
   return (
-    <Card className="fixed bottom-20 sm:bottom-24 right-4 w-80 h-96 bg-black/90 backdrop-blur-xl border-white/20 shadow-2xl z-50">
-      <div className="flex items-center justify-between p-3 border-b border-white/20">
-        <h3 className="text-white font-semibold">Meeting Chat</h3>
+    <Card className={cn("flex flex-col h-full w-full bg-slate-900 border-l border-white/10 shadow-none rounded-none", className)}>
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <h3 className="text-white font-semibold">In-call messages</h3>
         <Button
           onClick={onClose}
           variant="ghost"
@@ -68,7 +70,7 @@ export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose 
         </Button>
       </div>
       
-      <ScrollArea className="flex-1 p-3 h-64" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-3">
           {chatMessages.map((msg) => (
             <div key={msg.id} className="text-sm">

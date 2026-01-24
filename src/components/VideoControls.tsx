@@ -2,7 +2,6 @@
 import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
-import { InMeetingChat } from '@/components/InMeetingChat';
 import { RaiseHand } from '@/components/RaiseHand';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
@@ -28,6 +27,9 @@ interface VideoControlsProps {
   userName: string;
   meetingId?: string;
   onNavigateToDashboard?: () => void;
+  showChat: boolean;
+  onToggleChat: () => void;
+  onToggleParticipants?: () => void;
 }
 
 export const VideoControls = ({
@@ -47,10 +49,12 @@ export const VideoControls = ({
   captionsEnabled,
   userName,
   meetingId,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  showChat,
+  onToggleChat,
+  onToggleParticipants
 }: VideoControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -114,7 +118,8 @@ export const VideoControls = ({
         onSwitchCamera={onSwitchCamera}
         onToggleCaptions={onToggleCaptions}
         onToggleSettings={() => setShowSettings(!showSettings)}
-        onToggleChat={() => setShowChat(!showChat)}
+        onToggleChat={onToggleChat}
+        onToggleParticipants={onToggleParticipants}
         onToggleHand={handleHandRaise}
         onToggleEffects={() => setShowEffects(true)}
         onNavigateToDashboard={onNavigateToDashboard}
@@ -152,13 +157,6 @@ export const VideoControls = ({
         />
       )}
 
-      {/* In-Meeting Chat */}
-      {showChat && (
-        <InMeetingChat
-          userName={userName}
-          onClose={() => setShowChat(false)}
-        />
-      )}
 
       {/* Video Reactions Overlay - positioned with higher z-index */}
       <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
