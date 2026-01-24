@@ -15,6 +15,7 @@ import { ConnectionQualityIndicator } from './meeting/ConnectionQualityIndicator
 import { MediaPermissionsModal } from './meeting/MediaPermissionsModal';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
 import { supabase } from '@/integrations/supabase/client';
+import { InMeetingChat } from './InMeetingChat';
 
 interface VideoConferenceProps {
   meetingId: string;
