@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Crown, Mail, Lock, User } from 'lucide-react';
+import { Video, Mail, Lock, User } from 'lucide-react';
 import { Footer } from './Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -81,26 +81,32 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex flex-col">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen bg-slate-950 relative overflow-hidden flex flex-col font-sans selection:bg-orange-500/30">
+      {/* Background Gradient */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[128px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-600/20 rounded-full blur-[128px] animate-pulse-slow" style={{animationDelay: '2s'}}></div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4 relative z-10">
+        <div className="w-full max-w-md space-y-8 animate-fade-in-up">
           {/* Logo and Title */}
           <div className="text-center space-y-4">
             <div className="flex items-center justify-center space-x-3">
-              <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full">
-                <Crown className="h-8 w-8 text-white" />
+              <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg shadow-orange-500/20">
+                <Video className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-white">Regal Meet</h1>
-                <p className="text-blue-200">Premium Video Conferencing</p>
+                <h1 className="text-4xl font-bold text-white tracking-tight">Regal Meet</h1>
+                <p className="text-slate-400 font-medium">Premium Video Conferencing</p>
               </div>
             </div>
           </div>
 
           {/* Auth Form */}
-          <Card className="bg-white/10 backdrop-blur-lg border-white/20">
+          <Card className="bg-slate-900/50 backdrop-blur-lg border-white/10 shadow-2xl">
             <CardHeader>
-              <CardTitle className="text-2xl text-center text-white">
+              <CardTitle className="text-2xl text-center text-white font-bold">
                 {isLogin ? 'Sign In' : 'Create Account'}
               </CardTitle>
             </CardHeader>
@@ -108,17 +114,17 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
               <form onSubmit={handleAuth} className="space-y-6">
                 {!isLogin && (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-blue-100">
+                    <label className="text-sm font-medium text-slate-300">
                       Display Name
                     </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-white/50" />
+                    <div className="relative group">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-orange-400 transition-colors" />
                       <Input
                         type="text"
                         placeholder="Enter your display name"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
+                        className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-orange-500/50 focus:ring-orange-500/20 transition-all h-11"
                         required={!isLogin}
                       />
                     </div>
@@ -126,34 +132,34 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-blue-100">
+                  <label className="text-sm font-medium text-slate-300">
                     Email
                   </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/50" />
+                  <div className="relative group">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-orange-400 transition-colors" />
                     <Input
                       type="email"
                       placeholder="Enter your email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
+                      className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-orange-500/50 focus:ring-orange-500/20 transition-all h-11"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-blue-100">
+                  <label className="text-sm font-medium text-slate-300">
                     Password
                   </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-white/50" />
+                  <div className="relative group">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400 group-focus-within:text-orange-400 transition-colors" />
                     <Input
                       type="password"
                       placeholder="Enter your password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 bg-white/10 border-white/20 text-white placeholder-white/50 focus:border-orange-400"
+                      className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus:border-orange-500/50 focus:ring-orange-500/20 transition-all h-11"
                       required
                     />
                   </div>
@@ -162,7 +168,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-105"
+                  className="w-full h-11 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/20 transition-all duration-200 transform hover:scale-[1.02]"
                 >
                   {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
                 </Button>
@@ -171,7 +177,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
                   <button
                     type="button"
                     onClick={() => setIsLogin(!isLogin)}
-                    className="text-blue-200 hover:text-white transition-colors"
+                    className="text-slate-400 hover:text-white transition-colors text-sm font-medium hover:underline underline-offset-4"
                   >
                     {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
                   </button>
