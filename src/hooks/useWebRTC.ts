@@ -20,7 +20,7 @@ interface SignalingMessage {
 export const useWebRTC = (meetingId: string, userName: string, userId: string) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(false); // Start with camera off by default
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [currentFacingMode, setCurrentFacingMode] = useState<"user" | "environment">('user');
