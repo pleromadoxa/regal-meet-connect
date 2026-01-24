@@ -101,6 +101,20 @@ export const VideoControlsDock = ({
     { key: 'leave', onClick: onLeaveMeeting, active: false, icon: PhoneOff, color: 'red-pill' }
   ];
 
+  const additionalControls = [
+    { key: 'screen', onClick: onToggleScreenShare, active: isScreenSharing, icon: isScreenSharing ? MonitorOff : Monitor, color: isScreenSharing ? 'orange' : 'slate' },
+    { key: 'camera', onClick: onSwitchCamera, active: false, icon: RotateCcw, color: 'slate' },
+    { key: 'captions', onClick: onToggleCaptions, active: captionsEnabled, icon: captionsEnabled ? Captions : CaptionsOff, color: captionsEnabled ? 'purple' : 'slate' },
+    { key: 'chat', onClick: onToggleChat, active: showChat, icon: MessageSquare, color: showChat ? 'blue' : 'slate' },
+    { key: 'hand', onClick: onToggleHand, active: handRaised, icon: Hand, color: handRaised ? 'yellow' : 'slate' },
+    { key: 'effects', onClick: onToggleEffects, active: false, icon: Sparkles, color: 'slate' },
+    { key: 'settings', onClick: onToggleSettings, active: showSettings, icon: Settings, color: showSettings ? 'slate' : 'slate' }
+  ];
+
+  if (onNavigateToDashboard) {
+    additionalControls.push({ key: 'dashboard', onClick: onNavigateToDashboard, active: false, icon: LayoutDashboard, color: 'slate' });
+  }
+
   const getButtonColors = (color: string, active: boolean) => {
     if (isMobile) {
        switch (color) {
