@@ -7,46 +7,40 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-
-interface ChatMessage {
-  id: string;
-  userName: string;
-  message: string;
-  timestamp: Date;
-}
+import { useMeetingChat } from '@/hooks/useMeetingChat';
+import { useAuth } from '@/hooks/useAuth';
 
 interface InMeetingChatProps {
   userName: string;
-  onSendMessage?: (message: string) => void;
-  messages?: ChatMessage[];
   onClose: () => void;
   className?: string;
 }
 
-export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose, className }: InMeetingChatProps) => {
+export const InMeetingChat = ({ userName, onClose, className }: InMeetingChatProps) => {
   const [currentMessage, setCurrentMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(messages);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+
+  // Extract meeting ID from URL
+  const meetingId = window.location.pathname.split('/meeting/')[1]?.split('?')[0] || '';
+
+  const { messages, sendMessage, isLoading } = useMeetingChat(meetingId, user?.id || '', userName);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chatMessages]);
+  }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!currentMessage.trim()) return;
 
-    const newMessage: ChatMessage = {
-      id: Math.random().toString(36).substring(7),
-      userName,
-      message: currentMessage.trim(),
-      timestamp: new Date()
-    };
-
-    setChatMessages(prev => [...prev, newMessage]);
-    onSendMessage?.(currentMessage.trim());
-    setCurrentMessage('');
+    try {
+      await sendMessage(currentMessage);
+      setCurrentMessage('');
+    } catch (error) {
+      // Error handled by hook
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -72,17 +66,27 @@ export const InMeetingChat = ({ userName, onSendMessage, messages = [], onClose,
       
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-3">
-          {chatMessages.map((msg) => (
-            <div key={msg.id} className="text-sm">
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="text-blue-300 font-medium">{msg.userName}</span>
-                <span className="text-gray-400 text-xs">
-                  {format(msg.timestamp, 'HH:mm')}
-                </span>
+          {isLoading ? (
+             <div className="flex justify-center p-4">
+                <div className="animate-spin h-6 w-6 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+             </div>
+          ) : messages.length === 0 ? (
+             <div className="text-center text-gray-500 mt-4 text-sm">
+                No messages yet
+             </div>
+          ) : (
+            messages.map((msg) => (
+              <div key={msg.id} className="text-sm">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-blue-300 font-medium">{msg.user_name}</span>
+                  <span className="text-gray-400 text-xs">
+                    {format(new Date(msg.created_at), 'HH:mm')}
+                  </span>
+                </div>
+                <p className="text-white break-words">{msg.message}</p>
               </div>
-              <p className="text-white">{msg.message}</p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </ScrollArea>
 

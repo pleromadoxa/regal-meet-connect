@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
-import { User, Mic, MicOff, Crown, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Mic, MicOff, Crown, MapPin, ChevronLeft, ChevronRight, Pin, PinOff } from 'lucide-react';
 import { StableVideoElement } from './StableVideoElement';
 import { AudioIndicator } from '@/components/AudioIndicator';
 
@@ -29,6 +30,7 @@ interface ResponsiveVideoGridProps {
   participants: Participant[];
   currentUserId: string;
   isCurrentUserHost: boolean;
+  activeSpeakerId?: string | null;
 }
 
 export const ResponsiveVideoGrid = ({
@@ -38,11 +40,31 @@ export const ResponsiveVideoGrid = ({
   isVideoEnabled,
   participants,
   currentUserId,
-  isCurrentUserHost
+  isCurrentUserHost,
+  activeSpeakerId
 }: ResponsiveVideoGridProps) => {
-  // Calculate grid dimensions based on participant count
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pinnedParticipantId, setPinnedParticipantId] = useState<string | null>(null);
+  const itemsPerPage = 16;
   const totalParticipants = remoteStreams.length + 1; // +1 for local user
-  
+  const totalPages = Math.ceil(totalParticipants / itemsPerPage);
+
+  // Reset to first page if total participants changes significantly downward
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [totalParticipants, totalPages, currentPage]);
+
+  const handlePrevPage = () => setCurrentPage(prev => Math.max(1, prev - 1));
+  const handleNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
+
+  // Calculate visible streams based on pagination
+  const getVisibleStreams = (streams: any[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return streams.slice(startIndex, startIndex + itemsPerPage);
+  };
+
   const getGridConfig = (count: number) => {
     if (count <= 1) return { cols: 1, rows: 1 };
     if (count <= 2) return { cols: 2, rows: 1 };
@@ -50,14 +72,8 @@ export const ResponsiveVideoGrid = ({
     if (count <= 6) return { cols: 3, rows: 2 };
     if (count <= 9) return { cols: 3, rows: 3 };
     if (count <= 12) return { cols: 4, rows: 3 };
-    if (count <= 16) return { cols: 4, rows: 4 };
-    if (count <= 20) return { cols: 5, rows: 4 };
-    if (count <= 25) return { cols: 5, rows: 5 };
-    // For very large groups, use 6 columns
-    return { cols: 6, rows: Math.ceil(count / 6) };
+    return { cols: 4, rows: 4 }; // Max 16 per page
   };
-
-  const gridConfig = getGridConfig(totalParticipants);
 
   // Get participant info from participants array with memoization
   const getParticipantInfo = useCallback((streamUserName: string, isLocal = false) => {
@@ -82,15 +98,43 @@ export const ResponsiveVideoGrid = ({
   }, [userName, isCurrentUserHost, localStream, participants]);
 
   // Combine all streams for uniform handling - memoized
-  const allStreams = useMemo(() => [
-    { 
-      id: 'local', 
-      stream: localStream, 
-      userName: userName,
-      isLocal: true
-    },
-    ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
-  ], [localStream, remoteStreams, userName]);
+  const allStreams = useMemo(() => {
+    const streams = [
+      {
+        id: 'local',
+        stream: localStream,
+        userName: userName,
+        isLocal: true
+      },
+      ...remoteStreams.map(stream => ({ ...stream, isLocal: false }))
+    ];
+
+    // Sort: Pinned -> Active Speaker -> Local User -> Others
+    return streams.sort((a, b) => {
+      // Priority 1: Pinned Participant
+      const aIsPinned = pinnedParticipantId && a.id === pinnedParticipantId;
+      const bIsPinned = pinnedParticipantId && b.id === pinnedParticipantId;
+
+      if (aIsPinned && !bIsPinned) return -1;
+      if (!aIsPinned && bIsPinned) return 1;
+
+      // Priority 2: Active Speaker
+      const aIsSpeaker = activeSpeakerId && (a.id === activeSpeakerId || (a.isLocal && activeSpeakerId === currentUserId));
+      const bIsSpeaker = activeSpeakerId && (b.id === activeSpeakerId || (b.isLocal && activeSpeakerId === currentUserId));
+
+      if (aIsSpeaker && !bIsSpeaker) return -1;
+      if (!aIsSpeaker && bIsSpeaker) return 1;
+
+      // Priority 3: Local User
+      if (a.isLocal) return -1;
+      if (b.isLocal) return 1;
+
+      return 0;
+    });
+  }, [localStream, remoteStreams, userName, activeSpeakerId, currentUserId, pinnedParticipantId]);
+
+  const visibleStreams = getVisibleStreams(allStreams);
+  const gridConfig = getGridConfig(visibleStreams.length);
 
   const VideoTile = useCallback(({ 
     stream, 
@@ -156,14 +200,31 @@ export const ResponsiveVideoGrid = ({
 
         {/* Status indicators */}
         <div className="absolute top-2 right-2 flex space-x-1 z-10">
+           {/* Pin Button */}
+           <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPinnedParticipantId(pinnedParticipantId === streamId ? null : streamId);
+            }}
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-black/40 hover:bg-black/60 text-white p-1"
+          >
+            {pinnedParticipantId === streamId ? (
+              <PinOff className="h-3 w-3 sm:h-4 sm:w-4" />
+            ) : (
+              <Pin className="h-3 w-3 sm:h-4 sm:w-4" />
+            )}
+          </Button>
+
           {!hasAudio && (
-            <div className="p-1 bg-red-500/90 rounded-full">
-              <MicOff className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
+            <div className="p-1 bg-red-500/90 rounded-full h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center">
+              <MicOff className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
             </div>
           )}
           {participantInfo.isHost && (
-            <div className="p-1 bg-yellow-500/90 rounded-full">
-              <Crown className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
+            <div className="p-1 bg-yellow-500/90 rounded-full h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center">
+              <Crown className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
             </div>
           )}
         </div>
@@ -202,15 +263,15 @@ export const ResponsiveVideoGrid = ({
   }, [getParticipantInfo]);
 
   return (
-    <div className="h-full w-full p-2 sm:p-4 pb-20 sm:pb-24">
+    <div className="h-full w-full p-2 sm:p-4 pb-20 sm:pb-24 flex flex-col items-center justify-center relative">
       <div 
-        className="grid gap-1 sm:gap-2 h-full w-full"
+        className="grid gap-2 h-full w-full max-w-[1920px] transition-all duration-300"
         style={{
           gridTemplateColumns: `repeat(${gridConfig.cols}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${gridConfig.rows}, minmax(0, 1fr))`
         }}
       >
-        {allStreams.slice(0, gridConfig.cols * gridConfig.rows).map((streamData) => (
+        {visibleStreams.map((streamData) => (
           <VideoTile
             key={streamData.id}
             stream={streamData.stream}
@@ -221,12 +282,35 @@ export const ResponsiveVideoGrid = ({
         ))}
       </div>
       
-      {/* Overflow indicator if there are too many participants */}
-      {totalParticipants > gridConfig.cols * gridConfig.rows && (
-        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-3 py-2 rounded-full">
-          <span className="text-white text-sm font-medium">
-            +{totalParticipants - (gridConfig.cols * gridConfig.rows)} more
-          </span>
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex justify-between px-4 pointer-events-none">
+           <Button
+            variant="secondary"
+            size="icon"
+            onClick={handlePrevPage}
+            disabled={currentPage === 1}
+            className={`pointer-events-auto rounded-full w-12 h-12 bg-black/40 hover:bg-black/60 border-none text-white transition-opacity ${currentPage === 1 ? 'opacity-0' : 'opacity-100'}`}
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className={`pointer-events-auto rounded-full w-12 h-12 bg-black/40 hover:bg-black/60 border-none text-white transition-opacity ${currentPage === totalPages ? 'opacity-0' : 'opacity-100'}`}
+          >
+            <ChevronRight className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
+
+      {/* Page Indicator */}
+      {totalPages > 1 && (
+        <div className="absolute bottom-24 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-medium">
+          Page {currentPage} of {totalPages}
         </div>
       )}
     </div>
