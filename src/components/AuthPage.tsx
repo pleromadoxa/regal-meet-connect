@@ -8,7 +8,7 @@ import { Footer } from './Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
-import heroImage from '@/assets/hero-conference.png';
+import heroImage from '@/assets/3d-red-regal.jpg';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
