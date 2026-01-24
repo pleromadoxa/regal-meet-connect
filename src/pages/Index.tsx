@@ -92,13 +92,6 @@ const Index = () => {
         {/* Hero Section */}
         <section className="container mx-auto px-4 text-center mb-24 md:mb-32">
           <div className="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 text-orange-400 text-sm font-medium mb-4 backdrop-blur-sm animate-fade-in">
-              <span className="relative flex h-2 w-2 mr-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-              </span>
-              Powered by LoveWorld Teens & Youth Ministry
-            </div>
 
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight">
               Premium Video Meetings <br />
