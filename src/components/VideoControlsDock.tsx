@@ -22,11 +22,20 @@ import {
   ChevronDown,
   MoreVertical,
   Users,
-  Info
+  Info,
+  Smile
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface VideoControlsDockProps {
   isVideoEnabled: boolean;
@@ -80,202 +89,256 @@ export const VideoControlsDock = ({
     return () => clearInterval(timer);
   }, []);
   
+  // Google Meet Colors
+  const colors = {
+    barBg: "bg-[#202124]",
+    btnDefault: "bg-[#3c4043] hover:bg-[#4a4e51] text-white border-transparent",
+    btnRed: "bg-[#ea4335] hover:bg-[#d93025] text-white border-transparent",
+    btnActive: "bg-[#a8c7fa] hover:bg-[#8ab4f8] text-[#041e49] border-transparent",
+    btnGhost: "bg-transparent hover:bg-[#3c4043] text-white",
+  };
+
   const buttonClass = isMobile 
-    ? "h-9 w-9 rounded-xl flex items-center justify-center transition-all duration-200 shadow-md border"
-    : "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-none border-none hover:bg-white/10 text-white";
+    ? "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm"
+    : "h-10 w-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm";
   
-  const iconClass = isMobile ? "h-4 w-4" : "h-5 w-5";
+  const iconClass = "h-5 w-5";
 
-  const essentialControls = [
-    { key: 'audio', onClick: onToggleAudio, active: isAudioEnabled, icon: isAudioEnabled ? Mic : MicOff, color: isAudioEnabled ? 'default' : 'red' },
-    { key: 'video', onClick: onToggleVideo, active: isVideoEnabled, icon: isVideoEnabled ? Video : VideoOff, color: isVideoEnabled ? 'default' : 'red' },
-  ];
-
-  const mainControls = [
-    ...essentialControls,
-    { key: 'captions', onClick: onToggleCaptions, active: captionsEnabled, icon: captionsEnabled ? Captions : CaptionsOff, color: captionsEnabled ? 'active' : 'default' },
-    { key: 'hand', onClick: onToggleHand, active: handRaised, icon: Hand, color: handRaised ? 'active' : 'default' },
-    { key: 'screen', onClick: onToggleScreenShare, active: isScreenSharing, icon: isScreenSharing ? MonitorOff : Monitor, color: isScreenSharing ? 'active' : 'default' },
-    { key: 'effects', onClick: onToggleEffects, active: false, icon: Sparkles, color: 'default' },
-    { key: 'settings', onClick: onToggleSettings, active: showSettings, icon: Settings, color: showSettings ? 'active' : 'default' },
-    { key: 'leave', onClick: onLeaveMeeting, active: false, icon: PhoneOff, color: 'red-pill' }
-  ];
-
-  const additionalControls = [
-    { key: 'screen', onClick: onToggleScreenShare, active: isScreenSharing, icon: isScreenSharing ? MonitorOff : Monitor, color: isScreenSharing ? 'orange' : 'slate' },
-    { key: 'camera', onClick: onSwitchCamera, active: false, icon: RotateCcw, color: 'slate' },
-    { key: 'captions', onClick: onToggleCaptions, active: captionsEnabled, icon: captionsEnabled ? Captions : CaptionsOff, color: captionsEnabled ? 'purple' : 'slate' },
-    { key: 'chat', onClick: onToggleChat, active: showChat, icon: MessageSquare, color: showChat ? 'blue' : 'slate' },
-    { key: 'hand', onClick: onToggleHand, active: handRaised, icon: Hand, color: handRaised ? 'yellow' : 'slate' },
-    { key: 'effects', onClick: onToggleEffects, active: false, icon: Sparkles, color: 'slate' },
-    { key: 'settings', onClick: onToggleSettings, active: showSettings, icon: Settings, color: showSettings ? 'slate' : 'slate' }
-  ];
-
-  if (onNavigateToDashboard) {
-    additionalControls.push({ key: 'dashboard', onClick: onNavigateToDashboard, active: false, icon: LayoutDashboard, color: 'slate' });
-  }
-
-  const getButtonColors = (color: string, active: boolean) => {
-    if (isMobile) {
-       switch (color) {
-        case 'red':
-          return "bg-red-500/20 border-red-400/40 text-red-400 hover:bg-red-500/30";
-        case 'active':
-          return "bg-blue-500/20 border-blue-400/40 text-blue-400 hover:bg-blue-500/30";
-        default:
-          return active ? "bg-slate-600/60 border-slate-500/40 text-slate-200 hover:bg-slate-500/60" : "bg-slate-700/60 border-slate-600/40 text-slate-300 hover:bg-slate-600/60";
-       }
+  // Configuration for Center Controls
+  const centerControls = [
+    {
+      key: 'audio',
+      onClick: onToggleAudio,
+      active: isAudioEnabled, // If active (ON), use default. If inactive (OFF), use red.
+      icon: isAudioEnabled ? Mic : MicOff,
+      style: isAudioEnabled ? 'default' : 'red',
+      tooltip: isAudioEnabled ? 'Turn off microphone' : 'Turn on microphone'
+    },
+    {
+      key: 'video',
+      onClick: onToggleVideo,
+      active: isVideoEnabled,
+      icon: isVideoEnabled ? Video : VideoOff,
+      style: isVideoEnabled ? 'default' : 'red',
+      tooltip: isVideoEnabled ? 'Turn off camera' : 'Turn on camera'
+    },
+    {
+      key: 'captions',
+      onClick: onToggleCaptions,
+      active: captionsEnabled,
+      icon: captionsEnabled ? Captions : CaptionsOff,
+      style: captionsEnabled ? 'active' : 'default',
+      tooltip: 'Turn on captions'
+    },
+    {
+      key: 'hand',
+      onClick: onToggleHand,
+      active: handRaised,
+      icon: Hand,
+      style: handRaised ? 'active' : 'default',
+      tooltip: 'Raise hand'
+    },
+    {
+      key: 'screen',
+      onClick: onToggleScreenShare,
+      active: isScreenSharing,
+      icon: isScreenSharing ? MonitorOff : Monitor,
+      style: isScreenSharing ? 'active' : 'default',
+      tooltip: 'Present now'
+    },
+    {
+      key: 'effects',
+      onClick: onToggleEffects,
+      active: false,
+      icon: Sparkles,
+      style: 'default',
+      tooltip: 'Apply visual effects'
+    },
+    {
+      key: 'more',
+      onClick: onToggleSettings, // Using settings for now, or could trigger a dropdown
+      active: showSettings,
+      icon: MoreVertical,
+      style: showSettings ? 'active' : 'default',
+      tooltip: 'More options'
+    },
+    {
+      key: 'leave',
+      onClick: onLeaveMeeting,
+      active: false,
+      icon: PhoneOff,
+      style: 'leave', // Special pill style
+      tooltip: 'Leave call'
     }
+  ];
 
-    // Desktop styles (Google Meet like)
-    switch (color) {
-      case 'red':
-        return "bg-red-600 hover:bg-red-700 text-white rounded-full";
-      case 'red-pill':
-        return "bg-red-600 hover:bg-red-700 text-white rounded-full w-14 px-0";
-      case 'active':
-        return "bg-blue-300 text-blue-900 hover:bg-blue-200 rounded-full";
-      case 'default':
-      default:
-        return "bg-zinc-800 text-white hover:bg-zinc-700 rounded-full border border-zinc-700";
+  const getButtonStyle = (style: string) => {
+    switch (style) {
+      case 'red': return colors.btnRed;
+      case 'active': return colors.btnActive;
+      case 'leave': return `${colors.btnRed} w-16 rounded-full px-0`;
+      case 'default': default: return colors.btnDefault;
     }
   };
 
   if (isMobile) {
+    // Mobile View - simplified bottom bar
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 safe-area-inset-bottom">
-        <div className="bg-black/95 backdrop-blur-xl border-t border-white/10">
-          {/* Collapse Toggle */}
-          <div className="flex justify-center py-1">
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="bg-[#202124] border-t border-white/10 px-4 py-4 pb-8 flex items-center justify-between">
             <Button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-6 w-12 rounded-t-lg bg-slate-800/60 border-slate-600/40 text-slate-300 hover:bg-slate-700/60"
-              size="sm"
+              onClick={onLeaveMeeting}
+              className={cn("h-12 w-12 rounded-full", colors.btnRed)}
+              size="icon"
             >
-              {isCollapsed ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              <PhoneOff className="h-5 w-5" />
             </Button>
-          </div>
 
-        <div className={cn(
-            "transition-all duration-300 overflow-hidden",
-            isCollapsed ? "max-h-20" : "max-h-40"
-          )}>
-            {/* Essential Controls - Always Visible */}
-            <div className="flex flex-wrap items-center justify-center gap-2 px-3 py-3">
-              {essentialControls.map((control) => {
-                const Icon = control.icon;
-                return (
-                  <Button
-                    key={control.key}
-                    onClick={control.onClick}
-                    className={cn(buttonClass, getButtonColors(control.color, control.active))}
-                    size="sm"
-                  >
-                    <Icon className={iconClass} />
-                  </Button>
-                );
-              })}
-            </div>
+            <Button
+              onClick={onToggleVideo}
+              className={cn("h-12 w-12 rounded-full", isVideoEnabled ? colors.btnDefault : colors.btnRed)}
+              size="icon"
+            >
+              {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </Button>
 
-            {/* Additional Controls - Hidden when collapsed */}
-            {!isCollapsed && (
-              <div className="flex flex-wrap items-center justify-center gap-2 px-3 pb-3 max-w-full">
-                {additionalControls.map((control) => {
-                  const Icon = control.icon;
-                  return (
-                    <Button
-                      key={control.key}
-                      onClick={control.onClick}
-                      className={cn(buttonClass, getButtonColors(control.color, control.active))}
-                      size="sm"
-                    >
-                      <Icon className={iconClass} />
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            <Button
+              onClick={onToggleAudio}
+              className={cn("h-12 w-12 rounded-full", isAudioEnabled ? colors.btnDefault : colors.btnRed)}
+              size="icon"
+            >
+              {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </Button>
+
+            <Button
+              onClick={onToggleHand}
+              className={cn("h-12 w-12 rounded-full", handRaised ? colors.btnActive : colors.btnDefault)}
+              size="icon"
+            >
+              <Hand className="h-5 w-5" />
+            </Button>
+
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className={cn("h-12 w-12 rounded-full", colors.btnDefault)}
+                  size="icon"
+                >
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-[#3c4043] text-white border-zinc-700">
+                <DropdownMenuLabel>More Options</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-zinc-600" />
+                <DropdownMenuItem onClick={onSwitchCamera} className="focus:bg-zinc-600 focus:text-white">
+                  <RotateCcw className="mr-2 h-4 w-4" /> Switch Camera
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleCaptions} className="focus:bg-zinc-600 focus:text-white">
+                  {captionsEnabled ? <CaptionsOff className="mr-2 h-4 w-4" /> : <Captions className="mr-2 h-4 w-4" />}
+                  {captionsEnabled ? 'Turn off captions' : 'Turn on captions'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleScreenShare} className="focus:bg-zinc-600 focus:text-white">
+                   <Monitor className="mr-2 h-4 w-4" /> Share Screen
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleChat} className="focus:bg-zinc-600 focus:text-white">
+                   <MessageSquare className="mr-2 h-4 w-4" /> In-call Messages
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleEffects} className="focus:bg-zinc-600 focus:text-white">
+                   <Sparkles className="mr-2 h-4 w-4" /> Effects
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleSettings} className="focus:bg-zinc-600 focus:text-white">
+                   <Settings className="mr-2 h-4 w-4" /> Settings
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </div>
     );
   }
 
+  // Desktop View
   return (
-    <div className="w-full bg-zinc-900 border-t border-white/5 p-3 z-50">
-      <div className="flex items-center justify-between w-full max-w-[1920px] mx-auto px-4">
-        {/* Left: Meeting Info */}
-        <div className="hidden md:flex items-center gap-4 text-white min-w-[200px]">
-          <span className="text-sm font-medium">{format(currentTime, 'hh:mm a')}</span>
-          <Separator orientation="vertical" className="h-4 bg-zinc-700" />
-          <span className="text-sm font-medium tracking-tight text-zinc-300">
-             {window.location.pathname.split('/').pop()?.slice(0, 9) || 'meeting'}
-          </span>
+    <div className={cn("w-full h-20 flex items-center px-4 z-50 fixed bottom-0 left-0 right-0", colors.barBg)}>
+      {/* Left: Time and Meeting ID */}
+      <div className="flex-1 flex items-center justify-start gap-4 text-white min-w-[200px]">
+        <div className="text-lg font-medium tracking-wide">{format(currentTime, 'h:mm a')}</div>
+        <Separator orientation="vertical" className="h-6 bg-zinc-600" />
+        <div className="text-base font-medium text-zinc-300 tracking-tight">
+           {window.location.pathname.split('/').pop()?.slice(0, 9) || 'meeting-id'}
         </div>
+      </div>
 
-        {/* Center: Controls */}
-        <div className="flex items-center gap-2 md:gap-3">
-            {mainControls.map((control) => {
-              const Icon = control.icon;
-              const isLeave = control.key === 'leave';
-              return (
-                <Button
-                  key={control.key}
-                  onClick={control.onClick}
-                  className={cn(
-                    isLeave ? "w-16 h-10 rounded-full" : "h-10 w-10 rounded-full",
-                    getButtonColors(control.color, control.active)
-                  )}
-                  variant="ghost"
-                  size="icon"
-                >
-                  <Icon className={iconClass} />
-                </Button>
-              );
-            })}
-        </div>
+      {/* Center: Main Controls */}
+      <div className="flex items-center justify-center gap-3">
+          {centerControls.map((control) => {
+            const Icon = control.icon;
+            return (
+              <Button
+                key={control.key}
+                onClick={control.onClick}
+                className={cn(
+                  buttonClass,
+                  getButtonStyle(control.style)
+                )}
+                title={control.tooltip}
+              >
+                <Icon className={iconClass} />
+              </Button>
+            );
+          })}
+      </div>
 
-        {/* Right: Side Panel Toggles */}
-        <div className="hidden md:flex items-center justify-end gap-2 min-w-[200px]">
-            <Button
-              onClick={() => {}} // Info toggle
-              className="h-10 w-10 rounded-full bg-transparent hover:bg-zinc-800 text-white"
-              variant="ghost"
-              size="icon"
-            >
-               <Info className="h-5 w-5" />
-            </Button>
+      {/* Right: Side Panel Toggles */}
+      <div className="flex-1 flex items-center justify-end gap-2 min-w-[200px]">
+          <Button
+            onClick={() => {}} // Info toggle
+            className={cn("h-10 w-10 rounded-full", colors.btnGhost)}
+            size="icon"
+            title="Meeting details"
+          >
+             <Info className="h-5 w-5" />
+          </Button>
 
-            <Button
-              onClick={onToggleParticipants}
-              className="h-10 w-10 rounded-full bg-transparent hover:bg-zinc-800 text-white"
-              variant="ghost"
-              size="icon"
-            >
-               <Users className="h-5 w-5" />
-            </Button>
+          <Button
+            onClick={onToggleParticipants}
+            className={cn("h-10 w-10 rounded-full", colors.btnGhost)}
+            size="icon"
+            title="People"
+          >
+             <Users className="h-5 w-5" />
+          </Button>
 
-            <Button
-              onClick={onToggleChat}
-              className={cn(
-                "h-10 w-10 rounded-full hover:bg-zinc-800 text-white",
-                showChat ? "bg-blue-300 text-blue-900 hover:bg-blue-200" : "bg-transparent"
-              )}
-              variant="ghost"
-              size="icon"
-            >
-               <MessageSquare className="h-5 w-5" />
-            </Button>
+          <Button
+            onClick={onToggleChat}
+            className={cn(
+              "h-10 w-10 rounded-full relative",
+              showChat ? colors.btnActive : colors.btnGhost
+            )}
+            size="icon"
+            title="Chat with everyone"
+          >
+             <MessageSquare className="h-5 w-5" />
+          </Button>
 
-            <Button
-              onClick={() => {}} // Activities toggle
-              className="h-10 w-10 rounded-full bg-transparent hover:bg-zinc-800 text-white"
-              variant="ghost"
-              size="icon"
-            >
-               <MoreVertical className="h-5 w-5" />
-            </Button>
-        </div>
+          <Button
+            onClick={() => {}} // Activities toggle
+            className={cn("h-10 w-10 rounded-full", colors.btnGhost)}
+            size="icon"
+            title="Activities"
+          >
+             <Smile className="h-5 w-5" />
+          </Button>
+
+          {onNavigateToDashboard && (
+             <Button
+               onClick={onNavigateToDashboard}
+               className={cn("h-10 w-10 rounded-full ml-2", colors.btnGhost)}
+               size="icon"
+               title="Dashboard"
+             >
+                <LayoutDashboard className="h-5 w-5" />
+             </Button>
+          )}
       </div>
     </div>
   );
