@@ -1,6 +1,7 @@
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { VideoConference } from '@/components/VideoConference';
+import { PreJoinScreen } from '@/components/meeting/PreJoinScreen';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
@@ -12,6 +13,8 @@ const Meeting = () => {
   const { user, loading } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [initialMediaState, setInitialMediaState] = useState({ video: true, audio: true });
   const [validationError, setValidationError] = useState<string | null>(null);
   const { validateMeetingId } = useMeetingValidation();
   const hasValidatedRef = useRef(false);
@@ -93,6 +96,11 @@ const Meeting = () => {
     navigate('/dashboard');
   };
 
+  const handleJoin = (videoEnabled: boolean, audioEnabled: boolean) => {
+    setInitialMediaState({ video: videoEnabled, audio: audioEnabled });
+    setHasJoined(true);
+  };
+
   if (loading || isValidating) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
@@ -133,11 +141,24 @@ const Meeting = () => {
     );
   }
 
+  if (!hasJoined) {
+    return (
+      <PreJoinScreen
+        userName={userName}
+        meetingId={meetingId}
+        onJoin={handleJoin}
+        onCancel={handleNavigateToDashboard}
+      />
+    );
+  }
+
   return (
     <VideoConference
       meetingId={meetingId}
       userName={userName}
       isHost={isHost}
+      initialVideoEnabled={initialMediaState.video}
+      initialAudioEnabled={initialMediaState.audio}
       onLeaveMeeting={handleLeaveMeeting}
       onNavigateToDashboard={handleNavigateToDashboard}
     />

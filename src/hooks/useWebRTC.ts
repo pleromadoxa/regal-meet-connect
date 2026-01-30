@@ -17,11 +17,17 @@ interface SignalingMessage {
   userName?: string;
 }
 
-export const useWebRTC = (meetingId: string, userName: string, userId: string) => {
+export const useWebRTC = (
+  meetingId: string,
+  userName: string,
+  userId: string,
+  initialVideoEnabled: boolean = true,
+  initialAudioEnabled: boolean = true
+) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(initialVideoEnabled);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(initialAudioEnabled);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [currentFacingMode, setCurrentFacingMode] = useState<"user" | "environment">('user');
   const [currentAudioDevice, setCurrentAudioDevice] = useState<string>('');
@@ -403,10 +409,18 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         audioSettings: stream.getAudioTracks()[0]?.getSettings()
       });
 
+      // Apply initial state
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = initialVideoEnabled;
+      });
+      stream.getAudioTracks().forEach(track => {
+        track.enabled = initialAudioEnabled;
+      });
+
       localStreamRef.current = stream;
       setLocalStream(stream);
-      setIsVideoEnabled(stream.getVideoTracks().length > 0);
-      setIsAudioEnabled(stream.getAudioTracks().length > 0);
+      setIsVideoEnabled(initialVideoEnabled);
+      setIsAudioEnabled(initialAudioEnabled);
 
       const audioTrack = stream.getAudioTracks()[0];
       const videoTrack = stream.getVideoTracks()[0];
