@@ -54,7 +54,7 @@ export const CreateMeetingCard = () => {
       <CardHeader className="pb-3 md:pb-4">
         <CardTitle className="flex items-center text-foreground text-base md:text-lg">
           <Video className="h-5 w-5 md:h-6 md:w-6 mr-2 text-primary" />
-          Create New Meeting
+          Schedule a Regal Meeting
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 md:space-y-4">
@@ -123,7 +123,7 @@ export const CreateMeetingCard = () => {
           ) : (
             <>
               <Plus className="h-4 w-4 mr-2" />
-              Create & Start {meetingType === 'audio' ? 'Audio' : 'Video'} Meeting
+              Start {meetingType === 'audio' ? 'Audio' : 'Video'} Meeting
             </>
           )}
         </Button>

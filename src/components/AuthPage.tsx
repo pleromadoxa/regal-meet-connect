@@ -38,7 +38,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
         toast({
           title: "Welcome back!",
-          description: "Successfully signed in to Regal Meet"
+          description: "Successfully signed in to Regal Meeting"
         });
         onAuthSuccess();
       } else {
@@ -113,7 +113,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
             <div className="p-2 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg shadow-lg shadow-orange-500/20">
               <Video className="h-6 w-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-white tracking-tight">Regal Meet</span>
+            <span className="text-xl font-bold text-white tracking-tight">Regal Meeting</span>
           </div>
         </div>
 
@@ -206,7 +206,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         </div>
 
         <div className="text-center text-slate-500 text-xs relative z-10">
-          &copy; {new Date().getFullYear()} Regal Meet. All rights reserved.
+          &copy; {new Date().getFullYear()} Regal Meeting. All rights reserved.
         </div>
       </div>
 

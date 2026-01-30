@@ -1,6 +1,5 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 
 export type BackgroundEffect = 'none' | 'blur' | 'image';
 
@@ -24,10 +23,11 @@ export const useVirtualBackground = ({
 }: UseVirtualBackgroundProps) => {
   const [processedStream, setProcessedStream] = useState<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const segmentationRef = useRef<SelfieSegmentation | null>(null);
+  const segmentationRef = useRef<any>(null);
   const animationFrameRef = useRef<number>();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bgImageRef = useRef<HTMLImageElement | null>(null);
+  const scriptLoadedRef = useRef(false);
 
   // Load background image
   useEffect(() => {
@@ -90,21 +90,118 @@ export const useVirtualBackground = ({
     ctx.restore();
   }, [effect, blurRadius]);
 
-  // Initialize MediaPipe
+  // Initialize MediaPipe via CDN script
   useEffect(() => {
-    const selfieSegmentation = new SelfieSegmentation({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+    if (scriptLoadedRef.current) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+
+    script.onload = () => {
+      console.log('MediaPipe SelfieSegmentation script loaded');
+      scriptLoadedRef.current = true;
+
+      if (window.SelfieSegmentation) {
+        const selfieSegmentation = new window.SelfieSegmentation({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+        });
+
+        selfieSegmentation.setOptions({
+          modelSelection: 1,
+          selfieMode: false,
+        });
+
+        selfieSegmentation.onResults((results: any) => {
+            // We need to access the latest callback from the ref or state,
+            // but since onResultsOptimized depends on effect/blurRadius, we need to be careful.
+            // For simplicity, we'll assume the segmentation instance persists and we just update the callback logic if we re-init?
+            // Actually, best pattern is to store the callback in a ref?
+            // Or just rely on the closure?
+            // The issue is `onResultsOptimized` changes when `effect` changes.
+            // We should assign the callback inside the effect that handles processing?
+            // No, `onResults` is set once.
+            // Let's use a ref for the callback.
+        });
+
+        segmentationRef.current = selfieSegmentation;
+      }
+    };
+
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup script? Usually not needed for singleton lib, but good practice.
+      // document.body.removeChild(script);
+      if (segmentationRef.current) {
+        segmentationRef.current.close();
+      }
+    };
+  }, []);
+
+  // Handle onResults callback update
+  const onResultsOptimizedRef = useRef(onResultsOptimized);
+  useEffect(() => {
+    onResultsOptimizedRef.current = onResultsOptimized;
+  }, [onResultsOptimized]);
+
+  // Set the callback on the segmentation instance whenever it's ready
+  useEffect(() => {
+    if (segmentationRef.current) {
+        segmentationRef.current.onResults((results: any) => {
+            if (onResultsOptimizedRef.current) {
+                onResultsOptimizedRef.current(results as unknown as SegmentationResults);
+            }
+        });
+    }
+  }, [segmentationRef.current]); // This might not trigger if ref changes deeply?
+  // Actually segmentationRef is a Ref, changing .current won't trigger re-render.
+  // But the script.onload sets it. We need to trigger a re-render or check it in the loop.
+  // Better: Initialize segmentation inside the script onload and save to state?
+  // Or just rely on the processing loop checking for existence.
+
+  // Re-attach onResults if segmentation exists (e.g. after it loads)
+  // We can poll or just trust the loop.
+  // Actually, `onResults` must be registered for `send()` to work and callback to fire.
+
+  // Revised Initialization Logic:
+  // 1. Load script.
+  // 2. Set state `isMediaPipeReady`.
+  // 3. Effect on `isMediaPipeReady` -> create instance.
+
+  const [isMediaPipeReady, setIsMediaPipeReady] = useState(false);
+
+  useEffect(() => {
+    if (window.SelfieSegmentation) {
+        setIsMediaPipeReady(true);
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.onload = () => setIsMediaPipeReady(true);
+    document.body.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!isMediaPipeReady || segmentationRef.current) return;
+
+    console.log('Initializing SelfieSegmentation instance');
+    const selfieSegmentation = new window.SelfieSegmentation({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
     });
 
     selfieSegmentation.setOptions({
-      modelSelection: 1,
-      selfieMode: false,
+        modelSelection: 1,
+        selfieMode: false,
     });
 
-    selfieSegmentation.onResults((results) => onResultsOptimized(results as unknown as SegmentationResults));
     segmentationRef.current = selfieSegmentation;
 
-    // Create a hidden video element
+    // Create hidden video
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true;
@@ -116,14 +213,18 @@ export const useVirtualBackground = ({
     }
 
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      if (segmentationRef.current) segmentationRef.current.close();
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.srcObject = null;
-      }
+        selfieSegmentation.close();
     };
-  }, [onResultsOptimized]);
+  }, [isMediaPipeReady]);
+
+  // Update onResults callback
+  useEffect(() => {
+      if (segmentationRef.current) {
+          segmentationRef.current.onResults((results: any) => {
+              onResultsOptimizedRef.current(results as unknown as SegmentationResults);
+          });
+      }
+  }, [isMediaPipeReady, segmentationRef.current]); // Trigger when ready
 
   // Processing loop
   useEffect(() => {
@@ -135,7 +236,7 @@ export const useVirtualBackground = ({
         await videoRef.current.play().catch(e => console.error("Error playing video for segmentation", e));
       }
 
-      if (videoRef.current.readyState === 4) { // HAVE_ENOUGH_DATA
+      if (videoRef.current.readyState === 4) {
           try {
             await segmentationRef.current.send({ image: videoRef.current });
           } catch(e) {
@@ -145,7 +246,7 @@ export const useVirtualBackground = ({
       animationFrameRef.current = requestAnimationFrame(processFrame);
     };
 
-    if (stream && effect !== 'none') {
+    if (stream && effect !== 'none' && isMediaPipeReady) {
       processFrame();
     } else if (stream && effect === 'none') {
         setProcessedStream(stream);
@@ -155,7 +256,7 @@ export const useVirtualBackground = ({
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [stream, effect]);
+  }, [stream, effect, isMediaPipeReady]);
 
   // Capture canvas stream
   useEffect(() => {

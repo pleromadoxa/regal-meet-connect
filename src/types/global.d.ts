@@ -5,6 +5,7 @@ declare global {
     webkitSpeechRecognition: typeof SpeechRecognition;
     AudioContext: typeof AudioContext;
     webkitAudioContext: typeof AudioContext;
+    SelfieSegmentation: any;
   }
 }
 

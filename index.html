@@ -1,73 +1,48 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Regal Meetings - Premium Video Conferencing | Alternative to Zoom & Google Meet</title>
-    <meta name="description" content="Experience crystal-clear, secure video meetings with Regal Meet. The best free alternative to Zoom and Google Meet for professionals, ministries, and teams. No downloads required." />
-    <meta name="keywords" content="Regal Meet, Video Conferencing, Online Meetings, Zoom Alternative, Google Meet Alternative, Free Video Call, Video Chat, WebRTC, Secure Meetings, HD Video" />
-    <meta name="author" content="Regal Meetings" />
+
+    <!-- Primary Meta Tags -->
+    <title>Regal Meeting - Premium Video Conferencing</title>
+    <meta name="description" content="Experience crystal-clear, secure video meetings with Regal Meeting. The professional choice for teams, ministries, and individuals. No downloads required." />
+    <meta name="keywords" content="Regal Meeting, Video Conferencing, Online Meetings, Secure Video Call, HD Video, Team Collaboration, Remote Work" />
+    <meta name="author" content="Regal Network" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://meet.regalnetwork.online/" />
-    <meta property="og:title" content="Regal Meetings - Premium Video Conferencing" />
-    <meta property="og:description" content="Join secure, high-quality video meetings instantly. The robust alternative to Zoom and Google Meet with superior features for free." />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:title" content="Regal Meeting - Premium Video Conferencing" />
+    <meta property="og:description" content="Join secure, high-quality video meetings instantly with Regal Meeting. Professional features, zero friction." />
+    <meta property="og:image" content="/og-image.png" />
 
     <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://meet.regalnetwork.online/" />
-    <meta name="twitter:title" content="Regal Meetings - Premium Video Conferencing" />
-    <meta name="twitter:description" content="Join secure, high-quality video meetings instantly. The robust alternative to Zoom and Google Meet with superior features for free." />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://meet.regalnetwork.online/" />
+    <meta property="twitter:title" content="Regal Meeting - Premium Video Conferencing" />
+    <meta property="twitter:description" content="Join secure, high-quality video meetings instantly with Regal Meeting. Professional features, zero friction." />
+    <meta property="twitter:image" content="/og-image.png" />
 
-    <!-- Structured Data -->
+    <link rel="canonical" href="https://meet.regalnetwork.online/" />
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Regal Meetings",
-        "operatingSystem": "Web, iOS, Android",
+        "name": "Regal Meeting",
         "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Any",
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD"
         },
-        "description": "Professional video conferencing platform offering secure, high-quality meetings. A superior alternative to Zoom and Google Meet.",
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "ratingCount": "1024"
-        }
+        "description": "Professional video conferencing platform offering secure, high-quality meetings. The seamless way to connect."
       }
     </script>
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#000000" />
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    
-    <!-- SPA routing fallback script for shared hosting -->
-    <script type="text/javascript">
-      // Handle SPA routing redirects from 404.html
-      (function(l) {
-        if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
-            return s.replace(/~and~/g, '&')
-          }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, -1) + decoded + l.hash
-          );
-        }
-      }(window.location))
-    </script>
   </head>
-
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

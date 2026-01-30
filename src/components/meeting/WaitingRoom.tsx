@@ -18,10 +18,10 @@ export const WaitingRoom = ({ meetingTitle = "Meeting" }: WaitingRoomProps) => {
         </div>
 
         <div className="space-y-4">
-          <h1 className="text-2xl font-bold text-white">Waiting for host</h1>
+          <h1 className="text-2xl font-bold text-white">Waiting to join Regal Meeting</h1>
           <p className="text-zinc-400">
             You are in the waiting room for <span className="font-semibold text-white">{meetingTitle}</span>.
-            The host will let you in shortly.
+            The host will admit you shortly.
           </p>
         </div>
 

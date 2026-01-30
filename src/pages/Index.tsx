@@ -33,7 +33,7 @@ const Index = () => {
             <div className="bg-gradient-to-br from-orange-500 to-red-600 p-2 rounded-xl group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all duration-300">
               <Video className="h-5 w-5 md:h-6 md:w-6 text-white" />
             </div>
-            <span className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Regal Meet</span>
+            <span className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Regal Meeting</span>
           </div>
 
           <div className="flex items-center space-x-3 md:space-x-6">
@@ -96,13 +96,13 @@ const Index = () => {
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-tight">
               Premium Video Meetings <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-pink-500 to-purple-600">
-                For Everyone
+                With Regal Meeting
               </span>
             </h1>
 
             <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Experience the next generation of video conferencing. Crystal clear audio,
-              HD video, and collaborative tools designed for meaningful connections.
+              Experience the next generation of video conferencing with Regal Meeting. Crystal clear audio,
+              HD video, and collaborative tools designed for professional and meaningful connections.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 pt-4">
@@ -166,10 +166,10 @@ const Index = () => {
         {/* Features Grid */}
         <section id="features" className="container mx-auto px-4 mb-24 md:mb-32">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Regal Meet?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose Regal Meeting?</h2>
             <p className="text-slate-400 max-w-2xl mx-auto">
               Built with the latest WebRTC technology to ensure your meetings run smoothly,
-              securely, and efficiently.
+              securely, and efficiently. The professional choice for video conferencing.
             </p>
           </div>
 

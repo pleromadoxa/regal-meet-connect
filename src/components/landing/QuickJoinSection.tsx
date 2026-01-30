@@ -39,10 +39,10 @@ export const QuickJoinSection = ({ onJoinMeeting }: QuickJoinSectionProps) => {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8 md:mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 md:mb-4">
-            Join a Meeting
+            Join Regal Meeting
           </h2>
           <p className="text-lg md:text-xl text-slate-300">
-            Enter a meeting ID to join an ongoing conference
+            Enter a meeting ID to join an ongoing Regal Meeting session
           </p>
         </div>
 
@@ -94,7 +94,7 @@ export const QuickJoinSection = ({ onJoinMeeting }: QuickJoinSectionProps) => {
               ) : (
                 <>
                   <LogIn className="h-5 w-5 mr-2" />
-                  Join Meeting
+                  Join Regal Meeting
                 </>
               )}
             </Button>

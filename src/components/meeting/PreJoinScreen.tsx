@@ -134,9 +134,9 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
         {/* Right Column: Info & Actions */}
         <div className="space-y-8 text-center md:text-left">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-white">Ready to join?</h1>
+            <h1 className="text-3xl font-bold text-white">Ready to join Regal Meeting?</h1>
             <p className="text-zinc-400">
-              You are about to join the meeting as <span className="text-white font-semibold">{userName}</span>
+              You are about to join the session as <span className="text-white font-semibold">{userName}</span>
             </p>
           </div>
 
