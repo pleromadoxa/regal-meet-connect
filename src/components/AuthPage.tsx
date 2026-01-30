@@ -45,9 +45,9 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         // Use the live domain for email redirects
         const redirectUrl = window.location.hostname === 'localhost' 
           ? `${window.location.origin}/` 
-          : 'http://meeting.lwteensministrytrainingportal.org/';
+          : 'https://meet.regalnetwork.online/';
         
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -65,10 +65,26 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           setTimeout(() => logActivity('user_signup', undefined), 1000);
         }
 
-        toast({
-          title: "Account Created!",
-          description: "Please check your email to verify your account"
-        });
+        if (data.session) {
+          // User is logged in immediately (Email verification disabled)
+          toast({
+            title: "Welcome!",
+            description: "Account created successfully."
+          });
+
+          // Send welcome email (fire and forget to not block UI)
+          supabase.functions.invoke('send-welcome-email', {
+            body: { email, displayName }
+          });
+
+          onAuthSuccess();
+        } else {
+          // User needs verification (Email verification enabled)
+          toast({
+            title: "Account Created!",
+            description: "Please check your email to verify your account"
+          });
+        }
       }
     } catch (error: any) {
       toast({
