@@ -10,7 +10,7 @@ import { useManyParticipantsOptimization } from './useManyParticipantsOptimizati
 
 interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
-  data: any;
+  data: RTCSessionDescriptionInit | RTCIceCandidateInit | { enabled: boolean } | any;
   from: string;
   to?: string;
   meetingId: string;
@@ -118,6 +118,7 @@ export const useWebRTC = (
     }, 1000);
 
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signalingPeers.size]); // Only depend on size, not the set contents
 
   // Page visibility for background handling
@@ -369,6 +370,7 @@ export const useWebRTC = (
     };
 
     return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId, userName, userId, toast, initializeSignaling, sendSignalingMessage, cleanupSignaling]);
 
   // Handle peer connection setup when new peers join
@@ -444,7 +446,7 @@ export const useWebRTC = (
         variant: "destructive"
       });
     }
-  }, [toast, getOptimizedMediaConstraints, optimizationSettings.participantCount]);
+  }, [toast, getOptimizedMediaConstraints, optimizationSettings.participantCount, initialAudioEnabled, initialVideoEnabled]);
 
   const toggleVideo = useCallback(async (): Promise<boolean> => {
     if (localStreamRef.current) {

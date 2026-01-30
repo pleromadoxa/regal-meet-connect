@@ -55,46 +55,6 @@ export const useAdmin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const checkAdminStatus = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase.rpc('has_role', {
-        _user_id: user.id,
-        _role: 'admin'
-      });
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(data || false);
-      }
-      
-      if (data) {
-        await Promise.all([
-          fetchUsers(),
-          fetchMeetings(),
-          fetchLogs(),
-          fetchCountryStats()
-        ]);
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchUsers = async () => {
     try {
       // Get all users using the admin function
@@ -114,15 +74,27 @@ export const useAdmin = () => {
         console.error('Error fetching user roles:', rolesError);
       }
 
+      interface AdminUserResult {
+        id: string;
+        email: string | null;
+        created_at: string;
+        display_name: string | null;
+      }
+
+      interface UserRoleResult {
+        user_id: string;
+        role: string;
+      }
+
       // Combine the data
-      const usersWithProfiles = users?.map((user: any) => ({
+      const usersWithProfiles = (users as AdminUserResult[])?.map((user) => ({
         id: user.id,
         email: user.email || '',
         created_at: user.created_at,
         profile: {
           display_name: user.display_name
         },
-        roles: userRoles?.filter((role: any) => role.user_id === user.id).map((role: any) => role.role) || []
+        roles: (userRoles as UserRoleResult[])?.filter((role) => role.user_id === user.id).map((role) => role.role) || []
       })) || [];
 
       setUsers(usersWithProfiles);
@@ -225,7 +197,7 @@ export const useAdmin = () => {
       }
 
       if (data) {
-        const countryCounts = data.reduce((acc: Record<string, number>, log: any) => {
+        const countryCounts = data.reduce((acc: Record<string, number>, log: { country: string | null }) => {
           const country = log.country || 'Unknown';
           acc[country] = (acc[country] || 0) + 1;
           return acc;
@@ -241,6 +213,47 @@ export const useAdmin = () => {
       console.error('Error fetching country stats:', error);
     }
   };
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data || false);
+      }
+
+      if (data) {
+        await Promise.all([
+          fetchUsers(),
+          fetchMeetings(),
+          fetchLogs(),
+          fetchCountryStats()
+        ]);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      checkAdminStatus();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const assignRole = async (userId: string, role: 'admin' | 'moderator' | 'user') => {
     try {
