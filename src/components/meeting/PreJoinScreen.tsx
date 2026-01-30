@@ -1,28 +1,50 @@
 import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Video, VideoOff, Settings } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, Image as ImageIcon, Ban } from 'lucide-react';
 import { useLocalPreview } from '@/hooks/useLocalPreview';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
 import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
+import { useVirtualBackground, BackgroundEffect } from '@/hooks/useVirtualBackground';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from 'react';
 
 interface PreJoinScreenProps {
   userName: string;
   meetingId: string;
-  onJoin: (videoEnabled: boolean, audioEnabled: boolean) => void;
+  onJoin: (videoEnabled: boolean, audioEnabled: boolean, processedStream: MediaStream | null) => void;
   onCancel: () => void;
 }
 
 export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoinScreenProps) => {
   const { stream, isVideoEnabled, isAudioEnabled, toggleVideo, toggleAudio } = useLocalPreview();
   const { volume, isActive, avgVolume } = useAudioVisualizer(stream, isAudioEnabled);
+  const [effect, setEffect] = useState<BackgroundEffect>('none');
+  const processedStream = useVirtualBackground({
+    stream,
+    effect,
+    blurRadius: 10,
+    backgroundImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' // Default fancy background
+  });
+
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (videoRef.current) {
+      if (processedStream && effect !== 'none') {
+          videoRef.current.srcObject = processedStream;
+      } else if (stream) {
+          videoRef.current.srcObject = stream;
+      }
     }
-  }, [stream]);
+  }, [stream, processedStream, effect]);
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
@@ -66,6 +88,31 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
               >
                 {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
               </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={effect !== 'none' ? "default" : "secondary"}
+                    size="icon"
+                    className="rounded-full h-12 w-12 shadow-lg"
+                  >
+                    <Sparkles className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel>Background Effects</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setEffect('none')}>
+                    <Ban className="mr-2 h-4 w-4" /> None
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEffect('blur')}>
+                    <Settings className="mr-2 h-4 w-4" /> Blur
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEffect('image')}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> Virtual Office
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Audio Visualizer */}
@@ -97,7 +144,7 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
             <Button
               size="lg"
               className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold text-lg py-6"
-              onClick={() => onJoin(isVideoEnabled, isAudioEnabled)}
+              onClick={() => onJoin(isVideoEnabled, isAudioEnabled, processedStream)}
             >
               Join Now
             </Button>

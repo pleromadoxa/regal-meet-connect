@@ -30,6 +30,8 @@ interface ParticipantsListProps {
   onToggleMute?: (participantId: string, isMuted: boolean) => void;
   onSelectVideo?: (streamId: string) => void;
   selectedVideoId?: string;
+  waitingUsers?: Set<string>;
+  onAdmitUser?: (userId: string) => void;
 }
 
 export const ParticipantsList = ({
@@ -43,7 +45,9 @@ export const ParticipantsList = ({
   onClose,
   onToggleMute,
   onSelectVideo,
-  selectedVideoId
+  selectedVideoId,
+  waitingUsers,
+  onAdmitUser
 }: ParticipantsListProps) => {
   const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
   const { toast } = useToast();
@@ -328,6 +332,27 @@ export const ParticipantsList = ({
                   <p className="text-xs text-slate-500 mb-2">
                     You are a participant in this meeting.
                   </p>
+                  </div>
+                )}
+
+                {/* Waiting Room Section */}
+                {isCurrentUserHost && waitingUsers && waitingUsers.size > 0 && (
+                  <div className="mb-4 p-3 bg-orange-900/20 rounded-lg border border-orange-500/30">
+                    <p className="text-xs text-orange-400 mb-2 font-semibold">Waiting Room ({waitingUsers.size})</p>
+                    <div className="space-y-2">
+                      {Array.from(waitingUsers).map(userId => (
+                        <div key={userId} className="flex items-center justify-between bg-slate-800/60 p-2 rounded">
+                          <span className="text-sm text-white truncate">Guest ({userId.slice(0, 4)}...)</span>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-xs h-7"
+                            onClick={() => onAdmitUser && onAdmitUser(userId)}
+                          >
+                            Admit
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

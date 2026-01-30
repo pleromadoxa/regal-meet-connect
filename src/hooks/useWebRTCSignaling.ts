@@ -18,12 +18,12 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
   const channelRef = useRef<any>(null);
   const { toast } = useToast();
 
-  const initializeSignaling = useCallback(() => {
+  const initializeSignaling = useCallback((initialStatus: 'waiting' | 'admitted' = 'admitted') => {
     if (channelRef.current) {
       channelRef.current.unsubscribe();
     }
 
-    console.log('Initializing signaling for user:', userName);
+    console.log('Initializing signaling for user:', userName, 'status:', initialStatus);
 
     const channel = supabase.channel(`meeting-${meetingId}`, {
       config: {
@@ -102,12 +102,13 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
             user_id: userId,
             user_name: userName,
             online_at: new Date().toISOString(),
+            status: initialStatus
           });
           
           setTimeout(() => {
             sendSignalingMessage({
               type: 'user-info',
-              data: null,
+              data: { status: initialStatus },
               userName: userName
             });
           }, 500);
@@ -117,6 +118,25 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
     channelRef.current = channel;
     return channel;
   }, [meetingId, userId, userName]);
+
+  // Function to update presence status (e.g. when admitted)
+  const updateStatus = useCallback(async (newStatus: 'waiting' | 'admitted') => {
+    if (!channelRef.current) return;
+
+    await channelRef.current.track({
+      user_id: userId,
+      user_name: userName,
+      online_at: new Date().toISOString(),
+      status: newStatus
+    });
+
+    // Announce the status change
+    sendSignalingMessage({
+      type: 'user-info',
+      data: { status: newStatus },
+      userName: userName
+    });
+  }, [userId, userName]);
 
   const sendSignalingMessage = useCallback((message: Omit<SignalingMessage, 'from' | 'meetingId'>) => {
     if (!channelRef.current) return;
@@ -153,6 +173,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
     sendSignalingMessage,
     connectedPeers,
     peerUserNames,
-    cleanup
+    cleanup,
+    updateStatus
   };
 };

@@ -22,6 +22,8 @@ interface MeetingLayoutProps {
   showParticipants: boolean;
   currentUserId: string;
   onToggleMute: (participantId: string, isMuted: boolean) => void;
+  waitingUsers?: Set<string>;
+  onAdmitUser?: (userId: string) => void;
 }
 
 export const MeetingLayout = ({
@@ -35,7 +37,9 @@ export const MeetingLayout = ({
   participants,
   showParticipants,
   currentUserId,
-  onToggleMute
+  onToggleMute,
+  waitingUsers,
+  onAdmitUser
 }: MeetingLayoutProps) => {
   // Create meeting ID from URL for participants list
   const meetingId = window.location.pathname.split('/meeting/')[1]?.split('?')[0] || '';
@@ -85,6 +89,8 @@ export const MeetingLayout = ({
             onToggleMute={onToggleMute}
             onSelectVideo={onVideoSelect}
             selectedVideoId={selectedVideoId}
+            waitingUsers={waitingUsers}
+            onAdmitUser={onAdmitUser}
           />
         </div>
       )}

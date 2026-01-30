@@ -96,7 +96,7 @@ const Meeting = () => {
     navigate('/dashboard');
   };
 
-  const handleJoin = (videoEnabled: boolean, audioEnabled: boolean) => {
+  const handleJoin = (videoEnabled: boolean, audioEnabled: boolean, processedStream: MediaStream | null) => {
     setInitialMediaState({ video: videoEnabled, audio: audioEnabled });
     setHasJoined(true);
   };

@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ParticipantJoinLeaveNotifications } from './meeting/ParticipantJoinLeaveNotifications';
 import { ConnectionQualityIndicator } from './meeting/ConnectionQualityIndicator';
 import { MediaPermissionsModal } from './meeting/MediaPermissionsModal';
+import { WaitingRoom } from './meeting/WaitingRoom';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { InMeetingChat } from './InMeetingChat';
@@ -73,6 +74,9 @@ export const VideoConference = ({
     isVideoEnabled,
     isAudioEnabled,
     isScreenSharing,
+    isWaiting,
+    waitingUsers,
+    admitUser,
     currentFacingMode,
     currentAudioDevice,
     currentVideoDevice,
@@ -84,7 +88,7 @@ export const VideoConference = ({
     cleanup,
     connectedPeers,
     peerUserNames
-  } = useWebRTC(meetingId, userName, user?.id || '', initialVideoEnabled, initialAudioEnabled);
+  } = useWebRTC(meetingId, userName, user?.id || '', initialVideoEnabled, initialAudioEnabled, isHost);
 
   // Background meeting management
   const { 
@@ -263,6 +267,10 @@ export const VideoConference = ({
   const totalParticipantCount = connectedPeers.length + 1;
   const showBackgroundIndicator = !isVisible && !!localStream;
 
+  if (isWaiting && !isHost) {
+    return <WaitingRoom meetingTitle={meetingId} />;
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 relative overflow-hidden flex flex-col">
       {/* Meeting Header */}
@@ -297,6 +305,8 @@ export const VideoConference = ({
             showParticipants={showParticipants}
             currentUserId={user?.id || ''}
             onToggleMute={handleToggleMute}
+            waitingUsers={waitingUsers}
+            onAdmitUser={admitUser}
           />
 
           {/* Connection Quality Indicator */}

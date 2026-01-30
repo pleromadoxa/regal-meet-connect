@@ -22,7 +22,8 @@ export const useWebRTC = (
   userName: string,
   userId: string,
   initialVideoEnabled: boolean = true,
-  initialAudioEnabled: boolean = true
+  initialAudioEnabled: boolean = true,
+  isHost: boolean = false
 ) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -80,7 +81,8 @@ export const useWebRTC = (
     sendSignalingMessage, 
     connectedPeers: signalingPeers,
     peerUserNames,
-    cleanup: cleanupSignaling 
+    cleanup: cleanupSignaling,
+    updateStatus
   } = useWebRTCSignaling(meetingId, userId, userName);
 
   // Add device change monitoring
@@ -175,12 +177,74 @@ export const useWebRTC = (
     };
   }, [isVisible]);
 
+  // New state for waiting room
+  const [isWaiting, setIsWaiting] = useState(!isHost); // Default to waiting if not host
+  const [waitingUsers, setWaitingUsers] = useState<Set<string>>(new Set());
+
+  // Listen for admission messages
+  useEffect(() => {
+    const handleSignaling = (event: any) => {
+        const message: SignalingMessage = event.detail;
+
+        // Host handling waiting users
+        if (isHost && message.type === 'user-info' && message.data?.status === 'waiting') {
+            setWaitingUsers(prev => new Set([...prev, message.from]));
+            toast({
+                title: "Guest in Waiting Room",
+                description: `${message.userName || 'Someone'} is waiting to join.`
+            });
+        }
+
+        // Guest handling admission
+        if (!isHost && isWaiting && message.type === 'answer' && message.to === userId) {
+            // A specific answer *might* imply we are talking, but explicit 'admit' signal is better.
+            // But let's look for a specific 'admit' message type if we added one, or use 'join'.
+            // For now, if we get an offer/answer targeted at us, it means the host initiated connection, so we are "admitted" effectively?
+            // No, anyone can send offer.
+        }
+
+        // Listen for specific "admit" message if we add one to SignalingMessage type,
+        // OR rely on presence updates (which we don't fully expose here yet).
+        // Let's use a custom signaling type for admission
+        if (message.type === 'join' && message.to === userId) {
+             console.log('Received admission signal!');
+             setIsWaiting(false);
+             updateStatus('admitted');
+             toast({
+                 title: "Admitted",
+                 description: "The host has let you into the meeting."
+             });
+        }
+    };
+
+    window.addEventListener('webrtc-signaling', handleSignaling);
+    return () => window.removeEventListener('webrtc-signaling', handleSignaling);
+  }, [isHost, isWaiting, userId, updateStatus, toast]);
+
+  const admitUser = useCallback((remoteUserId: string) => {
+      console.log('Admitting user:', remoteUserId);
+      setWaitingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(remoteUserId);
+          return newSet;
+      });
+
+      // Send signal to user that they are admitted
+      sendSignalingMessage({
+          type: 'join', // reusing join as "you can join now"
+          to: remoteUserId,
+          data: { status: 'admitted' }
+      });
+  }, [sendSignalingMessage]);
+
   useEffect(() => {
     if (!meetingId || !userName || !userId) return;
 
     console.log('Initializing WebRTC for:', { meetingId, userName, userId });
     
-    const signalingChannel = initializeSignaling();
+    // Initialize with correct status
+    const initialStatus = isHost ? 'admitted' : 'waiting';
+    const signalingChannel = initializeSignaling(initialStatus);
 
     const createPeerConnection = (remoteUserId: string) => {
       console.log('Creating peer connection for:', remoteUserId);
@@ -790,6 +854,9 @@ export const useWebRTC = (
     isVideoEnabled,
     isAudioEnabled,
     isScreenSharing,
+    isWaiting,
+    waitingUsers,
+    admitUser,
     currentFacingMode,
     currentAudioDevice,
     currentVideoDevice,
