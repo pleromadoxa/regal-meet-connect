@@ -27,7 +27,7 @@ export const useVirtualBackground = ({
   const animationFrameRef = useRef<number>();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const bgImageRef = useRef<HTMLImageElement | null>(null);
-  const scriptLoadedRef = useRef(false);
+  const onResultsOptimizedRef = useRef<(results: SegmentationResults) => void>(() => {});
 
   // Load background image
   useEffect(() => {
@@ -90,90 +90,16 @@ export const useVirtualBackground = ({
     ctx.restore();
   }, [effect, blurRadius]);
 
-  // Initialize MediaPipe via CDN script
-  useEffect(() => {
-    if (scriptLoadedRef.current) return;
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-
-    script.onload = () => {
-      console.log('MediaPipe SelfieSegmentation script loaded');
-      scriptLoadedRef.current = true;
-
-      if (window.SelfieSegmentation) {
-        const selfieSegmentation = new window.SelfieSegmentation({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
-        });
-
-        selfieSegmentation.setOptions({
-          modelSelection: 1,
-          selfieMode: false,
-        });
-
-        selfieSegmentation.onResults((results: any) => {
-            // We need to access the latest callback from the ref or state,
-            // but since onResultsOptimized depends on effect/blurRadius, we need to be careful.
-            // For simplicity, we'll assume the segmentation instance persists and we just update the callback logic if we re-init?
-            // Actually, best pattern is to store the callback in a ref?
-            // Or just rely on the closure?
-            // The issue is `onResultsOptimized` changes when `effect` changes.
-            // We should assign the callback inside the effect that handles processing?
-            // No, `onResults` is set once.
-            // Let's use a ref for the callback.
-        });
-
-        segmentationRef.current = selfieSegmentation;
-      }
-    };
-
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup script? Usually not needed for singleton lib, but good practice.
-      // document.body.removeChild(script);
-      if (segmentationRef.current) {
-        segmentationRef.current.close();
-      }
-    };
-  }, []);
-
   // Handle onResults callback update
-  const onResultsOptimizedRef = useRef(onResultsOptimized);
   useEffect(() => {
     onResultsOptimizedRef.current = onResultsOptimized;
   }, [onResultsOptimized]);
 
-  // Set the callback on the segmentation instance whenever it's ready
-  useEffect(() => {
-    if (segmentationRef.current) {
-        segmentationRef.current.onResults((results: any) => {
-            if (onResultsOptimizedRef.current) {
-                onResultsOptimizedRef.current(results as unknown as SegmentationResults);
-            }
-        });
-    }
-  }, [segmentationRef.current]); // This might not trigger if ref changes deeply?
-  // Actually segmentationRef is a Ref, changing .current won't trigger re-render.
-  // But the script.onload sets it. We need to trigger a re-render or check it in the loop.
-  // Better: Initialize segmentation inside the script onload and save to state?
-  // Or just rely on the processing loop checking for existence.
-
-  // Re-attach onResults if segmentation exists (e.g. after it loads)
-  // We can poll or just trust the loop.
-  // Actually, `onResults` must be registered for `send()` to work and callback to fire.
-
-  // Revised Initialization Logic:
-  // 1. Load script.
-  // 2. Set state `isMediaPipeReady`.
-  // 3. Effect on `isMediaPipeReady` -> create instance.
-
+  // Initialize MediaPipe via CDN script
   const [isMediaPipeReady, setIsMediaPipeReady] = useState(false);
 
   useEffect(() => {
-    if (window.SelfieSegmentation) {
+    if (typeof window !== 'undefined' && window.SelfieSegmentation) {
         setIsMediaPipeReady(true);
         return;
     }
@@ -182,53 +108,80 @@ export const useVirtualBackground = ({
     script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
     script.async = true;
     script.crossOrigin = 'anonymous';
-    script.onload = () => setIsMediaPipeReady(true);
+    script.onload = () => {
+        console.log('MediaPipe script loaded');
+        setIsMediaPipeReady(true);
+    };
+    script.onerror = (e) => {
+        console.error('Failed to load MediaPipe script', e);
+        // Fallback or retry?
+    };
     document.body.appendChild(script);
+
+    return () => {
+        // Cleanup script tag if needed, but keeping it is usually fine
+    };
   }, []);
 
   useEffect(() => {
     if (!isMediaPipeReady || segmentationRef.current) return;
 
-    console.log('Initializing SelfieSegmentation instance');
-    const selfieSegmentation = new window.SelfieSegmentation({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
-    });
+    try {
+        if (!window.SelfieSegmentation) {
+            console.error('SelfieSegmentation not found on window despite script load');
+            return;
+        }
 
-    selfieSegmentation.setOptions({
-        modelSelection: 1,
-        selfieMode: false,
-    });
+        console.log('Initializing SelfieSegmentation instance');
+        const selfieSegmentation = new window.SelfieSegmentation({
+            locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+        });
 
-    segmentationRef.current = selfieSegmentation;
+        selfieSegmentation.setOptions({
+            modelSelection: 1,
+            selfieMode: false,
+        });
 
-    // Create hidden video
-    const video = document.createElement('video');
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = true;
-    videoRef.current = video;
+        selfieSegmentation.onResults((results: any) => {
+             if (onResultsOptimizedRef.current) {
+                 onResultsOptimizedRef.current(results as unknown as SegmentationResults);
+             }
+        });
 
-    if (!canvasRef.current) {
-      canvasRef.current = document.createElement('canvas');
+        segmentationRef.current = selfieSegmentation;
+
+        // Create hidden video
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        videoRef.current = video;
+
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement('canvas');
+        }
+    } catch (error) {
+        console.error('Error initializing SelfieSegmentation:', error);
     }
 
     return () => {
-        selfieSegmentation.close();
+        if (segmentationRef.current) {
+            try {
+                segmentationRef.current.close();
+            } catch (e) {
+                console.error('Error closing segmentation', e);
+            }
+            segmentationRef.current = null;
+        }
     };
   }, [isMediaPipeReady]);
 
-  // Update onResults callback
-  useEffect(() => {
-      if (segmentationRef.current) {
-          segmentationRef.current.onResults((results: any) => {
-              onResultsOptimizedRef.current(results as unknown as SegmentationResults);
-          });
-      }
-  }, [isMediaPipeReady, segmentationRef.current]); // Trigger when ready
-
   // Processing loop
   useEffect(() => {
+    let isActive = true;
+
     const processFrame = async () => {
+      if (!isActive) return;
       if (!stream || !segmentationRef.current || !videoRef.current) return;
 
       if (videoRef.current.srcObject !== stream) {
@@ -240,7 +193,7 @@ export const useVirtualBackground = ({
           try {
             await segmentationRef.current.send({ image: videoRef.current });
           } catch(e) {
-            console.error("Segmentation error", e);
+            console.error("Segmentation processing error", e);
           }
       }
       animationFrameRef.current = requestAnimationFrame(processFrame);
@@ -254,6 +207,7 @@ export const useVirtualBackground = ({
     }
 
     return () => {
+      isActive = false;
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
   }, [stream, effect, isMediaPipeReady]);
@@ -261,8 +215,14 @@ export const useVirtualBackground = ({
   // Capture canvas stream
   useEffect(() => {
     if (effect !== 'none' && canvasRef.current) {
-      const canvasStream = canvasRef.current.captureStream(30);
-      setProcessedStream(canvasStream);
+      // Some browsers throw if captureStream is called on an empty canvas
+      try {
+          // Ensure canvas has content?
+          const canvasStream = canvasRef.current.captureStream(30);
+          setProcessedStream(canvasStream);
+      } catch (e) {
+          console.error("Error capturing canvas stream", e);
+      }
     }
   }, [effect]);
 
