@@ -22,7 +22,7 @@ export const useMeetingChat = (meetingId: string, currentUserId: string, userNam
     if (!meetingId) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('meeting_messages')
         .select('*')
         .eq('meeting_id', meetingId)
@@ -33,7 +33,7 @@ export const useMeetingChat = (meetingId: string, currentUserId: string, userNam
         return;
       }
 
-      setMessages(data || []);
+      setMessages((data as ChatMessage[]) || []);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
     } finally {
@@ -52,7 +52,7 @@ export const useMeetingChat = (meetingId: string, currentUserId: string, userNam
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'meeting_messages',
+        table: 'meeting_messages' as any,
         filter: `meeting_id=eq.${meetingId}`
       }, (payload) => {
         const newMessage = payload.new as ChatMessage;
@@ -73,7 +73,7 @@ export const useMeetingChat = (meetingId: string, currentUserId: string, userNam
     if (!message.trim() || !meetingId || !currentUserId) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('meeting_messages')
         .insert({
           meeting_id: meetingId,

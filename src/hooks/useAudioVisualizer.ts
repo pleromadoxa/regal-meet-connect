@@ -15,7 +15,7 @@ export const useAudioVisualizer = (stream: MediaStream | null, isEnabled: boolea
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const volumeHistoryRef = useRef<number[]>([]);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);

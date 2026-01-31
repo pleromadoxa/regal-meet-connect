@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import waitImage from '@/assets/regal-wait.jpg';
 
 interface WaitingRoomProps {
   meetingTitle?: string;
@@ -13,7 +12,7 @@ export const WaitingRoom = ({ meetingTitle = "Meeting" }: WaitingRoomProps) => {
       {/* Left Column - Image */}
       <div className="w-full max-w-md md:max-w-lg lg:max-w-xl rounded-2xl overflow-hidden shadow-2xl border border-white/10 hidden md:block animate-fade-in">
         <img
-          src={waitImage}
+          src="/regal-wait.jpg"
           alt="Waiting Room"
           className="w-full h-full object-cover"
         />
@@ -38,7 +37,7 @@ export const WaitingRoom = ({ meetingTitle = "Meeting" }: WaitingRoomProps) => {
         {/* Mobile Image (Visible only on small screens) */}
         <div className="md:hidden rounded-xl overflow-hidden my-6 border border-white/5">
            <img
-            src={waitImage}
+            src="/regal-wait.jpg"
             alt="Waiting Room"
             className="w-full h-48 object-cover"
           />
