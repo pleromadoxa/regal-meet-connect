@@ -268,7 +268,16 @@ export const VideoConference = ({
   const showBackgroundIndicator = !isVisible && !!localStream;
 
   if (isWaiting && !isHost) {
-    return <WaitingRoom meetingTitle={meetingId} />;
+    return (
+      <WaitingRoom
+        meetingTitle={meetingId}
+        localStream={localStream}
+        isVideoEnabled={isVideoEnabled}
+        isAudioEnabled={isAudioEnabled}
+        onToggleVideo={toggleVideo}
+        onToggleAudio={toggleAudio}
+      />
+    );
   }
 
   return (

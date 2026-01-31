@@ -690,7 +690,7 @@ export const useWebRTC = (
           };
 
           // Replace video track in all peer connections with screen share
-          peerConnectionsRef.current.forEach(async (pc) => {
+          peerConnectionsRef.current.forEach(async (pc, peerId) => {
             const sender = pc.getSenders().find(s => s.track?.kind === 'video');
             if (sender) {
               try {
@@ -698,6 +698,16 @@ export const useWebRTC = (
                 console.log('Replaced video track with screen share for peer connection');
               } catch (error) {
                 console.error('Error replacing track with screen share:', error);
+              }
+            } else {
+              console.log('No video sender found, adding screen track and negotiating...');
+              try {
+                pc.addTrack(screenTrack, displayStream);
+                if (createOfferRef.current) {
+                  createOfferRef.current(peerId);
+                }
+              } catch (error) {
+                console.error('Error adding screen track:', error);
               }
             }
           });
