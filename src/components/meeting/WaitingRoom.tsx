@@ -21,6 +21,24 @@ export const WaitingRoom = ({
 }: WaitingRoomProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const [verse, setVerse] = React.useState('');
+
+  useEffect(() => {
+    const bibleVerses = [
+      "For I know the plans I have for you, declares the Lord, plans for welfare and not for evil, to give you a future and a hope. - Jeremiah 29:11",
+      "But they who wait for the Lord shall renew their strength; they shall mount up with wings like eagles; they shall run and not be weary; they shall walk and not faint. - Isaiah 40:31",
+      "Be strong and courageous. Do not be frightened, and do not be dismayed, for the Lord your God is with you wherever you go. - Joshua 1:9",
+      "And we know that in all things God works for the good of those who love him, who have been called according to his purpose. - Romans 8:28",
+      "Trust in the Lord with all your heart, and do not lean on your own understanding. In all your ways acknowledge him, and he will make straight your paths. - Proverbs 3:5-6",
+      "The Lord is my shepherd; I shall not want. - Psalm 23:1",
+      "I can do all things through him who strengthens me. - Philippians 4:13",
+      "Cast all your anxiety on him because he cares for you. - 1 Peter 5:7",
+      "The Lord is my light and my salvation; whom shall I fear? The Lord is the stronghold of my life; of whom shall I be afraid? - Psalm 27:1",
+      "Come to me, all who labor and are heavy laden, and I will give you rest. - Matthew 11:28"
+    ];
+    setVerse(bibleVerses[Math.floor(Math.random() * bibleVerses.length)]);
+  }, []);
+
   useEffect(() => {
     if (videoRef.current && localStream) {
       videoRef.current.srcObject = localStream;
@@ -99,7 +117,14 @@ export const WaitingRoom = ({
             </p>
           </div>
 
-          <div className="pt-8 border-t border-white/5">
+          <div className="pt-8 border-t border-white/5 space-y-6">
+             {verse && (
+               <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                 <p className="text-zinc-300 italic text-sm leading-relaxed">
+                   "{verse}"
+                 </p>
+               </div>
+             )}
              <p className="text-sm text-zinc-500">
                Meeting ID: <span className="font-mono text-zinc-400">{meetingTitle}</span>
              </p>

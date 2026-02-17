@@ -80,9 +80,10 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           onAuthSuccess();
         } else {
           // User needs verification (Email verification enabled)
+          // To enable immediate login, please disable "Confirm email" in your Supabase project settings.
           toast({
             title: "Account Created!",
-            description: "Please check your email to verify your account"
+            description: "Please check your email to verify your account."
           });
         }
       }
