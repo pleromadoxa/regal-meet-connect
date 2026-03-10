@@ -46,7 +46,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
           ? `${window.location.origin}/` 
           : 'http://meeting.lwteensministrytrainingportal.org/';
         
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -59,15 +59,26 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
 
         if (error) throw error;
 
-        // Log user signup activity (not sign in - that's handled in useAuth)
-        if (!isLogin) {
-          setTimeout(() => logActivity('user_signup', undefined), 1000);
-        }
+        // Log user signup activity
+        setTimeout(() => logActivity('user_signup', data.user?.id), 1000);
 
-        toast({
-          title: "Account Created!",
-          description: "Please check your email to verify your account"
-        });
+        // Send welcome email via edge function
+        supabase.functions.invoke('send-welcome-email', {
+          body: { email, display_name: displayName }
+        }).catch(err => console.error('Failed to send welcome email:', err));
+
+        if (data.session) {
+          toast({
+            title: "Account Created!",
+            description: "Welcome to Regal Meet! You are now signed in."
+          });
+          onAuthSuccess();
+        } else {
+          toast({
+            title: "Account Created!",
+            description: "Please check your email to verify your account"
+          });
+        }
       }
     } catch (error: any) {
       toast({
