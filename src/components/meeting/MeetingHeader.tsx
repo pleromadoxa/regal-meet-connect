@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -7,10 +7,10 @@ import {
   Hand, 
   Maximize, 
   Settings, 
-  Menu,
   LogOut,
   Video,
-  Mic
+  Mic,
+  Clock
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -46,11 +46,24 @@ export const MeetingHeader = ({
   onSignOut
 }: MeetingHeaderProps) => {
   const isMobile = useIsMobile();
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDuration(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (isMobile) {
     return (
       <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 p-4">
-        {/* Top row with logo and main info */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -79,47 +92,31 @@ export const MeetingHeader = ({
             >
               <Settings className="h-5 w-5" />
             </Button>
-            <Button
-              onClick={onSignOut}
-              size="sm"
-              variant="ghost"
-              className="text-red-400 hover:bg-red-500/10"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
           </div>
         </div>
 
-        {/* Bottom row with meeting info and controls */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-white text-sm font-medium">02:10</span>
+            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-1.5">
+              <Clock className="h-3.5 w-3.5 text-green-400" />
+              <span className="text-white text-sm font-medium">{formatDuration(duration)}</span>
             </div>
             
-            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
-              <Users className="h-4 w-4 text-slate-300" />
+            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-1.5">
+              <Users className="h-3.5 w-3.5 text-slate-300" />
               <span className="text-white text-sm font-medium">{totalParticipantCount}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 bg-green-500/20 rounded-full px-3 py-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="text-green-400 text-sm font-medium">Good</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={onCopyMeetingId}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:bg-slate-700/50 px-3 py-2 rounded-lg"
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              <span className="text-sm">Copy ID</span>
-            </Button>
-          </div>
+          <Button
+            onClick={onCopyMeetingId}
+            size="sm"
+            variant="ghost"
+            className="text-slate-300 hover:bg-slate-700/50 px-3 py-1.5 rounded-lg h-auto"
+          >
+            <Copy className="h-3.5 w-3.5 mr-2" />
+            <span className="text-xs">Copy ID</span>
+          </Button>
         </div>
       </div>
     );
@@ -140,6 +137,11 @@ export const MeetingHeader = ({
           </div>
 
           <div className="flex items-center space-x-3">
+            <Badge variant="secondary" className="bg-slate-800/80 text-slate-300 border-slate-600">
+              <Clock className="h-3 w-3 mr-1 text-green-400" />
+              {formatDuration(duration)}
+            </Badge>
+
             <Badge variant="secondary" className="bg-slate-800/80 text-slate-300 border-slate-600">
               <Users className="h-3 w-3 mr-1" />
               {totalParticipantCount} participants
@@ -162,7 +164,7 @@ export const MeetingHeader = ({
             className="text-slate-300 hover:bg-slate-700/50"
           >
             <Copy className="h-4 w-4 mr-2" />
-            Copy Meeting ID
+            Copy ID
           </Button>
 
           <Button
@@ -172,7 +174,7 @@ export const MeetingHeader = ({
             className={isVideoMode ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "text-slate-300 hover:bg-slate-700/50"}
           >
             {isVideoMode ? <Video className="h-4 w-4 mr-2" /> : <Mic className="h-4 w-4 mr-2" />}
-            {isVideoMode ? "Video" : "Audio Only"}
+            {isVideoMode ? "Video" : "Audio"}
           </Button>
 
           <Button

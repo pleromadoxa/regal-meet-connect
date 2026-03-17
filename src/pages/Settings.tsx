@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,10 +6,10 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { supabase } from '@/integrations/supabase/client';
-import { Crown, Save, User, Bell, Video, Mic, ArrowLeft } from 'lucide-react';
+import { Crown, Save, User, Bell, Video, Mic, ArrowLeft, Camera, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface UserSettings {
   notifications_enabled: boolean;
@@ -28,8 +27,8 @@ const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const { logPageView, logFeatureUsage } = usePlatformLogging();
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [settings, setSettings] = useState<UserSettings>({
     notifications_enabled: true,
     auto_join_audio: true,
@@ -40,36 +39,19 @@ const Settings = () => {
     display_name: '',
     avatar_url: ''
   });
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-
-  // Mobile detection
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   useEffect(() => {
-    loadSettings();
-    loadDevices();
-    // Log page view
-    logPageView('settings', user?.id);
+    if (user?.id) {
+      loadSettings();
+    }
   }, [user]);
 
   const loadSettings = async () => {
-    if (!user?.id) return;
-
     try {
-      // Load profile data
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', user?.id)
         .single();
 
       if (profile) {
@@ -80,309 +62,160 @@ const Settings = () => {
         }));
       }
 
-      // Load user settings (we'll create this table)
-      const savedSettings = localStorage.getItem(`user_settings_${user.id}`);
+      const savedSettings = localStorage.getItem(`user_settings_${user?.id}`);
       if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsed }));
+        setSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
       }
     } catch (error) {
       console.error('Error loading settings:', error);
     }
   };
 
-  const loadDevices = async () => {
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      setAudioDevices(devices.filter(device => device.kind === 'audioinput'));
-      setVideoDevices(devices.filter(device => device.kind === 'videoinput'));
-    } catch (error) {
-      console.error('Error loading devices:', error);
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) return;
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user?.id}/${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setSettings(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast({ title: "Avatar Updated", description: "Your profile picture has been uploaded." });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
     }
   };
 
   const saveSettings = async () => {
     if (!user?.id) return;
-
     setLoading(true);
     try {
-      // Save profile data
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          display_name: settings.display_name,
-          avatar_url: settings.avatar_url
-        });
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        display_name: settings.display_name,
+        avatar_url: settings.avatar_url,
+        updated_at: new Date().toISOString()
+      });
 
-      if (profileError) throw profileError;
+      if (error) throw error;
 
-      // Save other settings to localStorage (in a real app, you'd save to a user_settings table)
-      const settingsToSave = {
+      localStorage.setItem(`user_settings_${user.id}`, JSON.stringify({
         notifications_enabled: settings.notifications_enabled,
         auto_join_audio: settings.auto_join_audio,
         auto_join_video: settings.auto_join_video,
         default_audio_device: settings.default_audio_device,
         default_video_device: settings.default_video_device,
         meeting_quality: settings.meeting_quality
-      };
-      
-      localStorage.setItem(`user_settings_${user.id}`, JSON.stringify(settingsToSave));
+      }));
 
-      // Log settings save activity
-      logFeatureUsage('save_settings', user.id);
-
-      toast({
-        title: "Settings Saved",
-        description: "Your settings have been saved successfully"
-      });
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save settings. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Settings Saved" });
+    } catch (error: any) {
+      toast({ title: "Save Failed", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      // The useAuth hook now handles navigation, so we don't need manual navigation here
-    } catch (error) {
-      console.error('Error during sign out:', error);
-      // Force navigation as fallback
-      navigate('/');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className={`flex ${isMobile ? 'flex-col' : 'flex-row items-center justify-between'} gap-4 mb-8`}>
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={() => navigate('/')}
-              variant="outline"
-              size="sm"
-              className="bg-white/20 border-white/40 text-white hover:bg-white/30"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+    <div className="min-h-screen bg-slate-950 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button onClick={() => navigate(-1)} variant="ghost" className="text-white hover:bg-white/10">
+              <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-2xl">
-              <Crown className={`${isMobile ? 'h-6 w-6' : 'h-8 w-8'} text-white`} />
+            <div className="bg-orange-500 p-2 rounded-lg">
+              <Crown className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <h1 className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-white drop-shadow-lg`}>
-                Settings
-              </h1>
-              <p className={`text-blue-200 ${isMobile ? 'text-sm' : 'text-base'}`}>
-                Manage your Regal Meet preferences
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold text-white">Settings</h1>
           </div>
-
-          <Button
-            onClick={handleSignOut}
-            variant="outline"
-            size="sm"
-            className={`bg-red-500/20 border-red-400/40 text-white hover:bg-red-500/30 ${isMobile ? 'self-start' : ''}`}
-          >
-            Sign Out
-          </Button>
+          <Button onClick={() => signOut()} variant="destructive" size="sm">Sign Out</Button>
         </div>
 
-        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-6`}>
-          {/* Profile Settings */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                <User className="h-5 w-5 mr-2" />
-                Profile Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-white/90">
-                  Display Name
-                </label>
-                <Input
-                  value={settings.display_name}
-                  onChange={(e) => setSettings(prev => ({ ...prev, display_name: e.target.value }))}
-                  placeholder="Enter your display name"
-                  className="bg-white/20 border-white/30 text-white placeholder-white/60 mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-white/90">
-                  Email
-                </label>
-                <Input
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-white/10 border-white/20 text-white/70 mt-1"
-                />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-white/5 border-white/10 text-white">
+            <CardHeader><CardTitle className="flex items-center text-lg"><User className="h-5 w-5 mr-2" />Profile</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="relative group">
+                  <Avatar className="h-24 w-24 border-2 border-orange-500/50">
+                    <AvatarImage src={settings.avatar_url} />
+                    <AvatarFallback className="bg-slate-800 text-2xl">{settings.display_name?.[0] || '?'}</AvatarFallback>
+                  </Avatar>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full transition-opacity"
+                  >
+                    {uploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                  </button>
+                  <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+                </div>
+                <div className="w-full space-y-2">
+                  <label className="text-sm text-gray-400">Display Name</label>
+                  <Input
+                    value={settings.display_name}
+                    onChange={e => setSettings(s => ({ ...s, display_name: e.target.value }))}
+                    className="bg-white/10 border-white/20 text-white"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Meeting Settings */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                <Video className="h-5 w-5 mr-2" />
-                Meeting Settings
-              </CardTitle>
-            </CardHeader>
+          <Card className="bg-white/5 border-white/10 text-white">
+            <CardHeader><CardTitle className="flex items-center text-lg"><Video className="h-5 w-5 mr-2" />Meetings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white/90">
-                  Auto-join with video
-                </label>
-                <Switch
-                  checked={settings.auto_join_video}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, auto_join_video: checked }))}
-                />
+                <span>Auto-join with Video</span>
+                <Switch checked={settings.auto_join_video} onCheckedChange={v => setSettings(s => ({ ...s, auto_join_video: v }))} />
               </div>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white/90">
-                  Auto-join with audio
-                </label>
-                <Switch
-                  checked={settings.auto_join_audio}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, auto_join_audio: checked }))}
-                />
+                <span>Auto-join with Audio</span>
+                <Switch checked={settings.auto_join_audio} onCheckedChange={v => setSettings(s => ({ ...s, auto_join_audio: v }))} />
               </div>
-              <div>
-                <label className="text-sm font-medium text-white/90">
-                  Video Quality
-                </label>
-                <Select
-                  value={settings.meeting_quality}
-                  onValueChange={(value: 'low' | 'medium' | 'high') => 
-                    setSettings(prev => ({ ...prev, meeting_quality: value }))
-                  }
-                >
-                  <SelectTrigger className="bg-white/20 border-white/30 text-white mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/90 border-white/20">
-                    <SelectItem value="low" className="text-white hover:bg-white/10">
-                      Low (Better for slow connections)
-                    </SelectItem>
-                    <SelectItem value="medium" className="text-white hover:bg-white/10">
-                      Medium (Balanced)
-                    </SelectItem>
-                    <SelectItem value="high" className="text-white hover:bg-white/10">
-                      High (Best quality)
-                    </SelectItem>
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Quality</label>
+                <Select value={settings.meeting_quality} onValueChange={(v: any) => setSettings(s => ({ ...s, meeting_quality: v }))}>
+                  <SelectTrigger className="bg-white/10 border-white/20"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/20 text-white">
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </CardContent>
           </Card>
 
-          {/* Device Settings */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                <Mic className="h-5 w-5 mr-2" />
-                Device Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-white/90">
-                  Default Microphone
-                </label>
-                <Select
-                  value={settings.default_audio_device}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, default_audio_device: value }))}
-                >
-                  <SelectTrigger className="bg-white/20 border-white/30 text-white mt-1">
-                    <SelectValue placeholder="Select microphone" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/90 border-white/20">
-                    {audioDevices.map((device) => (
-                      <SelectItem
-                        key={device.deviceId}
-                        value={device.deviceId}
-                        className="text-white hover:bg-white/10"
-                      >
-                        {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-white/90">
-                  Default Camera
-                </label>
-                <Select
-                  value={settings.default_video_device}
-                  onValueChange={(value) => setSettings(prev => ({ ...prev, default_video_device: value }))}
-                >
-                  <SelectTrigger className="bg-white/20 border-white/30 text-white mt-1">
-                    <SelectValue placeholder="Select camera" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/90 border-white/20">
-                    {videoDevices.map((device) => (
-                      <SelectItem
-                        key={device.deviceId}
-                        value={device.deviceId}
-                        className="text-white hover:bg-white/10"
-                      >
-                        {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notification Settings */}
-          <Card className="bg-white/10 backdrop-blur-xl border-white/20">
-            <CardHeader className="pb-4">
-              <CardTitle className={`text-white flex items-center ${isMobile ? 'text-lg' : 'text-xl'}`}>
-                <Bell className="h-5 w-5 mr-2" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <Card className="bg-white/5 border-white/10 text-white">
+            <CardHeader><CardTitle className="flex items-center text-lg"><Bell className="h-5 w-5 mr-2" />Notifications</CardTitle></CardHeader>
+            <CardContent>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-white/90">
-                  Enable notifications
-                </label>
-                <Switch
-                  checked={settings.notifications_enabled}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, notifications_enabled: checked }))}
-                />
+                <span>Enable Notifications</span>
+                <Switch checked={settings.notifications_enabled} onCheckedChange={v => setSettings(s => ({ ...s, notifications_enabled: v }))} />
               </div>
-              <p className="text-xs text-white/60">
-                Get notified when someone joins your meeting or sends a message
-              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Save Button */}
-        <div className="mt-8 text-center">
-          <Button
-            onClick={saveSettings}
-            disabled={loading}
-            className={`bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white ${
-              isMobile ? 'px-6 py-2 text-sm' : 'px-8 py-3'
-            }`}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Saving...' : 'Save Settings'}
+        <div className="flex justify-center pt-4">
+          <Button onClick={saveSettings} disabled={loading} className="bg-orange-600 hover:bg-orange-700 text-white px-12 py-6 text-lg">
+            {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
+            Save Changes
           </Button>
         </div>
       </div>
