@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, Image as ImageIcon, Ban } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, Image as ImageIcon, Ban, Loader2 } from 'lucide-react';
 import { useLocalPreview } from '@/hooks/useLocalPreview';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
 import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
@@ -36,7 +36,17 @@ export const PreJoinScreen = ({ userName, setUserName, meetingId, onJoin, onCanc
     backgroundImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' // Default fancy background
   });
 
+  const [isJoining, setIsJoining] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleJoinClick = () => {
+    setIsJoining(true);
+    // Add a tiny artificial delay for UX smoothness so the "Connecting..." state is actually visible
+    // before the parent component unmounts this screen
+    setTimeout(() => {
+      onJoin(isVideoEnabled, isAudioEnabled, processedStream);
+    }, 400);
+  };
 
   useEffect(() => {
     if (videoRef.current) {
@@ -158,16 +168,24 @@ export const PreJoinScreen = ({ userName, setUserName, meetingId, onJoin, onCanc
             <Button
               size="lg"
               className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold text-lg py-6"
-              disabled={!userName.trim()}
-              onClick={() => onJoin(isVideoEnabled, isAudioEnabled, processedStream)}
+              disabled={!userName.trim() || isJoining}
+              onClick={handleJoinClick}
             >
-              Join Now
+              {isJoining ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Join Now"
+              )}
             </Button>
             <Button
               variant="outline"
               size="lg"
               className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-900"
               onClick={onCancel}
+              disabled={isJoining}
             >
               Cancel
             </Button>

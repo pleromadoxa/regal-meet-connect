@@ -20,6 +20,7 @@ export const AudioMeeting = () => {
   const [inputName, setInputName] = useState<string>('');
   const [isReady, setIsReady] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   
   const { validateMeetingId } = useMeetingValidation();
@@ -64,6 +65,14 @@ export const AudioMeeting = () => {
     console.log('Leaving audio meeting, clearing storage');
     localStorage.removeItem(`meeting-${meetingId}`);
     navigate('/dashboard');
+  };
+
+  const handleJoinClick = () => {
+    setIsJoining(true);
+    setTimeout(() => {
+      setUserName(inputName);
+      setHasJoined(true);
+    }, 400);
   };
 
   const handleNavigateToDashboard = () => {
@@ -124,19 +133,24 @@ export const AudioMeeting = () => {
 
             <div className="flex flex-col gap-3">
               <Button
-                onClick={() => {
-                  setUserName(inputName);
-                  setHasJoined(true);
-                }}
+                onClick={handleJoinClick}
                 className="w-full bg-primary hover:bg-primary/90 text-white"
-                disabled={!inputName.trim()}
+                disabled={!inputName.trim() || isJoining}
               >
-                Join Meeting
+                {isJoining ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Join Meeting"
+                )}
               </Button>
               <Button
                 onClick={handleNavigateToDashboard}
                 variant="outline"
                 className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                disabled={isJoining}
               >
                 Cancel
               </Button>
