@@ -63,13 +63,11 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
           setConnectedPeers(prev => new Set([...prev, key]));
           console.log('Peer joined:', key);
           
-          setTimeout(() => {
-            sendSignalingMessage({
-              type: 'user-info',
-              data: null,
-              userName: userName
-            });
-          }, 100);
+          sendSignalingMessage({
+            type: 'user-info',
+            data: null,
+            userName: userName
+          });
         }
       })
       .on('presence', { event: 'leave' }, ({ key }: { key: string }) => {
@@ -105,13 +103,11 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
             status: initialStatus
           });
           
-          setTimeout(() => {
-            sendSignalingMessage({
-              type: 'user-info',
-              data: { status: initialStatus },
-              userName: userName
-            });
-          }, 500);
+          sendSignalingMessage({
+            type: 'user-info',
+            data: { status: initialStatus },
+            userName: userName
+          });
         }
       });
 
