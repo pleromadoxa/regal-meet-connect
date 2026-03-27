@@ -8,7 +8,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { CalendarIcon, Clock, Users, Repeat, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { CalendarIcon, Clock, Users, Repeat, Loader2, Copy, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useScheduledMeetings } from '@/hooks/useScheduledMeetings';
 import { useToast } from '@/hooks/use-toast';
@@ -24,9 +32,21 @@ export const ScheduleMeetingCard = () => {
   const [recurrencePattern, setRecurrencePattern] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [invitees, setInvitees] = useState('');
   const [isScheduling, setIsScheduling] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [scheduledMeetingInfo, setScheduledMeetingInfo] = useState<{id: string, link: string} | null>(null);
 
   const { scheduleMeeting } = useScheduledMeetings();
   const { toast } = useToast();
+
+  const handleCopyLink = () => {
+    if (scheduledMeetingInfo?.link) {
+      navigator.clipboard.writeText(scheduledMeetingInfo.link);
+      toast({
+        title: "Link Copied",
+        description: "Meeting link copied to clipboard"
+      });
+    }
+  };
 
   const handleScheduleMeeting = async () => {
     if (!date || !title.trim()) {
@@ -49,7 +69,7 @@ export const ScheduleMeetingCard = () => {
         .map(email => email.trim())
         .filter(email => email.length > 0);
 
-      await scheduleMeeting({
+      const meeting = await scheduleMeeting({
         title,
         description,
         scheduledTime,
@@ -58,6 +78,14 @@ export const ScheduleMeetingCard = () => {
         recurrencePattern: isRecurring ? recurrencePattern : null,
         invitees: inviteeList
       });
+
+      if (meeting) {
+        setScheduledMeetingInfo({
+          id: meeting.meeting_id,
+          link: meeting.meeting_link || `${window.location.origin}/meeting/${meeting.meeting_id}`
+        });
+        setShowSuccessDialog(true);
+      }
 
       toast({
         title: 'Meeting Scheduled',
@@ -235,6 +263,49 @@ export const ScheduleMeetingCard = () => {
           )}
         </Button>
       </CardContent>
+
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <CheckCircle2 className="h-6 w-6" />
+              Meeting Scheduled Successfully
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground pt-2">
+              Your meeting "{title}" has been scheduled.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Meeting ID</Label>
+              <div className="p-3 bg-background/50 rounded-md border border-border/50 font-mono text-center text-lg tracking-widest text-foreground">
+                {scheduledMeetingInfo?.id}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase tracking-wider">Invite Link</Label>
+              <div className="flex items-center gap-2 p-3 bg-background/50 rounded-md border border-border/50">
+                <p className="text-sm truncate flex-1 text-muted-foreground">
+                  {scheduledMeetingInfo?.link}
+                </p>
+                <Button size="icon" variant="ghost" onClick={handleCopyLink} className="h-8 w-8 text-primary shrink-0">
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button
+              type="button"
+              variant="default"
+              className="w-full bg-gradient-primary hover:opacity-90"
+              onClick={() => setShowSuccessDialog(false)}
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

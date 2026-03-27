@@ -29,6 +29,9 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+
   const [settings, setSettings] = useState<UserSettings>({
     notifications_enabled: true,
     auto_join_audio: true,
@@ -43,6 +46,7 @@ const Settings = () => {
   useEffect(() => {
     if (user?.id) {
       loadSettings();
+      loadDevices();
     }
   }, [user]);
 
@@ -68,6 +72,16 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const loadDevices = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setAudioDevices(devices.filter(device => device.kind === 'audioinput'));
+      setVideoDevices(devices.filter(device => device.kind === 'videoinput'));
+    } catch (error) {
+      console.error('Error loading devices:', error);
     }
   };
 
@@ -195,6 +209,38 @@ const Settings = () => {
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 border-white/10 text-white">
+            <CardHeader><CardTitle className="flex items-center text-lg"><Mic className="h-5 w-5 mr-2" />Devices</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Default Microphone</label>
+                <Select value={settings.default_audio_device} onValueChange={(v) => setSettings(s => ({ ...s, default_audio_device: v }))}>
+                  <SelectTrigger className="bg-white/10 border-white/20">
+                    <SelectValue placeholder="Select microphone" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/20 text-white">
+                    {audioDevices.map(device => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>{device.label || `Microphone ${device.deviceId.slice(0, 8)}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">Default Camera</label>
+                <Select value={settings.default_video_device} onValueChange={(v) => setSettings(s => ({ ...s, default_video_device: v }))}>
+                  <SelectTrigger className="bg-white/10 border-white/20">
+                    <SelectValue placeholder="Select camera" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/20 text-white">
+                    {videoDevices.map(device => (
+                      <SelectItem key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${device.deviceId.slice(0, 8)}`}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

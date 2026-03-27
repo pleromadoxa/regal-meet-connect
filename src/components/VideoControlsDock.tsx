@@ -19,7 +19,8 @@ import {
   PhoneOff,
   LayoutDashboard,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -41,6 +42,9 @@ interface VideoControlsDockProps {
   onToggleChat: () => void;
   onToggleHand: () => void;
   onToggleEffects: () => void;
+  onToggleRecording?: () => void;
+  isRecording?: boolean;
+  isHost?: boolean;
   onNavigateToDashboard?: () => void;
   onLeaveMeeting: () => void;
 }
@@ -62,6 +66,9 @@ export const VideoControlsDock = ({
   onToggleChat,
   onToggleHand,
   onToggleEffects,
+  onToggleRecording,
+  isRecording,
+  isHost,
   onNavigateToDashboard,
   onLeaveMeeting
 }: VideoControlsDockProps) => {
@@ -87,8 +94,19 @@ export const VideoControlsDock = ({
     { key: 'chat', onClick: onToggleChat, active: showChat, icon: MessageSquare, color: showChat ? 'blue' : 'slate' },
     { key: 'hand', onClick: onToggleHand, active: handRaised, icon: Hand, color: handRaised ? 'yellow' : 'slate' },
     { key: 'effects', onClick: onToggleEffects, active: false, icon: Sparkles, color: 'slate' },
-    { key: 'settings', onClick: onToggleSettings, active: showSettings, icon: Settings, color: showSettings ? 'slate' : 'slate' }
   ];
+
+  if (isHost && onToggleRecording) {
+    additionalControls.push({
+      key: 'record',
+      onClick: onToggleRecording,
+      active: !!isRecording,
+      icon: Circle,
+      color: isRecording ? 'red' : 'slate'
+    });
+  }
+
+  additionalControls.push({ key: 'settings', onClick: onToggleSettings, active: showSettings, icon: Settings, color: showSettings ? 'slate' : 'slate' });
 
   if (onNavigateToDashboard) {
     additionalControls.push({ key: 'dashboard', onClick: onNavigateToDashboard, active: false, icon: LayoutDashboard, color: 'slate' });

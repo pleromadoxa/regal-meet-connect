@@ -22,9 +22,82 @@ export const useRealTimeParticipants = (meetingId: string, currentUserId: string
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const addCurrentUserAsParticipant = useCallback(async () => {
+    if (!meetingId || !currentUserId || !userName) return;
+
+    try {
+      // Find the meeting UUID first if it's not already one
+      const { data: meeting } = await supabase
+        .from('meetings')
+        .select('id')
+        .eq('meeting_id', meetingId)
+        .maybeSingle();
+
+      let targetMeetingId = meeting?.id;
+
+      if (!targetMeetingId) {
+        // If not in active meetings, check scheduled meetings and activate
+        const { data: scheduledMeeting } = await supabase
+          .from('scheduled_meetings')
+          .select('*')
+          .eq('meeting_id', meetingId)
+          .eq('status', 'scheduled')
+          .maybeSingle();
+
+        if (scheduledMeeting) {
+          // Activate the meeting
+          const { data: newMeeting, error: createError } = await supabase
+            .from('meetings')
+            .upsert({
+              meeting_id: scheduledMeeting.meeting_id,
+              host_id: scheduledMeeting.host_id,
+              title: scheduledMeeting.title,
+              description: scheduledMeeting.description,
+              is_active: true,
+              status: 'active'
+            }, { onConflict: 'meeting_id' })
+            .select()
+            .single();
+
+          if (!createError && newMeeting) {
+            targetMeetingId = newMeeting.id;
+          }
+        }
+      }
+
+      if (!targetMeetingId) {
+        console.error('Could not find or activate meeting:', meetingId);
+        return;
+      }
+
+      // Check if already exists
+      const { data: existing } = await supabase
+        .from('meeting_participants')
+        .select('id')
+        .eq('meeting_id', targetMeetingId)
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      if (existing) return;
+
+      // Add current user
+      await supabase
+        .from('meeting_participants')
+        .insert({
+          meeting_id: targetMeetingId,
+          user_id: currentUserId,
+          user_name: userName,
+          is_host: false,
+          is_muted: false
+        });
+    } catch (error) {
+      console.error('Error adding current user to participants:', error);
+    }
+  }, [meetingId, currentUserId, userName]);
+
   const fetchParticipants = useCallback(async () => {
     if (!meetingId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('meeting_participants')
@@ -45,7 +118,7 @@ export const useRealTimeParticipants = (meetingId: string, currentUserId: string
         last_seen: p.joined_at,
         hand_raised: false // Initialize
       }));
-      
+
       setParticipants(mappedParticipants);
     } catch (error) {
       console.error('Failed to fetch participants:', error);
@@ -57,7 +130,9 @@ export const useRealTimeParticipants = (meetingId: string, currentUserId: string
   useEffect(() => {
     if (!meetingId) return;
 
-    fetchParticipants();
+    addCurrentUserAsParticipant().then(() => {
+      fetchParticipants();
+    });
 
     const participantsChannel = supabase
       .channel(`meeting-participants-${meetingId}`)

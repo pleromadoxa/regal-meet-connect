@@ -130,13 +130,13 @@ export const ScheduledMeetingsList = () => {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    {meeting.status === 'scheduled' && !isPast && (
+                    {meeting.status === 'scheduled' && (
                       <>
                         <Button
                           size="sm"
                           variant="default"
                           onClick={() => handleJoinMeeting(meeting.meeting_id)}
-                          className="text-xs h-8"
+                          className="text-xs h-8 bg-gradient-primary hover:opacity-90"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
                           Join

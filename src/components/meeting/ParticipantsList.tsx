@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, Shield, Mic, MicOff, User, Upload, Files } from 'lucide-react';
+import { X, Users, Shield, Mic, MicOff, User, Upload, Files, Hand, MoreVertical, Trash2, VideoOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { FileSharing } from './FileSharing';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 interface Participant {
   id: string;
@@ -16,6 +18,8 @@ interface Participant {
   is_host: boolean;
   is_muted: boolean;
   joined_at: string;
+  is_video_enabled?: boolean;
+  hand_raised?: boolean;
 }
 
 interface ParticipantsListProps {
@@ -49,22 +53,15 @@ export const ParticipantsList = ({
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Update participants when props change
   useEffect(() => {
-    console.log('ParticipantsList: Props changed', {
-      initialParticipants: initialParticipants.length,
-      isCurrentUserHost,
-      currentUserId,
-      meetingId
-    });
     setParticipants(initialParticipants);
-  }, [initialParticipants, isCurrentUserHost, currentUserId, meetingId]);
+  }, [initialParticipants]);
 
   const handleMuteToggle = async (participant: Participant) => {
-    if (!isCurrentUserHost) {
+    if (!isCurrentUserHost && participant.user_id !== currentUserId) {
       toast({
         title: "Permission denied",
-        description: "Only the host can mute/unmute participants",
+        description: "Only the host can mute other participants",
         variant: "destructive"
       });
       return;
@@ -80,43 +77,25 @@ export const ParticipantsList = ({
 
       if (error) throw error;
 
-      // Update local state
-      setParticipants(prev => 
-        prev.map(p => 
-          p.id === participant.id 
-            ? { ...p, is_muted: newMutedState }
-            : p
-        )
-      );
-
-      // Call the callback if provided
       if (onToggleMute) {
         onToggleMute(participant.user_id, newMutedState);
       }
 
       toast({
         title: newMutedState ? "Participant muted" : "Participant unmuted",
-        description: `${participant.user_name} has been ${newMutedState ? 'muted' : 'unmuted'}`
       });
     } catch (error: any) {
       console.error('Error toggling mute:', error);
       toast({
         title: "Error",
-        description: `Failed to ${newMutedState ? 'mute' : 'unmute'} participant`,
+        description: `Failed to update mute status`,
         variant: "destructive"
       });
     }
   };
 
   const handleRemoveParticipant = async (participant: Participant) => {
-    if (!isCurrentUserHost) {
-      toast({
-        title: "Permission denied", 
-        description: "Only the host can remove participants",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!isCurrentUserHost) return;
 
     try {
       const { error } = await supabase
@@ -125,8 +104,6 @@ export const ParticipantsList = ({
         .eq('id', participant.id);
 
       if (error) throw error;
-
-      setParticipants(prev => prev.filter(p => p.id !== participant.id));
 
       toast({
         title: "Participant removed",
@@ -142,67 +119,35 @@ export const ParticipantsList = ({
     }
   };
 
-  // Include current user in participants list if not already there
-  const currentUserParticipant: Participant = {
-    id: `local-${currentUserId}`,
-    user_id: currentUserId,
-    user_name: userName,
-    is_host: isCurrentUserHost,
-    is_muted: false,
-    joined_at: new Date().toISOString()
-  };
-
-  // Get all participants including current user, but avoid duplicates
-  const allParticipants = React.useMemo(() => {
-    const existingParticipant = participants.find(p => p.user_id === currentUserId);
-    if (existingParticipant) {
-      // Update existing participant with current host status
-      return participants.map(p => 
-        p.user_id === currentUserId 
-          ? { ...p, is_host: isCurrentUserHost }
-          : p
-      );
-    } else {
-      // Add current user as participant
-      return [currentUserParticipant, ...participants];
-    }
-  }, [participants, currentUserId, userName, isCurrentUserHost, currentUserParticipant]);
-
   const ParticipantCard = ({ participant }: { participant: Participant }) => {
     const isCurrentUser = participant.user_id === currentUserId;
-    const canViewEmail = isCurrentUserHost || isCurrentUser;
-    const canMute = isCurrentUserHost && !isCurrentUser;
-    const actualIsHost = isCurrentUser ? isCurrentUserHost : participant.is_host;
+    const canControl = isCurrentUserHost && !isCurrentUser;
+    const isSelected = selectedVideoId === participant.user_id || (isCurrentUser && selectedVideoId === 'local');
     
-    console.log('ParticipantCard Debug:', {
-      participantName: participant.user_name,
-      isCurrentUserHost,
-      isCurrentUser,
-      canMute,
-      actualIsHost,
-      currentUserId,
-      participantUserId: participant.user_id,
-      allParticipantsCount: allParticipants.length,
-      urlParams: window.location.search
-    });
-
-    // Get the actual user email if it's the current user, otherwise use a placeholder
-    const displayEmail = isCurrentUser && user?.email 
-      ? user.email 
-      : canViewEmail 
-        ? `${participant.user_name.toLowerCase().replace(' ', '.')}@email.com`
-        : 'Hidden';
-
     return (
-      <div className="p-3 rounded-lg bg-slate-800/40 border border-slate-600/30 hover:bg-slate-800/60 transition-all duration-200">
-        <div className="flex items-start justify-between">
+      <div
+        className={cn(
+          "p-3 rounded-lg border transition-all duration-200 group cursor-pointer",
+          isSelected ? "bg-blue-600/20 border-blue-500/50" : "bg-slate-800/40 border-slate-600/30 hover:bg-slate-800/60"
+        )}
+        onClick={() => onSelectVideo?.(isCurrentUser ? 'local' : participant.user_id)}
+      >
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-              actualIsHost 
-                ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' 
-                : 'bg-gradient-to-br from-blue-500 to-blue-700 text-white'
-            }`}>
-              {participant.user_name.charAt(0).toUpperCase()}
+            <div className="relative">
+              <Avatar className="h-10 w-10 border border-white/10">
+                <AvatarFallback className={cn(
+                  "text-white font-semibold",
+                  participant.is_host ? "bg-orange-600" : "bg-blue-600"
+                )}>
+                  {participant.user_name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {participant.hand_raised && (
+                <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full p-1 animate-bounce shadow-lg">
+                  <Hand className="h-3 w-3 text-black fill-current" />
+                </div>
+              )}
             </div>
             
             <div className="min-w-0 flex-1">
@@ -211,204 +156,120 @@ export const ParticipantsList = ({
                   {participant.user_name}
                   {isCurrentUser && " (You)"}
                 </h4>
-                {actualIsHost && (
-                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 text-xs">
-                    <Shield className="h-3 w-3 mr-1" />
+                {participant.is_host && (
+                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 text-[10px] h-4 border-none">
                     Host
                   </Badge>
                 )}
               </div>
               
-              <p className="text-slate-400 text-xs truncate">
-                {displayEmail}
-              </p>
-              
               <div className="flex items-center space-x-2 mt-1">
-                <div className={`flex items-center space-x-1 text-xs ${
-                  participant.is_muted ? 'text-red-400' : 'text-green-400'
-                }`}>
-                  {participant.is_muted ? (
-                    <MicOff className="h-3 w-3" />
-                  ) : (
-                    <Mic className="h-3 w-3" />
-                  )}
-                  <span>{participant.is_muted ? 'Muted' : 'Unmuted'}</span>
-                </div>
+                {participant.is_muted ? (
+                  <MicOff className="h-3 w-3 text-red-400" />
+                ) : (
+                  <Mic className="h-3 w-3 text-green-400" />
+                )}
+                {participant.is_video_enabled === false && (
+                  <VideoOff className="h-3 w-3 text-red-400" />
+                )}
               </div>
             </div>
           </div>
 
-          {/* Control buttons for host */}
-          {canMute && (
-            <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {(canControl || isCurrentUser) && (
               <Button
-                onClick={() => handleMuteToggle(participant)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMuteToggle(participant);
+                }}
                 variant="ghost"
                 size="sm"
-                className={`h-8 w-8 p-0 ${
-                  participant.is_muted 
-                    ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10' 
-                    : 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
-                }`}
+                className="h-8 w-8 p-0 text-slate-400 hover:text-white"
               >
-                {participant.is_muted ? (
-                  <Mic className="h-3 w-3" />
-                ) : (
-                  <MicOff className="h-3 w-3" />
-                )}
+                {participant.is_muted ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </Button>
+            )}
 
+            {canControl && (
               <Button
-                onClick={() => handleRemoveParticipant(participant)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveParticipant(participant);
+                }}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
               >
-                <X className="h-3 w-3" />
+                <Trash2 className="h-4 w-4" />
               </Button>
-            </div>
-          )}
+            )}
+
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-slate-900/95 backdrop-blur-lg border border-slate-700/50 shadow-2xl w-full max-w-md h-full flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700/60">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Users className="h-4 w-4 text-blue-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Meeting Hub</h2>
-              <p className="text-sm text-slate-400">Participants & Files</p>
-            </div>
-          </div>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="text-slate-400 hover:text-white hover:bg-slate-700/50"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="participants" className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 mx-4 mt-4 bg-slate-800/50">
-            <TabsTrigger value="participants" className="data-[state=active]:bg-slate-700">
-              <Users className="h-4 w-4 mr-2" />
-              Participants ({allParticipants.length})
-            </TabsTrigger>
-            <TabsTrigger value="files" className="data-[state=active]:bg-slate-700">
-              <Files className="h-4 w-4 mr-2" />
-              Files
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Participants Tab */}
-          <TabsContent value="participants" className="flex-1 mt-0">
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="p-4 space-y-3">
-                {/* Host Instructions */}
-                {isCurrentUserHost && (
-                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                <p className="text-xs text-slate-400 mb-2 flex items-center">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Host controls active - Manage participants below
-                </p>
-                  </div>
-                )}
-                {!isCurrentUserHost && (
-                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                  <p className="text-xs text-slate-500 mb-2">
-                    You are a participant in this meeting.
-                  </p>
-                  </div>
-                )}
-
-                {/* Host Bulk Controls */}
-                {isCurrentUserHost && allParticipants.length > 1 && (
-                  <div className="mb-4 p-3 bg-slate-700/30 rounded-lg border border-slate-600/30">
-                    <p className="text-xs text-slate-400 mb-2">Host Controls</p>
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => {
-                          allParticipants.forEach(p => {
-                            if (p.user_id !== currentUserId && !p.is_muted) {
-                              handleMuteToggle(p);
-                            }
-                          });
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30"
-                      >
-                        <MicOff className="h-3 w-3 mr-1" />
-                        Mute All
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          allParticipants.forEach(p => {
-                            if (p.user_id !== currentUserId && p.is_muted) {
-                              handleMuteToggle(p);
-                            }
-                          });
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 bg-green-500/20 border-green-500/40 text-green-400 hover:bg-green-500/30"
-                      >
-                        <Mic className="h-3 w-3 mr-1" />
-                        Unmute All
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {allParticipants.map((participant) => (
-                  <ParticipantCard
-                    key={participant.id}
-                    participant={participant}
-                  />
-                ))}
-
-                {allParticipants.length === 1 && allParticipants[0].user_id === currentUserId && (
-                  <div className="text-center py-8">
-                    <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-                    <p className="text-slate-400 mb-2">You're the only participant</p>
-                    <p className="text-xs text-slate-500">Share the meeting ID to invite others</p>
-                  </div>
-                )}
-                
-                {allParticipants.length === 0 && (
-                  <div className="text-center py-8">
-                    <User className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-                    <p className="text-slate-400">No participants found</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Files Tab */}
-          <TabsContent value="files" className="flex-1 mt-0 p-4">
-            <FileSharing meetingId={meetingId} isHost={isCurrentUserHost} />
-          </TabsContent>
-        </Tabs>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700/60 bg-slate-900/80">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Meeting in progress</span>
-            <span>{new Date().toLocaleTimeString()}</span>
-          </div>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b border-slate-700/60">
+        <h2 className="text-lg font-semibold text-white flex items-center">
+          <Users className="h-5 w-5 mr-2 text-blue-400" />
+          Participants ({participants.length})
+        </h2>
+        <Button onClick={onClose} variant="ghost" size="sm" className="lg:hidden text-slate-400">
+          <X className="h-5 w-5" />
+        </Button>
       </div>
+
+      <Tabs defaultValue="list" className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 mx-4 mt-4 bg-slate-800/50">
+          <TabsTrigger value="list">All</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" className="flex-1 mt-0">
+          <ScrollArea className="h-[calc(100vh-280px)]">
+            <div className="p-4 space-y-3">
+              {isCurrentUserHost && participants.length > 1 && (
+                <div className="flex space-x-2 mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs border-slate-700"
+                    onClick={() => participants.forEach(p => !p.is_muted && p.user_id !== currentUserId && handleMuteToggle(p))}
+                  >
+                    Mute All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs border-slate-700"
+                    onClick={() => participants.forEach(p => p.is_muted && p.user_id !== currentUserId && handleMuteToggle(p))}
+                  >
+                    Unmute All
+                  </Button>
+                </div>
+              )}
+
+              {participants.map((participant) => (
+                <ParticipantCard
+                  key={participant.id}
+                  participant={participant}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="files" className="flex-1 mt-0 p-4">
+          <FileSharing meetingId={meetingId} isHost={isCurrentUserHost} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

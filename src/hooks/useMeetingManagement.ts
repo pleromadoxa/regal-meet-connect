@@ -178,7 +178,7 @@ export const useMeetingManagement = () => {
       
       // Find the meeting by meeting_id (text field) - ensure we use uppercase
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();
-      const { data: meeting, error: meetingError } = await supabase
+      let { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('id, host_id, title, meeting_id')
         .eq('meeting_id', normalizedMeetingId)
@@ -188,6 +188,44 @@ export const useMeetingManagement = () => {
       if (meetingError) {
         console.error('Error finding meeting:', meetingError);
         throw meetingError;
+      }
+
+      // If meeting not found in active meetings, check scheduled meetings
+      if (!meeting) {
+        console.log('Meeting not found in active meetings, checking scheduled meetings:', normalizedMeetingId);
+        const { data: scheduledMeeting, error: scheduledError } = await supabase
+          .from('scheduled_meetings')
+          .select('*')
+          .eq('meeting_id', normalizedMeetingId)
+          .eq('status', 'scheduled')
+          .maybeSingle();
+
+        if (scheduledError) {
+          console.error('Error checking scheduled meetings:', scheduledError);
+        }
+
+        if (scheduledMeeting) {
+          console.log('Found valid scheduled meeting, activating it:', scheduledMeeting);
+          // Activate the scheduled meeting by creating an entry in the active meetings table
+          const { data: newMeeting, error: createError } = await supabase
+            .from('meetings')
+            .insert({
+              meeting_id: scheduledMeeting.meeting_id,
+              host_id: scheduledMeeting.host_id,
+              title: scheduledMeeting.title,
+              description: scheduledMeeting.description,
+              is_active: true,
+              status: 'active'
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error activating scheduled meeting:', createError);
+            throw createError;
+          }
+          meeting = newMeeting;
+        }
       }
 
       if (!meeting) {
@@ -265,7 +303,7 @@ export const useMeetingManagement = () => {
       
       // Find the meeting and verify user is the host using meeting_id (text field)
       const normalizedMeetingId = meetingIdText.toUpperCase().trim();
-      const { data: meeting, error: meetingError } = await supabase
+      let { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('*')
         .eq('meeting_id', normalizedMeetingId)
@@ -276,6 +314,40 @@ export const useMeetingManagement = () => {
       if (meetingError) {
         console.error('Meeting query error:', meetingError);
         throw meetingError;
+      }
+
+      // If meeting not found, check if it's a scheduled meeting hosted by this user
+      if (!meeting) {
+        const { data: scheduledMeeting, error: scheduledError } = await supabase
+          .from('scheduled_meetings')
+          .select('*')
+          .eq('meeting_id', normalizedMeetingId)
+          .eq('host_id', user.id)
+          .eq('status', 'scheduled')
+          .maybeSingle();
+
+        if (scheduledError) {
+          console.error('Error checking scheduled meeting for host:', scheduledError);
+        }
+
+        if (scheduledMeeting) {
+          // Activate it
+          const { data: newMeeting, error: createError } = await supabase
+            .from('meetings')
+            .insert({
+              meeting_id: scheduledMeeting.meeting_id,
+              host_id: scheduledMeeting.host_id,
+              title: scheduledMeeting.title,
+              description: scheduledMeeting.description,
+              is_active: true,
+              status: 'active'
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          meeting = newMeeting;
+        }
       }
 
       if (!meeting) {

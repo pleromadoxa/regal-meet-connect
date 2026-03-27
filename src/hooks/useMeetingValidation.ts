@@ -49,6 +49,7 @@ export const useMeetingValidation = () => {
       
       while (attempts < maxAttempts) {
         try {
+          // First check the active meetings table
           const { data: meeting, error } = await supabase
             .from('meetings')
             .select('id, meeting_id, is_active, status, title')
@@ -82,7 +83,28 @@ export const useMeetingValidation = () => {
           }
 
           if (!meeting) {
-            console.error('Meeting not found:', normalizedMeetingId);
+            console.log('Meeting not found in active meetings, checking scheduled meetings:', normalizedMeetingId);
+
+            // Check the scheduled meetings table
+            const { data: scheduledMeeting, error: scheduledError } = await supabase
+              .from('scheduled_meetings')
+              .select('id, meeting_id, status, title')
+              .eq('meeting_id', normalizedMeetingId)
+              .eq('status', 'scheduled')
+              .maybeSingle();
+
+            if (scheduledError) {
+              console.error('Error checking scheduled meetings:', scheduledError);
+            }
+
+            if (scheduledMeeting) {
+              console.log('Found valid scheduled meeting:', scheduledMeeting);
+              const result = true;
+              validationCache.set(normalizedMeetingId, { result, timestamp: Date.now() });
+              return result;
+            }
+
+            console.error('Meeting not found in any table:', normalizedMeetingId);
             const result = false;
             validationCache.set(normalizedMeetingId, { result, timestamp: Date.now() });
             
