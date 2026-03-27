@@ -102,7 +102,7 @@ export const useScheduledMeetings = () => {
     if (!user) throw new Error('User not authenticated');
 
     const meetingId = generateMeetingId();
-    const meetingLink = `${window.location.origin}/meeting/${meetingId}`;
+    const meetingLink = `${window.location.origin}/?join=${meetingId}`;
 
     // Insert scheduled meeting
     const { data: meeting, error: meetingError } = await supabase
