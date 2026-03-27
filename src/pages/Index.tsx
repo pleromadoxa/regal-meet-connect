@@ -21,7 +21,7 @@ const Index = () => {
         navigate('/dashboard');
       }
     } else if (joinMeetingId) {
-      navigate(`/auth?join=${joinMeetingId}`);
+      navigate(`/meeting/${joinMeetingId}`);
     }
   }, [user, navigate, searchParams]);
 

@@ -38,6 +38,7 @@ export const VideoConference = ({
   onNavigateToDashboard
 }: VideoConferenceProps) => {
   const { user } = useAuth();
+  const [sessionId] = useState(() => user?.id || crypto.randomUUID());
   const { toast } = useToast();
   const [selectedVideoId, setSelectedVideoId] = useState('local');
   const [activeSidePanel, setActiveSidePanel] = useState<'chat' | 'participants' | 'settings' | null>(null);
@@ -65,7 +66,7 @@ export const VideoConference = ({
     participants: dbParticipants, 
     updateParticipantStatus,
     removeParticipant: removeDbParticipant 
-  } = useRealTimeParticipants(meetingId, user?.id || '', userName);
+  } = useRealTimeParticipants(meetingId, sessionId, userName);
 
   // WebRTC management
   const {
@@ -88,7 +89,7 @@ export const VideoConference = ({
     cleanup,
     connectedPeers,
     peerUserNames
-  } = useWebRTC(meetingId, userName, user?.id || '', initialVideoEnabled, initialAudioEnabled, isHost);
+  } = useWebRTC(meetingId, userName, sessionId, initialVideoEnabled, initialAudioEnabled, isHost);
 
   // Background meeting management
   const { 
@@ -114,7 +115,7 @@ export const VideoConference = ({
     captions, 
     isEnabled: captionsEnabled, 
     toggleCaptions 
-  } = useCaptions(meetingId, user?.id || '');
+  } = useCaptions(meetingId, sessionId);
 
   // Convert Map to RemoteStream array for components
   const remoteStreamsArray = Array.from(remoteStreams?.entries() || []).map(([id, stream]) => {
@@ -143,9 +144,9 @@ export const VideoConference = ({
 
   // Initialize WebRTC on mount
   useEffect(() => {
-    if (!user?.id || !meetingId || !userName) return;
+    if (!sessionId || !meetingId || !userName) return;
 
-    console.log('Initializing VideoConference with:', { meetingId, userName, userId: user.id });
+    console.log('Initializing VideoConference with:', { meetingId, userName, userId: sessionId });
     
     const initializeWithPermissions = async () => {
       if (permissions.camera === 'granted' || permissions.microphone === 'granted') {
@@ -164,7 +165,7 @@ export const VideoConference = ({
       removeDbParticipant();
       endMeeting();
     };
-  }, [meetingId, userName, user?.id, permissions]);
+  }, [meetingId, userName, sessionId, permissions]);
 
   const handleLeaveMeeting = useCallback(() => {
     console.log('Leaving meeting...');
@@ -322,7 +323,7 @@ export const VideoConference = ({
             isCurrentUserHost={isHost}
             participants={dbParticipants}
             showParticipants={showParticipants}
-            currentUserId={user?.id || ''}
+            currentUserId={sessionId}
             onToggleMute={handleToggleMute}
             waitingUsers={waitingUsers}
             onAdmitUser={admitUser}
@@ -338,7 +339,7 @@ export const VideoConference = ({
           {/* Join/Leave Notifications */}
           <ParticipantJoinLeaveNotifications
             participants={dbParticipants}
-            currentUserId={user?.id || ''}
+            currentUserId={sessionId}
           />
 
           {/* Captions Display */}

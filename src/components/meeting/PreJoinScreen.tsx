@@ -15,15 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 interface PreJoinScreenProps {
   userName: string;
+  setUserName?: (name: string) => void;
   meetingId: string;
   onJoin: (videoEnabled: boolean, audioEnabled: boolean, processedStream: MediaStream | null) => void;
   onCancel: () => void;
 }
 
-export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoinScreenProps) => {
+export const PreJoinScreen = ({ userName, setUserName, meetingId, onJoin, onCancel }: PreJoinScreenProps) => {
   const { stream, isVideoEnabled, isAudioEnabled, toggleVideo, toggleAudio } = useLocalPreview();
   const { volume, isActive, avgVolume } = useAudioVisualizer(stream, isAudioEnabled);
   const [effect, setEffect] = useState<BackgroundEffect>('none');
@@ -135,15 +137,28 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
         <div className="space-y-8 text-center md:text-left">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-white">Ready to join Regal Meeting?</h1>
-            <p className="text-zinc-400">
-              You are about to join the session as <span className="text-white font-semibold">{userName}</span>
-            </p>
+            {setUserName ? (
+              <div className="space-y-3 pt-4">
+                <label className="text-sm font-medium text-zinc-300">Enter your name to join</label>
+                <Input
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Your Name"
+                  className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+            ) : (
+              <p className="text-zinc-400 pt-2">
+                You are about to join the session as <span className="text-white font-semibold">{userName}</span>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 max-w-xs mx-auto md:mx-0">
             <Button
               size="lg"
               className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold text-lg py-6"
+              disabled={!userName.trim()}
               onClick={() => onJoin(isVideoEnabled, isAudioEnabled, processedStream)}
             >
               Join Now
