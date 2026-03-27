@@ -220,6 +220,15 @@ export const VideoConference = ({
     });
   };
 
+  const copyMeetingLink = () => {
+    const link = `${window.location.origin}/?join=${meetingId}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Meeting Link Copied",
+      description: "Share this link with others to join the meeting directly"
+    });
+  };
+
   const handleDeviceChange = (type: 'audio' | 'video', deviceId: string) => {
     console.log(`Changing ${type} device to:`, deviceId);
     // Device changes would be handled in the WebRTC hook
@@ -292,6 +301,7 @@ export const VideoConference = ({
         showParticipants={showParticipants}
         isVideoMode={isVideoMode}
         onCopyMeetingId={copyMeetingId}
+        onCopyMeetingLink={copyMeetingLink}
         onToggleFullscreen={handleToggleFullscreen}
         onToggleParticipants={() => togglePanel('participants')}
         onToggleVideoMode={handleToggleVideoMode}

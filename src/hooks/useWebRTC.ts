@@ -178,7 +178,7 @@ export const useWebRTC = (
   }, [isVisible]);
 
   // New state for waiting room
-  const [isWaiting, setIsWaiting] = useState(!isHost); // Default to waiting if not host
+  const [isWaiting, setIsWaiting] = useState(false); // Everyone is admitted directly
   const [waitingUsers, setWaitingUsers] = useState<Set<string>>(new Set());
 
   // Listen for admission messages
@@ -243,7 +243,7 @@ export const useWebRTC = (
     console.log('Initializing WebRTC for:', { meetingId, userName, userId });
     
     // Initialize with correct status
-    const initialStatus = isHost ? 'admitted' : 'waiting';
+    const initialStatus = 'admitted'; // Everyone enters directly
     const signalingChannel = initializeSignaling(initialStatus);
 
     const createPeerConnection = (remoteUserId: string) => {
@@ -456,7 +456,7 @@ export const useWebRTC = (
     if (signalingPeers.size > 0) {
       handleNewPeers();
     }
-  }, [signalingPeers]);
+  }, [signalingPeers, localStream]);
 
   const initialize = useCallback(async () => {
     try {

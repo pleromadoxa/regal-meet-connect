@@ -237,6 +237,16 @@ export const AudioOnlyMeeting = ({
     });
   };
 
+  const copyMeetingLink = () => {
+    logFeatureUsage('copy_meeting_link', user?.id);
+    const link = `${window.location.origin}/?join=${meetingId}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Meeting Link Copied",
+      description: "Share this link with others to join the meeting directly"
+    });
+  };
+
   const handleLeaveMeeting = () => {
     logMeetingLeave(meetingId, user?.id);
     if (currentParticipantId) {
@@ -308,6 +318,7 @@ export const AudioOnlyMeeting = ({
           showParticipants={showParticipantsList}
           isVideoMode={false}
           onCopyMeetingId={copyMeetingId}
+          onCopyMeetingLink={copyMeetingLink}
           onToggleFullscreen={toggleFullscreen}
           onToggleParticipants={handleToggleParticipantsList}
           onToggleVideoMode={() => {}}

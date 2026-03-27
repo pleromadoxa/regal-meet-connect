@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Video, Users, Shield, Zap, CheckCircle2, Globe, Heart } from 'lucide-react';
 import { Footer } from '@/components/Footer';
@@ -10,12 +10,20 @@ import heroImage from '@/assets/hero-conference.png';
 const Index = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    const joinMeetingId = searchParams.get('join');
     if (user) {
-      navigate('/dashboard');
+      if (joinMeetingId) {
+        navigate(`/meeting/${joinMeetingId}`);
+      } else {
+        navigate('/dashboard');
+      }
+    } else if (joinMeetingId) {
+      navigate(`/auth?join=${joinMeetingId}`);
     }
-  }, [user, navigate]);
+  }, [user, navigate, searchParams]);
 
 
   return (
