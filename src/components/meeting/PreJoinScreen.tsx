@@ -70,7 +70,7 @@ export const PreJoinScreen = ({ userName, setUserName, meetingId, onJoin, onCanc
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+                className={`w-full h-full object-cover scale-x-[-1] ${!isVideoEnabled ? 'hidden' : ''}`}
               />
             )}
 

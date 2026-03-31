@@ -3,20 +3,20 @@ import { useState, useCallback, useEffect } from 'react';
 
 interface Reaction {
   id: string;
-  type: 'heart' | 'like' | 'celebration';
+  type: 'heart' | 'thumbsup' | 'thumbsdown' | 'clap' | 'party' | 'laugh' | 'surprised' | 'raisedhand';
   x: number;
   y: number;
   timestamp: number;
 }
 
 interface VideoReactionsProps {
-  onSendReaction?: (type: 'heart' | 'like' | 'celebration') => void;
+  onSendReaction?: (type: string) => void;
 }
 
 export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
   const [reactions, setReactions] = useState<Reaction[]>([]);
 
-  const addReaction = useCallback((type: 'heart' | 'like' | 'celebration') => {
+  const addReaction = useCallback((type: any) => {
     const newReaction: Reaction = {
       id: Math.random().toString(36).substring(7),
       type,
@@ -65,9 +65,14 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
               animation: 'reaction-float 3s ease-out forwards',
             }}
           >
-            {reaction.type === 'heart' && '❤️'}
-            {reaction.type === 'like' && '👍'}
-            {reaction.type === 'celebration' && '🎉'}
+            {reaction.type === 'heart' && '💖'}
+            {reaction.type === 'thumbsup' && '👍'}
+            {reaction.type === 'party' && '🎉'}
+            {reaction.type === 'clap' && '👏'}
+            {reaction.type === 'laugh' && '😂'}
+            {reaction.type === 'surprised' && '😮'}
+            {reaction.type === 'thumbsdown' && '👎'}
+            {reaction.type === 'raisedhand' && '✋'}
           </div>
         ))}
       </div>
