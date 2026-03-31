@@ -88,7 +88,8 @@ export const VideoConference = ({
     switchCamera,
     cleanup,
     connectedPeers,
-    peerUserNames
+    peerUserNames,
+    togglePiP
   } = useWebRTC(meetingId, userName, sessionId, initialVideoEnabled, initialAudioEnabled, isHost);
 
   // Background meeting management
@@ -383,6 +384,7 @@ export const VideoConference = ({
         showChat={activeSidePanel === 'chat'}
         onToggleChat={() => togglePanel('chat')}
         onToggleParticipants={() => togglePanel('participants')}
+        onTogglePiP={togglePiP}
       />
 
       {/* Background Meeting Indicator */}

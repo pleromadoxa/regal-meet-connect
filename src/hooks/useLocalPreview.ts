@@ -14,7 +14,12 @@ export const useLocalPreview = () => {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
           video: true,
-          audio: true
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 44100
+          }
         });
         setStream(localStream);
       } catch (error) {

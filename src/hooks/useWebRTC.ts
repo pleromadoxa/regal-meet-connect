@@ -644,6 +644,35 @@ export const useWebRTC = (
     }
   }, [currentFacingMode, getOptimalConstraints, connectionQuality.metrics.qualityLevel, toast]);
 
+  const togglePiP = useCallback(async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        // Find the main active speaker or local video element
+        const videos = document.getElementsByTagName('video');
+        // We'll prefer a remote video if it exists and is playing, otherwise local
+        const activeVideo = Array.from(videos).find(v => !v.muted && v.readyState >= 2) || videos[0];
+        if (activeVideo) {
+          await activeVideo.requestPictureInPicture();
+        } else {
+          toast({
+            title: "PiP Unavailable",
+            description: "No active video stream found to enter Picture-in-Picture mode.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling PiP:', error);
+      toast({
+        title: "PiP Failed",
+        description: "Your browser does not support Picture-in-Picture or it was blocked.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
       try {
@@ -796,7 +825,13 @@ export const useWebRTC = (
     try {
       const constraints: MediaStreamConstraints = {
         video: kind === 'videoinput' ? { deviceId: { exact: deviceId } } : isVideoEnabled,
-        audio: kind === 'audioinput' ? { deviceId: { exact: deviceId } } : isAudioEnabled,
+        audio: kind === 'audioinput' ? {
+          deviceId: { exact: deviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100
+        } : isAudioEnabled,
       };
   
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -890,6 +925,7 @@ export const useWebRTC = (
     cleanup,
     setQualityOverride,
     optimizationSettings,
-    shouldRenderVideo
+    shouldRenderVideo,
+    togglePiP
   };
 };
