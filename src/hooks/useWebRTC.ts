@@ -445,9 +445,16 @@ export const useWebRTC = (
       
       currentPeers.forEach(peerId => {
         if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
-          console.log('Creating offer for new peer:', peerId);
-          if (createOfferRef.current) {
-            createOfferRef.current(peerId);
+          // Polite peer pattern: only the peer with the lexicographically larger ID creates the offer.
+          // This entirely prevents WebRTC "glare" (simultaneous offer collision).
+          if (userId > peerId) {
+            console.log(`[Polite Peer] I am caller. Creating offer for new peer:`, peerId);
+            if (createOfferRef.current) {
+              createOfferRef.current(peerId);
+            }
+          } else {
+            console.log(`[Polite Peer] I am receiver. Waiting for offer from:`, peerId);
+            // We just wait for the offer message to arrive in the signaling handler.
           }
         }
       });
@@ -456,7 +463,7 @@ export const useWebRTC = (
     if (signalingPeers.size > 0) {
       handleNewPeers();
     }
-  }, [signalingPeers, localStream]);
+  }, [signalingPeers, localStream, userId]);
 
   const initialize = useCallback(async () => {
     try {

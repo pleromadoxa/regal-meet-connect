@@ -362,9 +362,13 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
       
       currentPeers.forEach(peerId => {
         if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
-          console.log('Creating audio offer for new peer:', peerId);
-          if (createOfferRef.current) {
-            createOfferRef.current(peerId);
+          if (userId > peerId) {
+            console.log(`[Polite Peer] I am caller. Creating audio offer for new peer:`, peerId);
+            if (createOfferRef.current) {
+              createOfferRef.current(peerId);
+            }
+          } else {
+            console.log(`[Polite Peer] I am receiver. Waiting for audio offer from:`, peerId);
           }
         }
       });
@@ -373,7 +377,7 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
     if (signalingPeers.size > 0) {
       handleNewPeers();
     }
-  }, [signalingPeers]);
+  }, [signalingPeers, userId]);
 
   const initialize = useCallback(async () => {
     try {
