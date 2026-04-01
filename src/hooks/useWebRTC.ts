@@ -294,6 +294,23 @@ export const useWebRTC = (
         }
       };
 
+      pc.onnegotiationneeded = async () => {
+        try {
+          if (userId > remoteUserId) {
+            console.log(`[Negotiation Needed] I am caller. Renegotiating with:`, remoteUserId);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignalingMessage({
+              type: 'offer',
+              to: remoteUserId,
+              data: offer
+            });
+          }
+        } catch (error) {
+          console.error('Error during negotiation:', error);
+        }
+      };
+
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => {
           pc.addTrack(track, localStreamRef.current!);

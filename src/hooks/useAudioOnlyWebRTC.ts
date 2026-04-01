@@ -159,6 +159,23 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
         }
       };
 
+      pc.onnegotiationneeded = async () => {
+        try {
+          if (userId > remoteUserId) {
+            console.log(`[Negotiation Needed] I am caller. Renegotiating audio with:`, remoteUserId);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignalingMessage({
+              type: 'offer',
+              to: remoteUserId,
+              data: offer
+            });
+          }
+        } catch (error) {
+          console.error('Error during audio negotiation:', error);
+        }
+      };
+
       // Add only audio tracks for audio-only meeting
       if (localStreamRef.current) {
         const audioTrack = localStreamRef.current.getAudioTracks()[0];
