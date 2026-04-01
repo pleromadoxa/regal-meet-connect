@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, Shield, Mic, MicOff, User, Upload, Files } from 'lucide-react';
+import { X, Users, Shield, Mic, MicOff, User, Upload, Files, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -291,14 +291,32 @@ export const ParticipantsList = ({
               <p className="text-sm text-slate-400">Participants & Files</p>
             </div>
           </div>
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            size="sm"
-            className="text-slate-400 hover:text-white hover:bg-slate-700/50"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={() => {
+                const url = `${window.location.origin}/?join=${meetingId}`;
+                navigator.clipboard.writeText(url);
+                toast({
+                  title: "Link Copied",
+                  description: "Meeting invite link copied to clipboard"
+                });
+              }}
+              variant="outline"
+              size="sm"
+              className="text-white border-slate-600 bg-slate-800 hover:bg-slate-700 h-8 px-3"
+            >
+              <Copy className="h-3 w-3 mr-2" />
+              Invite
+            </Button>
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="sm"
+              className="text-slate-400 hover:text-white hover:bg-slate-700/50 h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Tabs */}

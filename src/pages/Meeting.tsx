@@ -20,23 +20,29 @@ const Meeting = () => {
   const hasValidatedRef = useRef(false);
   const { logPageView, logMeetingJoin } = usePlatformLogging();
 
-  const userName = searchParams.get('userName') || searchParams.get('name') || '';
+  const urlUserName = searchParams.get('userName') || searchParams.get('name') || '';
   const isHost = searchParams.get('host') === 'true';
+  const isLargeMeeting = searchParams.get('optimize') === 'true';
+
+  // State to hold the final username, allowing it to be updated if prompted
+  const [userName, setUserName] = useState<string>('');
+
+  useEffect(() => {
+    if (user && !userName && !urlUserName) {
+      // If logged in but no name in URL, use their profile name
+      setUserName(user?.user_metadata?.display_name || user?.email || 'Guest');
+    } else if (urlUserName && !userName) {
+      setUserName(urlUserName);
+    }
+  }, [user, urlUserName, userName]);
 
   useEffect(() => {
     // Prevent multiple validations 
     if (hasValidatedRef.current) return;
     
+    // We can proceed validating if we have the meetingId
+    // We don't require `userName` to validate the meeting, just to join it
     if (!loading && meetingId) {
-      // If no userName provided, redirect to join page with meeting ID
-      if (!userName.trim()) {
-        navigate(`/?join=${meetingId}`);
-        return;
-      }
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
 
       // Mark as validating to prevent SessionManager conflicts
       hasValidatedRef.current = true;
@@ -124,7 +130,7 @@ const Meeting = () => {
     );
   }
 
-  if (!meetingId || !userName || !isReady) {
+  if (!meetingId || !isReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
         <div className="text-center text-white">
@@ -145,6 +151,7 @@ const Meeting = () => {
     return (
       <PreJoinScreen
         userName={userName}
+        setUserName={!user ? setUserName : undefined}
         meetingId={meetingId}
         onJoin={handleJoin}
         onCancel={handleNavigateToDashboard}
@@ -161,6 +168,7 @@ const Meeting = () => {
       initialAudioEnabled={initialMediaState.audio}
       onLeaveMeeting={handleLeaveMeeting}
       onNavigateToDashboard={handleNavigateToDashboard}
+      forceOptimize={isLargeMeeting}
     />
   );
 };

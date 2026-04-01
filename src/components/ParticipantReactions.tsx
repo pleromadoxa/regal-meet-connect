@@ -2,14 +2,13 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, ThumbsUp, PartyPopper, Zap, Coffee, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Reaction {
   id: string;
   participantId: string;
   participantName: string;
-  type: 'heart' | 'like' | 'party' | 'energy' | 'coffee' | 'slow';
+  type: 'heart' | 'thumbsup' | 'thumbsdown' | 'clap' | 'party' | 'laugh' | 'surprised' | 'raisedhand';
   timestamp: number;
 }
 
@@ -19,12 +18,14 @@ interface ParticipantReactionsProps {
 }
 
 const reactionEmojis = {
-  heart: { icon: Heart, emoji: '❤️', color: 'text-red-400' },
-  like: { icon: ThumbsUp, emoji: '👍', color: 'text-blue-400' },
-  party: { icon: PartyPopper, emoji: '🎉', color: 'text-yellow-400' },
-  energy: { icon: Zap, emoji: '⚡', color: 'text-purple-400' },
-  coffee: { icon: Coffee, emoji: '☕', color: 'text-amber-400' },
-  slow: { icon: Clock, emoji: '🐌', color: 'text-gray-400' }
+  heart: { emoji: '💖' },
+  thumbsup: { emoji: '👍' },
+  party: { emoji: '🎉' },
+  clap: { emoji: '👏' },
+  laugh: { emoji: '😂' },
+  surprised: { emoji: '😮' },
+  thumbsdown: { emoji: '👎' },
+  raisedhand: { emoji: '✋' }
 };
 
 export const ParticipantReactions = ({ onSendReaction, participants }: ParticipantReactionsProps) => {
@@ -122,20 +123,20 @@ export const ParticipantReactions = ({ onSendReaction, participants }: Participa
         </Card>
       )}
 
-      {/* Reaction Panel */}
+      {/* Reaction Panel - Horizontal like Google Meet */}
       {showReactionPanel && (
-        <Card className="fixed bottom-32 left-1/2 transform -translate-x-1/2 bg-black/95 backdrop-blur-xl border-white/20 p-6 z-50 shadow-2xl">
-          <div className="grid grid-cols-3 gap-4">
+        <Card className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-[#202124] border-slate-700 p-2 z-50 shadow-2xl rounded-full">
+          <div className="flex space-x-2">
             {Object.entries(reactionEmojis).map(([type, config]) => (
               <Button
                 key={type}
                 onClick={() => sendReaction(type as keyof typeof reactionEmojis)}
-                variant="outline"
-                size="sm"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/40 p-4 h-auto flex flex-col items-center transition-all duration-200 hover:scale-105"
+                variant="ghost"
+                size="icon"
+                className="hover:bg-slate-700/50 rounded-full w-12 h-12 flex items-center justify-center transition-transform hover:scale-110"
+                title={type}
               >
-                <span className="text-3xl mb-2">{config.emoji}</span>
-                <span className="text-xs capitalize font-medium">{type}</span>
+                <span className="text-2xl">{config.emoji}</span>
               </Button>
             ))}
           </div>
@@ -146,10 +147,11 @@ export const ParticipantReactions = ({ onSendReaction, participants }: Participa
       <Button
         onClick={() => setShowReactionPanel(!showReactionPanel)}
         variant="outline"
-        size="sm"
-        className="fixed bottom-20 right-4 bg-gradient-to-r from-orange-500/80 to-red-500/80 border-orange-400/40 text-white hover:from-orange-600/80 hover:to-red-600/80 hover:border-orange-300/60 backdrop-blur-sm rounded-full w-14 h-14 flex items-center justify-center z-40 shadow-2xl transition-all duration-300 hover:scale-110"
+        size="icon"
+        className={`fixed bottom-[88px] right-24 bg-[#3c4043] border-none text-white hover:bg-[#4a4d51] rounded-full w-12 h-12 flex items-center justify-center z-40 shadow-lg transition-colors ${showReactionPanel ? 'bg-blue-500/20 text-blue-400' : ''}`}
+        title="Send a reaction"
       >
-        <span className="text-2xl">😊</span>
+        <span className="text-xl">✨</span>
       </Button>
 
       {/* Animation styles */}

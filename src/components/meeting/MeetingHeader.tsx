@@ -10,7 +10,8 @@ import {
   Menu,
   LogOut,
   Video,
-  Mic
+  Mic,
+  Link
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -23,6 +24,7 @@ interface MeetingHeaderProps {
   showParticipants: boolean;
   isVideoMode: boolean;
   onCopyMeetingId: () => void;
+  onCopyMeetingLink?: () => void;
   onToggleFullscreen: () => void;
   onToggleParticipants: () => void;
   onToggleVideoMode: () => void;
@@ -39,6 +41,7 @@ export const MeetingHeader = ({
   showParticipants,
   isVideoMode,
   onCopyMeetingId,
+  onCopyMeetingLink,
   onToggleFullscreen,
   onToggleParticipants,
   onToggleVideoMode,
@@ -119,6 +122,17 @@ export const MeetingHeader = ({
               <Copy className="h-4 w-4 mr-2" />
               <span className="text-sm">Copy ID</span>
             </Button>
+            {onCopyMeetingLink && (
+              <Button
+                onClick={onCopyMeetingLink}
+                size="sm"
+                variant="ghost"
+                className="text-slate-300 hover:bg-slate-700/50 px-3 py-2 rounded-lg"
+              >
+                <Link className="h-4 w-4 mr-2" />
+                <span className="text-sm">Copy Link</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -164,6 +178,18 @@ export const MeetingHeader = ({
             <Copy className="h-4 w-4 mr-2" />
             Copy Meeting ID
           </Button>
+
+          {onCopyMeetingLink && (
+            <Button
+              onClick={onCopyMeetingLink}
+              size="sm"
+              variant="ghost"
+              className="text-slate-300 hover:bg-slate-700/50"
+            >
+              <Link className="h-4 w-4 mr-2" />
+              Copy Link
+            </Button>
+          )}
 
           <Button
             onClick={onToggleVideoMode}

@@ -30,6 +30,7 @@ interface VideoControlsProps {
   showChat: boolean;
   onToggleChat: () => void;
   onToggleParticipants?: () => void;
+  onTogglePiP?: () => void;
 }
 
 export const VideoControls = ({
@@ -52,7 +53,8 @@ export const VideoControls = ({
   onNavigateToDashboard,
   showChat,
   onToggleChat,
-  onToggleParticipants
+  onToggleParticipants,
+  onTogglePiP
 }: VideoControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
@@ -124,6 +126,7 @@ export const VideoControls = ({
         onToggleEffects={() => setShowEffects(true)}
         onNavigateToDashboard={onNavigateToDashboard}
         onLeaveMeeting={onLeaveMeeting}
+        onTogglePiP={onTogglePiP}
       />
 
       {/* Settings Panel */}

@@ -168,7 +168,7 @@ export const ParticipantsSidebar = ({
               x5-video-player-fullscreen="true"
               className={`w-full h-full object-cover rounded-lg transition-opacity duration-200 ${
                 isVideoLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              } ${isLocal ? 'scale-x-[-1]' : ''}`}
               style={{ background: 'blue' }} // Temporary background to see video element
             />
           ) : null}

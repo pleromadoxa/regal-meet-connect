@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Loader2, Video, Phone } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Plus, Loader2, Video, Phone, Users } from 'lucide-react';
 import { useMeetingActions } from '@/hooks/useMeetingActions';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +16,7 @@ export const CreateMeetingCard = () => {
   const [description, setDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [meetingType, setMeetingType] = useState<'video' | 'audio'>('video');
+  const [isLargeMeeting, setIsLargeMeeting] = useState(false);
   const { createMeeting } = useMeetingActions();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -40,7 +43,8 @@ export const CreateMeetingCard = () => {
       if (result) {
         // Navigate to the meeting as host
         const route = meetingType === 'audio' ? 'audio-meeting' : 'meeting';
-        navigate(`/${route}/${meetingId}?host=true&userName=${encodeURIComponent(user?.email || 'Host')}`);
+        const optimizeParam = isLargeMeeting ? '&optimize=true' : '';
+        navigate(`/${route}/${meetingId}?host=true&userName=${encodeURIComponent(user?.email || 'Host')}${optimizeParam}`);
       }
     } catch (error) {
       console.error('Error creating meeting:', error);
@@ -105,6 +109,22 @@ export const CreateMeetingCard = () => {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Enter meeting description"
             className="bg-background/50 border-border/50 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20 min-h-[70px] md:min-h-[80px] resize-none"
+          />
+        </div>
+
+        <div className="flex flex-row items-center justify-between p-3 border border-border/40 rounded-lg bg-background/30">
+          <div className="space-y-0.5">
+            <Label className="text-sm font-medium flex items-center">
+              <Users className="w-4 h-4 mr-2 text-primary" />
+              Large Meeting Mode
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Optimizes network & UI for 20+ participants
+            </p>
+          </div>
+          <Switch
+            checked={isLargeMeeting}
+            onCheckedChange={setIsLargeMeeting}
           />
         </div>
 

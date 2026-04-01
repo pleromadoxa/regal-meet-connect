@@ -23,7 +23,8 @@ export const useWebRTC = (
   userId: string,
   initialVideoEnabled: boolean = true,
   initialAudioEnabled: boolean = true,
-  isHost: boolean = false
+  isHost: boolean = false,
+  forceOptimize: boolean = false
 ) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -72,8 +73,25 @@ export const useWebRTC = (
     updateParticipantCount,
     getOptimizedMediaConstraints,
     applyOptimizedBitrate,
-    shouldRenderVideo
+    shouldRenderVideo,
+    setOptimizationSettings
   } = useManyParticipantsOptimization();
+
+  // Apply force optimize if requested by URL parameter
+  useEffect(() => {
+    if (forceOptimize) {
+      console.log('Applying forced optimization mode for large meeting');
+      setOptimizationSettings(prev => ({
+        ...prev,
+        videoQuality: 'low',
+        limits: {
+          ...prev.limits,
+          maxVideoStreams: 6, // Severely limit video rendering to preserve CPU
+          autoQualityThreshold: 5
+        }
+      }));
+    }
+  }, [forceOptimize, setOptimizationSettings]);
 
   // Use the signaling hook
   const { 
@@ -178,7 +196,7 @@ export const useWebRTC = (
   }, [isVisible]);
 
   // New state for waiting room
-  const [isWaiting, setIsWaiting] = useState(!isHost); // Default to waiting if not host
+  const [isWaiting, setIsWaiting] = useState(false); // Everyone is admitted directly
   const [waitingUsers, setWaitingUsers] = useState<Set<string>>(new Set());
 
   // Listen for admission messages
@@ -243,7 +261,7 @@ export const useWebRTC = (
     console.log('Initializing WebRTC for:', { meetingId, userName, userId });
     
     // Initialize with correct status
-    const initialStatus = isHost ? 'admitted' : 'waiting';
+    const initialStatus = 'admitted'; // Everyone enters directly
     const signalingChannel = initializeSignaling(initialStatus);
 
     const createPeerConnection = (remoteUserId: string) => {
@@ -273,6 +291,23 @@ export const useWebRTC = (
           remoteStreamsRef.current.delete(remoteUserId);
           setRemoteStreams(new Map(remoteStreamsRef.current));
           peerConnectionsRef.current.delete(remoteUserId);
+        }
+      };
+
+      pc.onnegotiationneeded = async () => {
+        try {
+          if (userId > remoteUserId) {
+            console.log(`[Negotiation Needed] I am caller. Renegotiating with:`, remoteUserId);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignalingMessage({
+              type: 'offer',
+              to: remoteUserId,
+              data: offer
+            });
+          }
+        } catch (error) {
+          console.error('Error during negotiation:', error);
         }
       };
 
@@ -445,9 +480,16 @@ export const useWebRTC = (
       
       currentPeers.forEach(peerId => {
         if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
-          console.log('Creating offer for new peer:', peerId);
-          if (createOfferRef.current) {
-            createOfferRef.current(peerId);
+          // Polite peer pattern: only the peer with the lexicographically larger ID creates the offer.
+          // This entirely prevents WebRTC "glare" (simultaneous offer collision).
+          if (userId > peerId) {
+            console.log(`[Polite Peer] I am caller. Creating offer for new peer:`, peerId);
+            if (createOfferRef.current) {
+              createOfferRef.current(peerId);
+            }
+          } else {
+            console.log(`[Polite Peer] I am receiver. Waiting for offer from:`, peerId);
+            // We just wait for the offer message to arrive in the signaling handler.
           }
         }
       });
@@ -456,7 +498,7 @@ export const useWebRTC = (
     if (signalingPeers.size > 0) {
       handleNewPeers();
     }
-  }, [signalingPeers]);
+  }, [signalingPeers, localStream, userId]);
 
   const initialize = useCallback(async () => {
     try {
@@ -637,6 +679,35 @@ export const useWebRTC = (
     }
   }, [currentFacingMode, getOptimalConstraints, connectionQuality.metrics.qualityLevel, toast]);
 
+  const togglePiP = useCallback(async () => {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        // Find the main active speaker or local video element
+        const videos = document.getElementsByTagName('video');
+        // We'll prefer a remote video if it exists and is playing, otherwise local
+        const activeVideo = Array.from(videos).find(v => !v.muted && v.readyState >= 2) || videos[0];
+        if (activeVideo) {
+          await activeVideo.requestPictureInPicture();
+        } else {
+          toast({
+            title: "PiP Unavailable",
+            description: "No active video stream found to enter Picture-in-Picture mode.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling PiP:', error);
+      toast({
+        title: "PiP Failed",
+        description: "Your browser does not support Picture-in-Picture or it was blocked.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   const toggleScreenShare = useCallback(async () => {
     if (!isScreenSharing) {
       try {
@@ -789,7 +860,13 @@ export const useWebRTC = (
     try {
       const constraints: MediaStreamConstraints = {
         video: kind === 'videoinput' ? { deviceId: { exact: deviceId } } : isVideoEnabled,
-        audio: kind === 'audioinput' ? { deviceId: { exact: deviceId } } : isAudioEnabled,
+        audio: kind === 'audioinput' ? {
+          deviceId: { exact: deviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 44100
+        } : isAudioEnabled,
       };
   
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -883,6 +960,7 @@ export const useWebRTC = (
     cleanup,
     setQualityOverride,
     optimizationSettings,
-    shouldRenderVideo
+    shouldRenderVideo,
+    togglePiP
   };
 };

@@ -115,7 +115,7 @@ export const StableVideoElement = memo(({
   return (
     <video
       ref={videoRef}
-      className={className}
+      className={`${className} ${isLocal ? 'scale-x-[-1]' : ''}`}
       muted={muted || isLocal}
       autoPlay={autoPlay}
       playsInline={playsInline}

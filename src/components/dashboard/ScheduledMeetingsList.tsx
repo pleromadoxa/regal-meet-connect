@@ -130,7 +130,7 @@ export const ScheduledMeetingsList = () => {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    {meeting.status === 'scheduled' && !isPast && (
+                    {meeting.status === 'scheduled' && (
                       <>
                         <Button
                           size="sm"
@@ -142,14 +142,16 @@ export const ScheduledMeetingsList = () => {
                           Join
                         </Button>
                         
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleCancelMeeting(meeting.id, meeting.title)}
-                          className="text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {!isPast && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCancelMeeting(meeting.id, meeting.title)}
+                            className="text-xs h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>

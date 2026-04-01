@@ -40,6 +40,7 @@ export const AudioOnlyMeeting = ({
 }: AudioOnlyMeetingProps) => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
+  const [sessionId] = useState(() => user?.id || crypto.randomUUID());
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const { addRecentMeeting } = useRecentMeetings();
@@ -74,7 +75,7 @@ export const AudioOnlyMeeting = ({
     isOptimizing,
     setQualityOverride,
     speakingParticipants
-  } = useAudioOnlyWebRTC(meetingId, userName, user?.id || '');
+  } = useAudioOnlyWebRTC(meetingId, userName, sessionId);
 
   // Meeting state management for synchronization
   const {
@@ -83,7 +84,7 @@ export const AudioOnlyMeeting = ({
     reactions,
     updateParticipantAudioState,
     sendReaction
-  } = useMeetingState(meetingId, user?.id || '');
+  } = useMeetingState(meetingId, sessionId);
 
   const { 
     participants: dbParticipants, 
@@ -109,7 +110,7 @@ export const AudioOnlyMeeting = ({
   // Enhanced toggle functions that broadcast state
   const enhancedToggleAudio = async (): Promise<boolean> => {
     const newState = await toggleAudio();
-    logFeatureUsage('toggle_audio', user?.id);
+    logFeatureUsage('toggle_audio', sessionId);
     const actualNewState = typeof newState === 'boolean' ? newState : !isAudioEnabled;
     if (currentParticipantId) {
       updateParticipantAudioState(currentParticipantId, actualNewState);
@@ -119,7 +120,7 @@ export const AudioOnlyMeeting = ({
 
   const enhancedToggleCaptions = () => {
     toggleCaptions();
-    logFeatureUsage('toggle_captions', user?.id);
+    logFeatureUsage('toggle_captions', sessionId);
   };
 
   // Convert ParticipantState to database participant format
@@ -237,6 +238,16 @@ export const AudioOnlyMeeting = ({
     });
   };
 
+  const copyMeetingLink = () => {
+    logFeatureUsage('copy_meeting_link', user?.id);
+    const link = `${window.location.origin}/?join=${meetingId}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "Meeting Link Copied",
+      description: "Share this link with others to join the meeting directly"
+    });
+  };
+
   const handleLeaveMeeting = () => {
     logMeetingLeave(meetingId, user?.id);
     if (currentParticipantId) {
@@ -308,6 +319,7 @@ export const AudioOnlyMeeting = ({
           showParticipants={showParticipantsList}
           isVideoMode={false}
           onCopyMeetingId={copyMeetingId}
+          onCopyMeetingLink={copyMeetingLink}
           onToggleFullscreen={toggleFullscreen}
           onToggleParticipants={handleToggleParticipantsList}
           onToggleVideoMode={() => {}}

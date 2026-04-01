@@ -159,6 +159,23 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
         }
       };
 
+      pc.onnegotiationneeded = async () => {
+        try {
+          if (userId > remoteUserId) {
+            console.log(`[Negotiation Needed] I am caller. Renegotiating audio with:`, remoteUserId);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignalingMessage({
+              type: 'offer',
+              to: remoteUserId,
+              data: offer
+            });
+          }
+        } catch (error) {
+          console.error('Error during audio negotiation:', error);
+        }
+      };
+
       // Add only audio tracks for audio-only meeting
       if (localStreamRef.current) {
         const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -362,9 +379,13 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
       
       currentPeers.forEach(peerId => {
         if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
-          console.log('Creating audio offer for new peer:', peerId);
-          if (createOfferRef.current) {
-            createOfferRef.current(peerId);
+          if (userId > peerId) {
+            console.log(`[Polite Peer] I am caller. Creating audio offer for new peer:`, peerId);
+            if (createOfferRef.current) {
+              createOfferRef.current(peerId);
+            }
+          } else {
+            console.log(`[Polite Peer] I am receiver. Waiting for audio offer from:`, peerId);
           }
         }
       });
@@ -373,7 +394,7 @@ export const useAudioOnlyWebRTC = (meetingId: string, userName: string, userId: 
     if (signalingPeers.size > 0) {
       handleNewPeers();
     }
-  }, [signalingPeers]);
+  }, [signalingPeers, userId]);
 
   const initialize = useCallback(async () => {
     try {

@@ -187,6 +187,10 @@ export const useMeetingRecording = (meetingId: string, isHost: boolean) => {
 
       if (uploadError) throw uploadError;
 
+      // Calculate expiration time (36 hours from now)
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 36);
+
       // Update recording record
       const { error: updateError } = await supabase
         .from('meeting_recordings')
@@ -195,15 +199,28 @@ export const useMeetingRecording = (meetingId: string, isHost: boolean) => {
           status: 'completed',
           ended_at: new Date().toISOString(),
           file_size: blob.size,
-          duration_seconds: Math.floor((Date.now() - new Date(recordingData.started_at).getTime()) / 1000)
+          duration_seconds: Math.floor((Date.now() - new Date(recordingData.started_at).getTime()) / 1000),
+          expires_at: expiresAt.toISOString()
         })
         .eq('id', recordingData.id);
 
       if (updateError) throw updateError;
 
+      // Since it's saved locally, trigger an automatic download for the host
+      // so they can retrieve it right away before the server deletes it after 36h
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      document.body.appendChild(a);
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Meeting_Recording_${meetingId}_${Date.now()}.webm`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
       toast({
         title: "Recording Complete",
-        description: "Recording has been saved successfully"
+        description: "Recording has been saved and downloaded successfully. It will expire from the server in 36 hours."
       });
 
       setRecordingData(null);

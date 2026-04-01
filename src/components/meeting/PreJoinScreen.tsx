@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, Image as ImageIcon, Ban } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, Image as ImageIcon, Ban, Loader2 } from 'lucide-react';
 import { useLocalPreview } from '@/hooks/useLocalPreview';
 import { AudioVisualizer } from '@/components/AudioVisualizer';
 import { useAudioVisualizer } from '@/hooks/useAudioVisualizer';
@@ -15,15 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 interface PreJoinScreenProps {
   userName: string;
+  setUserName?: (name: string) => void;
   meetingId: string;
   onJoin: (videoEnabled: boolean, audioEnabled: boolean, processedStream: MediaStream | null) => void;
   onCancel: () => void;
 }
 
-export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoinScreenProps) => {
+export const PreJoinScreen = ({ userName, setUserName, meetingId, onJoin, onCancel }: PreJoinScreenProps) => {
   const { stream, isVideoEnabled, isAudioEnabled, toggleVideo, toggleAudio } = useLocalPreview();
   const { volume, isActive, avgVolume } = useAudioVisualizer(stream, isAudioEnabled);
   const [effect, setEffect] = useState<BackgroundEffect>('none');
@@ -34,7 +36,17 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
     backgroundImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3' // Default fancy background
   });
 
+  const [isJoining, setIsJoining] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleJoinClick = () => {
+    setIsJoining(true);
+    // Add a tiny artificial delay for UX smoothness so the "Connecting..." state is actually visible
+    // before the parent component unmounts this screen
+    setTimeout(() => {
+      onJoin(isVideoEnabled, isAudioEnabled, processedStream);
+    }, 400);
+  };
 
   useEffect(() => {
     if (videoRef.current) {
@@ -58,7 +70,7 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+                className={`w-full h-full object-cover scale-x-[-1] ${!isVideoEnabled ? 'hidden' : ''}`}
               />
             )}
 
@@ -135,24 +147,45 @@ export const PreJoinScreen = ({ userName, meetingId, onJoin, onCancel }: PreJoin
         <div className="space-y-8 text-center md:text-left">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-white">Ready to join Regal Meeting?</h1>
-            <p className="text-zinc-400">
-              You are about to join the session as <span className="text-white font-semibold">{userName}</span>
-            </p>
+            {setUserName ? (
+              <div className="space-y-3 pt-4">
+                <label className="text-sm font-medium text-zinc-300">Enter your name to join</label>
+                <Input
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Your Name"
+                  className="bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-500"
+                />
+              </div>
+            ) : (
+              <p className="text-zinc-400 pt-2">
+                You are about to join the session as <span className="text-white font-semibold">{userName}</span>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 max-w-xs mx-auto md:mx-0">
             <Button
               size="lg"
               className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold text-lg py-6"
-              onClick={() => onJoin(isVideoEnabled, isAudioEnabled, processedStream)}
+              disabled={!userName.trim() || isJoining}
+              onClick={handleJoinClick}
             >
-              Join Now
+              {isJoining ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                "Join Now"
+              )}
             </Button>
             <Button
               variant="outline"
               size="lg"
               className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-900"
               onClick={onCancel}
+              disabled={isJoining}
             >
               Cancel
             </Button>

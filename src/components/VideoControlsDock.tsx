@@ -23,7 +23,8 @@ import {
   MoreVertical,
   Users,
   Info,
-  Smile
+  Smile,
+  PictureInPicture
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -57,6 +58,7 @@ interface VideoControlsDockProps {
   onToggleEffects: () => void;
   onNavigateToDashboard?: () => void;
   onLeaveMeeting: () => void;
+  onTogglePiP?: () => void;
 }
 
 export const VideoControlsDock = ({
@@ -78,7 +80,8 @@ export const VideoControlsDock = ({
   onToggleHand,
   onToggleEffects,
   onNavigateToDashboard,
-  onLeaveMeeting
+  onLeaveMeeting,
+  onTogglePiP
 }: VideoControlsDockProps) => {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -328,6 +331,17 @@ export const VideoControlsDock = ({
           >
              <Smile className="h-5 w-5" />
           </Button>
+
+          {onTogglePiP && (
+             <Button
+               onClick={onTogglePiP}
+               className={cn("h-10 w-10 rounded-full ml-2", colors.btnGhost)}
+               size="icon"
+               title="Picture-in-Picture"
+             >
+                <PictureInPicture className="h-5 w-5" />
+             </Button>
+          )}
 
           {onNavigateToDashboard && (
              <Button
