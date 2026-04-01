@@ -23,7 +23,8 @@ export const useWebRTC = (
   userId: string,
   initialVideoEnabled: boolean = true,
   initialAudioEnabled: boolean = true,
-  isHost: boolean = false
+  isHost: boolean = false,
+  forceOptimize: boolean = false
 ) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -72,8 +73,25 @@ export const useWebRTC = (
     updateParticipantCount,
     getOptimizedMediaConstraints,
     applyOptimizedBitrate,
-    shouldRenderVideo
+    shouldRenderVideo,
+    setOptimizationSettings
   } = useManyParticipantsOptimization();
+
+  // Apply force optimize if requested by URL parameter
+  useEffect(() => {
+    if (forceOptimize) {
+      console.log('Applying forced optimization mode for large meeting');
+      setOptimizationSettings(prev => ({
+        ...prev,
+        videoQuality: 'low',
+        limits: {
+          ...prev.limits,
+          maxVideoStreams: 6, // Severely limit video rendering to preserve CPU
+          autoQualityThreshold: 5
+        }
+      }));
+    }
+  }, [forceOptimize, setOptimizationSettings]);
 
   // Use the signaling hook
   const { 

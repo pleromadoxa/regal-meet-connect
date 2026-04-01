@@ -26,6 +26,7 @@ interface VideoConferenceProps {
   initialAudioEnabled?: boolean;
   onLeaveMeeting: () => void;
   onNavigateToDashboard?: () => void;
+  forceOptimize?: boolean;
 }
 
 export const VideoConference = ({ 
@@ -35,7 +36,8 @@ export const VideoConference = ({
   initialVideoEnabled = true,
   initialAudioEnabled = true,
   onLeaveMeeting,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  forceOptimize = false
 }: VideoConferenceProps) => {
   const { user } = useAuth();
   const [sessionId] = useState(() => user?.id || crypto.randomUUID());
@@ -90,7 +92,7 @@ export const VideoConference = ({
     connectedPeers,
     peerUserNames,
     togglePiP
-  } = useWebRTC(meetingId, userName, sessionId, initialVideoEnabled, initialAudioEnabled, isHost);
+  } = useWebRTC(meetingId, userName, sessionId, initialVideoEnabled, initialAudioEnabled, isHost, forceOptimize);
 
   // Background meeting management
   const { 

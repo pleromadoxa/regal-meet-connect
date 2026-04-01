@@ -22,6 +22,7 @@ const Meeting = () => {
 
   const urlUserName = searchParams.get('userName') || searchParams.get('name') || '';
   const isHost = searchParams.get('host') === 'true';
+  const isLargeMeeting = searchParams.get('optimize') === 'true';
 
   // State to hold the final username, allowing it to be updated if prompted
   const [userName, setUserName] = useState<string>('');
@@ -167,6 +168,7 @@ const Meeting = () => {
       initialAudioEnabled={initialMediaState.audio}
       onLeaveMeeting={handleLeaveMeeting}
       onNavigateToDashboard={handleNavigateToDashboard}
+      forceOptimize={isLargeMeeting}
     />
   );
 };
