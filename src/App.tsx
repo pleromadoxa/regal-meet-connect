@@ -13,10 +13,16 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Meeting from "./pages/Meeting";
 import { SessionManager } from "./components/SessionManager";
+import { useKeepAlive } from "@/hooks/useKeepAlive";
 
 import { AudioMeeting } from "./pages/AudioMeeting";
 
 const queryClient = new QueryClient();
+
+const KeepAliveBoundary = () => {
+  useKeepAlive();
+  return null;
+};
 
 const App = () => (
   <ErrorBoundary>
@@ -25,6 +31,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <KeepAliveBoundary />
           <SessionManager />
           <Routes>
             <Route path="/" element={<Index />} />

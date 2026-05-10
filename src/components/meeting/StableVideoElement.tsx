@@ -130,7 +130,8 @@ export const StableVideoElement = memo(({
       }}
       style={{
         display: 'block',
-        background: 'linear-gradient(45deg, #1e293b, #334155)'
+        background: 'linear-gradient(45deg, #1e293b, #334155)',
+        transform: isLocal ? 'scaleX(-1)' : undefined,
       }}
     />
   );

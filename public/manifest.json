@@ -1,6 +1,6 @@
 {
-  "name": "Regal Meetings",
-  "short_name": "Regal Meet",
+  "name": "Regal Meeting",
+  "short_name": "Regal Meeting",
   "description": "Professional video conferencing platform",
   "start_url": "/",
   "display": "standalone",

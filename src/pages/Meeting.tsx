@@ -1,6 +1,7 @@
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { VideoConference } from '@/components/VideoConference';
+import { MeetingLobby } from '@/components/meeting/MeetingLobby';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
@@ -13,12 +14,18 @@ const Meeting = () => {
   const [isReady, setIsReady] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [admitted, setAdmitted] = useState(false);
   const { validateMeetingId } = useMeetingValidation();
   const hasValidatedRef = useRef(false);
   const { logPageView, logMeetingJoin } = usePlatformLogging();
 
   const userName = searchParams.get('userName') || searchParams.get('name') || '';
   const isHost = searchParams.get('host') === 'true';
+
+  // Hosts skip the lobby entirely
+  useEffect(() => {
+    if (isHost) setAdmitted(true);
+  }, [isHost]);
 
   useEffect(() => {
     // Prevent multiple validations 
@@ -130,6 +137,19 @@ const Meeting = () => {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // Non-host users must wait in the lobby until the host admits them
+  if (!isHost && !admitted) {
+    return (
+      <MeetingLobby
+        meetingId={meetingId}
+        userId={user!.id}
+        userName={userName}
+        onAdmit={() => setAdmitted(true)}
+        onCancel={() => navigate('/dashboard', { replace: true })}
+      />
     );
   }
 
