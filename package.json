@@ -1,12 +1,3 @@
-{
-  "name": "regal-meet-connect",
-  // ... other fields
-  "homepage": ".", // <-- ADD or CHANGE this line
-  "dependencies": {
-    // ...
-  }
-}
-
 
 {
   "name": "vite_react_shadcn_ts",
