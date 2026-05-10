@@ -1,5 +1,5 @@
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { MeetingLobby } from '@/components/meeting/MeetingLobby';
 import { useAuth } from '@/hooks/useAuth';
