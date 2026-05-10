@@ -14,6 +14,7 @@ import { ParticipantJoinLeaveNotifications } from './meeting/ParticipantJoinLeav
 import { ConnectionQualityIndicator } from './meeting/ConnectionQualityIndicator';
 import { MediaPermissionsModal } from './meeting/MediaPermissionsModal';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
+import { useLobbyHost } from '@/hooks/useLobbyHost';
 import { supabase } from '@/integrations/supabase/client';
 
 interface VideoConferenceProps {
@@ -39,6 +40,9 @@ export const VideoConference = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handNotifications, setHandNotifications] = useState<any[]>([]);
+
+  // Listen for guest "knock" requests when this user is the host
+  useLobbyHost(meetingId, isHost);
 
   // Media permissions management
   const {
