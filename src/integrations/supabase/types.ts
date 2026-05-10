@@ -556,7 +556,7 @@ export type Database = {
     Functions: {
       calculate_participation_duration: {
         Args: { p_joined_at: string; p_left_at?: string }
-        Returns: unknown
+        Returns: string
       }
       get_all_users_admin: {
         Args: never
