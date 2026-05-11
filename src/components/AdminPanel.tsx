@@ -11,6 +11,8 @@ import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Hom
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { AdminMeetingCreator } from './AdminMeetingCreator';
+import { ApiDocsSection } from './admin/ApiDocsSection';
+import { BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const AdminPanel = () => {
@@ -178,6 +180,10 @@ export const AdminPanel = () => {
           <TabsTrigger value="analytics" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
             <Globe className="h-4 w-4 mr-2" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="api-docs" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
+            <BookOpen className="h-4 w-4 mr-2" />
+            API Documentation
           </TabsTrigger>
         </TabsList>
 
@@ -496,6 +502,10 @@ export const AdminPanel = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="api-docs" className="space-y-6">
+          <ApiDocsSection />
         </TabsContent>
       </Tabs>
     </div>
