@@ -151,6 +151,85 @@ export type Database = {
           },
         ]
       }
+      meeting_invite_call_recipients: {
+        Row: {
+          call_id: string
+          created_at: string
+          id: string
+          invitee_email: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          call_id: string
+          created_at?: string
+          id?: string
+          invitee_email: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          call_id?: string
+          created_at?: string
+          id?: string
+          invitee_email?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_invite_call_recipients_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_invite_calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_invite_calls: {
+        Row: {
+          created_at: string
+          expires_at: string
+          host_display_name: string | null
+          host_id: string
+          id: string
+          is_video: boolean
+          meeting_id: string
+          scheduled_meeting_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          host_display_name?: string | null
+          host_id: string
+          id?: string
+          is_video?: boolean
+          meeting_id: string
+          scheduled_meeting_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          host_display_name?: string | null
+          host_id?: string
+          id?: string
+          is_video?: boolean
+          meeting_id?: string
+          scheduled_meeting_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_invite_calls_scheduled_meeting_id_fkey"
+            columns: ["scheduled_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_participants: {
         Row: {
           city: string | null
