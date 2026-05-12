@@ -257,7 +257,7 @@ export const VideoConference = ({
   const showBackgroundIndicator = !isVisible && !!localStream;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+    <div className="min-h-screen bg-[#202124] relative overflow-hidden">
       <div className="relative z-10 flex flex-col h-screen">
         {/* Meeting Header */}
         <MeetingHeader
