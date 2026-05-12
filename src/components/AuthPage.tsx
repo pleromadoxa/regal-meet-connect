@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import authHero from '@/assets/auth-hero.jpg';
+import logo from '@/assets/regal-logo.png';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
@@ -42,7 +43,11 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
         });
         if (error) throw error;
         setTimeout(() => logActivity('user_signup', undefined), 1000);
-        toast({ title: 'Account Created!', description: 'Please check your email to verify your account' });
+        // Fire-and-forget welcome email; don't block UX if not configured
+        supabase.functions
+          .invoke('send-welcome-email', { body: { email, name: displayName } })
+          .catch((err) => console.warn('Welcome email failed:', err));
+        toast({ title: 'Account Created!', description: 'Welcome to Regal Meeting — check your inbox.' });
       }
     } catch (error: any) {
       toast({ title: 'Authentication Error', description: error.message, variant: 'destructive' });
@@ -64,9 +69,7 @@ export const AuthPage = ({ onAuthSuccess }: AuthPageProps) => {
       <div className="relative flex-1 flex flex-col px-6 sm:px-10 lg:px-16 py-8 bg-gradient-to-br from-[#0a0612] via-[#0d0818] to-[#160a26]">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <Video className="h-5 w-5 text-white" />
-          </div>
+          <img src={logo} alt="Regal Meeting" className="h-11 w-11 rounded-xl shadow-lg shadow-orange-500/30" />
           <span className="text-white font-bold text-xl tracking-tight">Regal Meeting</span>
         </div>
 

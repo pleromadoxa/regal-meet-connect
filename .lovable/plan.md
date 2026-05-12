@@ -1,79 +1,44 @@
-# Plan: API Docs + 300-Participant Calls + Google Meet UI
+# Comprehensive Update Plan
 
-## 1. API Documentation (MD + PDF)
+A lot is bundled here — I'll execute it in a single pass, but flagging scope so nothing gets lost.
 
-Create `public/docs/regal-meeting-api.md` — a single comprehensive markdown covering:
+## 1. New Logo + Splash Screen
+- Save uploaded icon to `src/assets/regal-logo.png` and `public/favicon.png`.
+- Replace existing logo references across `AuthPage`, `MeetingHeader`, `DashboardHeader`, `Footer`, `index.html` favicon, manifest icons, and `og-image`.
+- Add `src/components/SplashScreen.tsx` — full-screen brand gradient with the logo (scale + fade animation, ~1.2s), shown once on first app mount before routes render in `App.tsx`.
 
-- **Project credentials**: Supabase URL, anon key, project ref, REST/Realtime/Storage endpoints
-- **Auth**: sign up, sign in, sign out, session refresh, password reset (full request/response)
-- **Profiles**: read + update `profiles` (display_name, avatar_url) — including upload to `meeting-files` bucket
-- **User Settings**: full CRUD on `user_settings` (theme, notifications, defaults)
-- **Meetings**: create, list, join validation, update, end, delete on `meetings`
-- **Scheduled Meetings**: CRUD on `scheduled_meetings` + invitations table + `send-meeting-invitation` edge function
-- **Meeting Participants**: join, leave, mute toggle, list (host only), location fields
-- **Recent Meetings**: `user_recent_meetings` read/insert
-- **Recordings**: `meeting_recordings` + `meeting-recordings` storage bucket
-- **File Sharing**: `meeting_file_shares` + `meeting-files` bucket upload/download
-- **Captions**: `meeting_captions` insert/select
-- **Notifications**: `notification_history`, `user_push_tokens` register/update
-- **Realtime channels**:
-  - `meeting-{id}` (WebRTC signaling: offer/answer/ice)
-  - `meeting-lobby-{id}` (knock/admit/deny)
-  - `meeting-hands-{id}` (hand raise broadcast)
-  - `meeting-reactions-{id}`
-  - `meeting-chat-{id}`
-- **WebRTC**: STUN servers, signaling payload shapes, peer flow
-- **Edge Functions**: `log-activity`, `send-meeting-invitation` (URLs, payloads)
-- **Color Scheme & Design Tokens**: from `index.css` (HSL primary, secondary, accent, background, etc.)
-- **Typography & UI**: fonts, button styles, gradients
-- **Mobile Implementation Notes**: recommended libraries (supabase-js, @livekit or react-native-webrtc), permission flow, lobby UX
+## 2. Settings Page Fix + Avatar Upload
+- Audit `src/pages/Settings.tsx` (currently broken — likely missing route guard, missing profile fetch, or import error). Rewrite as a clean tabbed page: Profile, Notifications, Devices, Account.
+- **Avatar upload**: Create `avatars` storage bucket (public) via migration with RLS (owner-write, public-read). Wire `<AvatarUpload>` to `profiles.avatar_url`. Update `useAuth` so avatar shows in headers immediately.
+- Save display_name, bio, notification prefs into `profiles` (add columns if missing).
 
-PDF generated via Python `reportlab` from same content → `public/docs/regal-meeting-api.pdf`. Both committed so they're served from `/docs/...`.
+## 3. Call Screen — Google Meet Overhaul
+- Replace `MeetingLayout` rendering with a new `GoogleMeetLayout`:
+  - Dark canvas (#202124), rounded 12px tiles with name pill bottom-left + mic indicator, blue speaking ring.
+  - Grid auto-layout: 1/2/4/6/9/12/16/25 tiles, scales gracefully via CSS grid `auto-fit minmax(clamp(140px,20vw,320px),1fr)`.
+  - Active speaker promotion + tap-to-pin, sidebar strip when content shared.
+  - Highly mobile responsive (1 col phone portrait, 2 col landscape, fullscreen pinned).
+- `VideoControlsDock` is already Meet-styled — verify wiring (mic, cam, captions, hand, present, reactions, people, chat, more, leave) and make sure each handler is connected in `VideoConference.tsx`. Wire `onToggleParticipants`, reactions panel, hand-raise broadcast.
+- Self-view PiP when local user is paginated out.
+- Verify WebRTC flows: ensure local stream renders mirrored, remote audio plays (autoplay unmuted), connection state surfaces in `ConnectionQualityIndicator`.
 
-## 2. Admin Panel — API Documentation Section
+## 4. Email System (Lovable Emails)
+- Set up email infrastructure (queue, templates) via Lovable's built-in system (no Resend).
+- **Welcome email** on first signup: trigger via auth-email-hook signup template OR a dedicated transactional email called from a `handle_new_user` extension. I'll use the **transactional path**: edge function `send-welcome-email` invoked from `useAuth` right after successful signup. Template uses logo, gradient header, "Welcome to Regal Meeting", taglines ("Connecting people across the globe"), CTA "Open Regal Meeting", footer "Powered by Regal Network Technologies".
+- **Meeting invitation email**: replace existing `send-meeting-invitation` edge function with a beautifully branded HTML template. Triggered when host schedules a meeting / adds invitees. Includes inviter name, meeting title, date/time, meeting ID, join link, "Powered by Regal Network Technologies".
+- A DB trigger on `meeting_invitations` insert calls the edge function via `pg_net` so mobile app inserts also fire the email automatically — this keeps it Supabase-realtime friendly for push notification fan-out.
 
-Edit `src/components/AdminPanel.tsx`:
-- New tab/section "API Documentation"
-- Description card + two big download buttons (MD, PDF) linking to `/docs/regal-meeting-api.md` and `.pdf`
-- Preview snippet showing endpoints overview
+## 5. Push Notifications (App-side)
+- Supabase realtime subscription on `meeting_invitations` for the current user's email already powers in-app toast notifications. I'll add a `useInvitationNotifications` hook so invitees see a toast + bell badge instantly (mirrors what the mobile app will subscribe to).
+- True OS push (FCM/APNs) is mobile-app territory — out of scope for the web app but the channel + table are shared so the mobile app can subscribe to the same realtime stream.
 
-## 3. 300+ Participant WebRTC Grid
+## Technical notes
+- Email domain prerequisite: Lovable Emails needs a verified sender domain. If none configured, I'll prompt you with the setup dialog before deploying email functions.
+- Migrations: `avatars` bucket + RLS, `profiles.bio` + `profiles.notification_prefs` columns if missing, trigger on `meeting_invitations`.
+- No business-logic changes outside what's listed.
 
-Update `src/components/meeting/ResponsiveVideoGrid.tsx`:
-- Pagination concept: show first N tiles (e.g. 12 desktop / 6 mobile) of "active" participants (host + speakers + local)
-- "View All Participants" button overlay when count > visible
-- Modal/sheet listing all participants with avatars; clicking pins them into the visible grid
-- Active speaker detection promotes speakers automatically (use existing `useSpeakingDetection`)
-- Hidden participants still receive audio (don't render `<video>` tags to save GPU)
+## Out of scope
+- Native mobile push delivery (handled by mobile app using same Supabase channel).
+- Migrating WebRTC mesh to SFU (mesh remains, paginated rendering already in place for 300+).
 
-`src/hooks/useWebRTC.ts`: ensure mesh remains stable; for >50 peers, log warning recommending SFU. Document this in API docs.
-
-## 4. Google Meet-Style UI
-
-Edit `src/components/VideoControlsDock.tsx`:
-- Pill/rounded action buttons, dark surface, white icons
-- Order: Mic | Cam | Caption | Screen Share | Reactions | Raise Hand | Chat | Participants | More (settings/effects) | End Call (red)
-- End-call button distinct red rounded-rectangle
-- Mobile: condensed row, "More" sheet for overflow
-
-Edit `src/components/meeting/MeetingHeader.tsx`: minimal top bar — meeting name, time, participant count chip, info button.
-
-## 5. Self-View + Audio Verification
-
-Already mirrors local video. Add a small self-view PiP in bottom-right when local user is hidden (paginated out).
-
-## 6. Mobile Responsiveness
-
-- Grid uses `clamp()`-based gap, smaller min-tile on `<640px`
-- Controls dock collapses to 5 primary buttons + sheet
-- Participants list becomes bottom sheet on mobile
-
-## Files
-
-**New**: `public/docs/regal-meeting-api.md`, `public/docs/regal-meeting-api.pdf`, `src/components/admin/ApiDocsSection.tsx`, `src/components/meeting/AllParticipantsSheet.tsx`
-
-**Edited**: `AdminPanel.tsx`, `ResponsiveVideoGrid.tsx`, `VideoControlsDock.tsx`, `MeetingHeader.tsx`, `ParticipantGrid.tsx` (pass active-speaker info)
-
-## Out of Scope
-
-- Migrating mesh WebRTC to SFU (would need LiveKit/mediasoup server). Documented as recommendation in API docs for true 300-person scaling. Current mesh + lazy rendering will function but quality degrades past ~20 simultaneous video publishers — consistent with browser limits.
+Approve and I'll execute end-to-end.

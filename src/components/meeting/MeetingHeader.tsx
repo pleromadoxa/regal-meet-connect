@@ -1,18 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Copy, 
-  Users, 
-  Hand, 
-  Maximize, 
-  Settings, 
-  Menu,
-  LogOut,
-  Video,
-  Mic
-} from 'lucide-react';
+import { Copy, Users, Settings, MoreVertical, Shield, Maximize, Minimize, LogOut, Video, Mic } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useIsMobile } from '@/hooks/use-mobile';
+import logo from '@/assets/regal-logo.png';
 
 interface MeetingHeaderProps {
   meetingId: string;
@@ -30,6 +27,18 @@ interface MeetingHeaderProps {
   onSignOut: () => void;
 }
 
+const formatElapsed = (sec: number) => {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+};
+
+/**
+ * Minimal Google Meet-style top bar.
+ * Shows logo, meeting ID, elapsed time, participant count, and a more menu.
+ */
 export const MeetingHeader = ({
   meetingId,
   isCurrentUserHost,
@@ -43,176 +52,95 @@ export const MeetingHeader = ({
   onToggleParticipants,
   onToggleVideoMode,
   onNavigateToSettings,
-  onSignOut
+  onSignOut,
 }: MeetingHeaderProps) => {
   const isMobile = useIsMobile();
+  const [elapsed, setElapsed] = useState(0);
 
-  if (isMobile) {
-    return (
-      <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 p-4">
-        {/* Top row with logo and main info */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">R</span>
-            </div>
-            <div>
-              <h1 className="text-white font-semibold text-lg">Regal Meetings</h1>
-              <p className="text-slate-400 text-sm">ID: {meetingId}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={onToggleVideoMode}
-              size="sm"
-              variant={isVideoMode ? "secondary" : "ghost"}
-              className={isVideoMode ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "text-slate-300 hover:bg-slate-700/50"}
-            >
-              {isVideoMode ? <Video className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-            </Button>
-            <Button
-              onClick={onNavigateToSettings}
-              size="sm"
-              variant="ghost"
-              className="text-white hover:bg-slate-700/50"
-            >
-              <Settings className="h-5 w-5" />
-            </Button>
-            <Button
-              onClick={onSignOut}
-              size="sm"
-              variant="ghost"
-              className="text-red-400 hover:bg-red-500/10"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Bottom row with meeting info and controls */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-white text-sm font-medium">02:10</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 bg-slate-800/80 rounded-full px-3 py-2">
-              <Users className="h-4 w-4 text-slate-300" />
-              <span className="text-white text-sm font-medium">{totalParticipantCount}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 bg-green-500/20 rounded-full px-3 py-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="text-green-400 text-sm font-medium">Good</span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={onCopyMeetingId}
-              size="sm"
-              variant="ghost"
-              className="text-slate-300 hover:bg-slate-700/50 px-3 py-2 rounded-lg"
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              <span className="text-sm">Copy ID</span>
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">R</span>
-            </div>
-            <div>
-              <h1 className="text-white font-semibold">Regal Meetings</h1>
-              <p className="text-slate-400 text-sm">ID: {meetingId}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Badge variant="secondary" className="bg-slate-800/80 text-slate-300 border-slate-600">
-              <Users className="h-3 w-3 mr-1" />
-              {totalParticipantCount} participants
-            </Badge>
-            
-            {handNotifications.length > 0 && (
-              <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40 animate-pulse">
-                <Hand className="h-3 w-3 mr-1" />
-                {handNotifications.length} raised
-              </Badge>
-            )}
-          </div>
+    <header className="bg-[#202124]/95 backdrop-blur-md border-b border-white/5 px-3 sm:px-4 py-2 flex items-center justify-between z-30">
+      {/* Left: brand + meeting */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <img src={logo} alt="Regal Meeting" className="h-8 w-8 rounded-lg flex-shrink-0" />
+        <div className="hidden sm:block min-w-0">
+          <div className="text-white text-sm font-semibold truncate">Regal Meeting</div>
+          <div className="text-white/50 text-xs truncate">{meetingId}</div>
         </div>
-
-        <div className="flex items-center space-x-2">
-          <Button
-            onClick={onCopyMeetingId}
-            size="sm"
-            variant="ghost"
-            className="text-slate-300 hover:bg-slate-700/50"
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Meeting ID
-          </Button>
-
-          <Button
-            onClick={onToggleVideoMode}
-            size="sm"
-            variant={isVideoMode ? "secondary" : "ghost"}
-            className={isVideoMode ? "bg-blue-500/20 text-blue-300 border-blue-500/40" : "text-slate-300 hover:bg-slate-700/50"}
-          >
-            {isVideoMode ? <Video className="h-4 w-4 mr-2" /> : <Mic className="h-4 w-4 mr-2" />}
-            {isVideoMode ? "Video" : "Audio Only"}
-          </Button>
-
-          <Button
-            onClick={onToggleParticipants}
-            size="sm"
-            variant={showParticipants ? "secondary" : "ghost"}
-            className={showParticipants ? "bg-orange-500/20 text-orange-300 border-orange-500/40" : "text-slate-300 hover:bg-slate-700/50"}
-          >
-            <Users className="h-4 w-4 mr-2" />
-            Participants
-          </Button>
-
-          <Button
-            onClick={onToggleFullscreen}
-            size="sm"
-            variant="ghost"
-            className="text-slate-300 hover:bg-slate-700/50"
-          >
-            <Maximize className="h-4 w-4" />
-          </Button>
-
-          <Button
-            onClick={onNavigateToSettings}
-            size="sm"
-            variant="ghost"
-            className="text-slate-300 hover:bg-slate-700/50"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-
-          <Button
-            onClick={onSignOut}
-            size="sm"
-            variant="ghost"
-            className="text-red-400 hover:bg-red-500/10"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
+        <div className="sm:hidden text-white/70 text-xs font-mono truncate max-w-[100px]">{meetingId}</div>
       </div>
-    </div>
+
+      {/* Center: live indicator + timer */}
+      <div className="hidden md:flex items-center gap-2 text-white/70 text-sm">
+        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+        <span className="font-mono">{formatElapsed(elapsed)}</span>
+        {isCurrentUserHost && (
+          <span className="ml-2 inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-300 text-xs px-2 py-0.5 rounded-full border border-yellow-500/20">
+            <Shield className="h-3 w-3" /> Host
+          </span>
+        )}
+      </div>
+
+      {/* Right: actions */}
+      <div className="flex items-center gap-1 sm:gap-2">
+        <Button
+          onClick={onCopyMeetingId}
+          variant="ghost"
+          size="sm"
+          className="text-white/80 hover:bg-white/10 hover:text-white"
+          aria-label="Copy meeting ID"
+        >
+          <Copy className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Copy ID</span>
+        </Button>
+
+        <Button
+          onClick={onToggleParticipants}
+          variant="ghost"
+          size="sm"
+          className={`hover:bg-white/10 hover:text-white ${
+            showParticipants ? 'bg-white/15 text-white' : 'text-white/80'
+          }`}
+          aria-label="Show participants"
+        >
+          <Users className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">{totalParticipantCount}</span>
+          {handNotifications.length > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full bg-yellow-500 text-[10px] text-black font-bold">
+              {handNotifications.length}
+            </span>
+          )}
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 hover:text-white" aria-label="More">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-[#202124] text-white border-white/10 min-w-[200px]">
+            <DropdownMenuItem onClick={onToggleVideoMode}>
+              {isVideoMode ? <Mic className="h-4 w-4 mr-2" /> : <Video className="h-4 w-4 mr-2" />}
+              {isVideoMode ? 'Switch to audio-only' : 'Switch to video'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onToggleFullscreen}>
+              {isFullscreen ? <Minimize className="h-4 w-4 mr-2" /> : <Maximize className="h-4 w-4 mr-2" />}
+              {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onNavigateToSettings}>
+              <Settings className="h-4 w-4 mr-2" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuItem onClick={onSignOut} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
+              <LogOut className="h-4 w-4 mr-2" /> Leave & sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
   );
 };

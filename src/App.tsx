@@ -16,6 +16,8 @@ import { SessionManager } from "./components/SessionManager";
 import { useKeepAlive } from "@/hooks/useKeepAlive";
 
 import { AudioMeeting } from "./pages/AudioMeeting";
+import { SplashScreen } from "./components/SplashScreen";
+import { useState } from "react";
 
 const queryClient = new QueryClient();
 
@@ -24,12 +26,25 @@ const KeepAliveBoundary = () => {
   return null;
 };
 
-const App = () => (
+const App = () => {
+  const [splashDone, setSplashDone] = useState(
+    () => typeof window !== 'undefined' && sessionStorage.getItem('regal-splash-shown') === '1'
+  );
+
+  return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        {!splashDone && (
+          <SplashScreen
+            onComplete={() => {
+              sessionStorage.setItem('regal-splash-shown', '1');
+              setSplashDone(true);
+            }}
+          />
+        )}
         <BrowserRouter>
           <KeepAliveBoundary />
           <SessionManager />
@@ -47,6 +62,7 @@ const App = () => (
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;
