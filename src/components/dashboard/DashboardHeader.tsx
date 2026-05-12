@@ -1,8 +1,9 @@
 
 import { Button } from '@/components/ui/button';
-import { Crown, RefreshCw, Settings, LogOut } from 'lucide-react';
+import { RefreshCw, Settings, LogOut } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AdminAccessButton } from '@/components/AdminAccessButton';
+import logo from '@/assets/regal-logo.png';
 
 interface DashboardHeaderProps {
   displayName: string;
@@ -26,9 +27,7 @@ export const DashboardHeader = ({
   return (
     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-0 mb-8">
       <div className="flex items-center space-x-3">
-        <div className="p-3 bg-gradient-to-r from-orange-400 to-orange-600 rounded-xl shadow-2xl">
-          <Crown className="h-8 w-8 text-white" />
-        </div>
+        <img src={logo} alt="Regal Meeting" className="h-14 w-14 rounded-xl shadow-2xl" />
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-white drop-shadow-lg">
             Regal Meetings Dashboard
