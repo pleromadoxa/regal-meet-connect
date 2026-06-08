@@ -175,16 +175,24 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     
     const signalingChannel = initializeSignaling();
 
+    // Perfect-negotiation state per peer
+    const pendingCandidatesRef = new Map<string, RTCIceCandidateInit[]>();
+    const makingOfferRef = new Map<string, boolean>();
+    // The peer with the lexicographically smaller ID is "polite"
+    const isPolite = (remoteId: string) => userId < remoteId;
+
     const createPeerConnection = (remoteUserId: string) => {
-      console.log('Creating peer connection for:', remoteUserId);
+      console.log('Creating peer connection for:', remoteUserId, 'polite:', isPolite(remoteUserId));
       const pc = new RTCPeerConnection(getOptimizedRTCConfiguration());
+      makingOfferRef.set(remoteUserId, false);
+      pendingCandidatesRef.set(remoteUserId, []);
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           sendSignalingMessage({
             type: 'ice-candidate',
             to: remoteUserId,
-            data: event.candidate
+            data: event.candidate.toJSON(),
           });
         }
       };
@@ -195,6 +203,27 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
         setRemoteStreams(new Map(remoteStreamsRef.current));
       };
 
+      pc.oniceconnectionstatechange = () => {
+        console.log(`ICE state for ${remoteUserId}:`, pc.iceConnectionState);
+        if (pc.iceConnectionState === 'failed') {
+          try { pc.restartIce(); } catch (e) { console.warn('restartIce failed', e); }
+        }
+      };
+
+      pc.onnegotiationneeded = async () => {
+        try {
+          makingOfferRef.set(remoteUserId, true);
+          const offer = await pc.createOffer();
+          if (pc.signalingState !== 'stable') return;
+          await pc.setLocalDescription(offer);
+          sendSignalingMessage({ type: 'offer', to: remoteUserId, data: pc.localDescription });
+        } catch (err) {
+          console.error('negotiationneeded error:', err);
+        } finally {
+          makingOfferRef.set(remoteUserId, false);
+        }
+      };
+
       pc.onconnectionstatechange = () => {
         console.log('Peer connection state change:', pc.connectionState);
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
@@ -202,6 +231,8 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
           remoteStreamsRef.current.delete(remoteUserId);
           setRemoteStreams(new Map(remoteStreamsRef.current));
           peerConnectionsRef.current.delete(remoteUserId);
+          pendingCandidatesRef.delete(remoteUserId);
+          makingOfferRef.delete(remoteUserId);
         }
       };
 
@@ -221,61 +252,83 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
       return pc;
     };
 
+    const flushPendingCandidates = async (remoteUserId: string, pc: RTCPeerConnection) => {
+      const queue = pendingCandidatesRef.get(remoteUserId) || [];
+      while (queue.length) {
+        const c = queue.shift()!;
+        try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
+        catch (err) { console.warn('Failed to flush queued ICE candidate:', err); }
+      }
+    };
+
     const handleSignalingMessage = async (message: SignalingMessage) => {
       const remoteUserId = message.from;
 
       if (message.type === 'offer') {
-        console.log('Received offer from:', remoteUserId);
         let pc = peerConnectionsRef.current.get(remoteUserId);
-        if (!pc) {
-          pc = createPeerConnection(remoteUserId);
-          peerConnectionsRef.current.set(remoteUserId, pc);
+        if (!pc) pc = createPeerConnection(remoteUserId);
+
+        const polite = isPolite(remoteUserId);
+        const offerCollision = makingOfferRef.get(remoteUserId) || pc.signalingState !== 'stable';
+        if (offerCollision && !polite) {
+          console.log('Impolite peer ignoring colliding offer from', remoteUserId);
+          return;
         }
 
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          if (offerCollision) {
+            await Promise.all([
+              pc.setLocalDescription({ type: 'rollback' } as any).catch(() => {}),
+              pc.setRemoteDescription(new RTCSessionDescription(message.data)),
+            ]);
+          } else {
+            await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          }
+          await flushPendingCandidates(remoteUserId, pc);
           const answer = await pc.createAnswer();
-          await pc.setLocalDescription(new RTCSessionDescription(answer));
-
-          sendSignalingMessage({
-            type: 'answer',
-            to: remoteUserId,
-            data: answer
-          });
+          await pc.setLocalDescription(answer);
+          sendSignalingMessage({ type: 'answer', to: remoteUserId, data: pc.localDescription });
         } catch (error) {
           console.error('Error handling offer:', error);
         }
       } else if (message.type === 'answer') {
-        console.log('Received answer from:', remoteUserId);
         const pc = peerConnectionsRef.current.get(remoteUserId);
-        if (pc) {
+        if (pc && pc.signalingState === 'have-local-offer') {
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+            await flushPendingCandidates(remoteUserId, pc);
           } catch (error) {
             console.error('Error handling answer:', error);
           }
         }
       } else if (message.type === 'ice-candidate') {
         const pc = peerConnectionsRef.current.get(remoteUserId);
-        if (pc && message.data) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(message.data));
-          } catch (error) {
-            console.error('Error adding ICE candidate:', error);
+        if (!pc || !message.data) return;
+        if (!pc.remoteDescription || !pc.remoteDescription.type) {
+          const q = pendingCandidatesRef.get(remoteUserId) || [];
+          q.push(message.data);
+          pendingCandidatesRef.set(remoteUserId, q);
+          return;
+        }
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(message.data));
+        } catch (error) {
+          if (!(makingOfferRef.get(remoteUserId) === false && isPolite(remoteUserId))) {
+            console.warn('Error adding ICE candidate (ignored):', error);
           }
         }
       } else if (message.type === 'leave') {
-        console.log('Received leave from:', remoteUserId);
         const pc = peerConnectionsRef.current.get(remoteUserId);
         if (pc) {
           pc.close();
           peerConnectionsRef.current.delete(remoteUserId);
           remoteStreamsRef.current.delete(remoteUserId);
           setRemoteStreams(new Map(remoteStreamsRef.current));
+          pendingCandidatesRef.delete(remoteUserId);
+          makingOfferRef.delete(remoteUserId);
         }
       } else if (message.type === 'audio-toggle') {
-        console.log('Received audio toggle from:', remoteUserId, message.data.enabled);
-        // Handle audio toggle event if needed
+        // Handled by listeners elsewhere
       }
     };
 
@@ -286,24 +339,19 @@ export const useWebRTC = (meetingId: string, userName: string, userId: string) =
     window.addEventListener('webrtc-signaling', handleWebRTCSignaling);
 
     const createOffer = async (remoteUserId: string) => {
-      console.log('Creating offer for:', remoteUserId);
-      if (peerConnectionsRef.current.has(remoteUserId)) {
-        console.log('Peer connection already exists for:', remoteUserId);
+      // Only the peer with the smaller ID initiates to avoid glare
+      if (!(userId < remoteUserId)) {
+        console.log('Skipping offer initiation (other peer is initiator):', remoteUserId);
+        // Still create the PC so we can answer when their offer arrives
+        if (!peerConnectionsRef.current.has(remoteUserId)) createPeerConnection(remoteUserId);
         return;
       }
-
+      if (peerConnectionsRef.current.has(remoteUserId)) return;
       const pc = createPeerConnection(remoteUserId);
-      peerConnectionsRef.current.set(remoteUserId, pc);
-
       try {
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(new RTCSessionDescription(offer));
-
-        sendSignalingMessage({
-          type: 'offer',
-          to: remoteUserId,
-          data: offer
-        });
+        await pc.setLocalDescription(offer);
+        sendSignalingMessage({ type: 'offer', to: remoteUserId, data: pc.localDescription });
       } catch (error) {
         console.error('Error creating offer:', error);
       }
