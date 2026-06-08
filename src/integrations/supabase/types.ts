@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_calls: {
+        Row: {
+          answered_at: string | null
+          callee_display_name: string | null
+          callee_id: string
+          callee_phone: string
+          caller_display_name: string | null
+          caller_id: string
+          caller_phone: string
+          caller_platform: string
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          is_video: boolean
+          started_at: string
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          callee_display_name?: string | null
+          callee_id: string
+          callee_phone: string
+          caller_display_name?: string | null
+          caller_id: string
+          caller_phone: string
+          caller_platform?: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          is_video?: boolean
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          callee_display_name?: string | null
+          callee_id?: string
+          callee_phone?: string
+          caller_display_name?: string | null
+          caller_id?: string
+          caller_phone?: string
+          caller_platform?: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          is_video?: boolean
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_calls_callee_id_fkey"
+            columns: ["callee_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_calls_caller_id_fkey"
+            columns: ["caller_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_admins: {
         Row: {
           id: string
@@ -222,6 +291,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "meeting_invite_calls_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "meeting_invite_calls_scheduled_meeting_id_fkey"
             columns: ["scheduled_meeting_id"]
             isOneToOne: false
@@ -276,6 +352,13 @@ export type Database = {
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
             referencedColumns: ["id"]
           },
         ]
@@ -356,7 +439,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "meetings_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_history: {
         Row: {
@@ -389,7 +480,15 @@ export type Database = {
           type?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_usage_logs: {
         Row: {
@@ -419,7 +518,15 @@ export type Database = {
           user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_usage_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -446,7 +553,57 @@ export type Database = {
           id?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_contacts: {
+        Row: {
+          contact_user_id: string | null
+          created_at: string
+          display_name: string
+          id: string
+          owner_id: string
+          phone_number: string
+        }
+        Insert: {
+          contact_user_id?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          owner_id: string
+          phone_number: string
+        }
+        Update: {
+          contact_user_id?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          owner_id?: string
+          phone_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_contacts_contact_user_id_fkey"
+            columns: ["contact_user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_contacts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_meetings: {
         Row: {
@@ -500,7 +657,44 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_meetings_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_phone_numbers: {
+        Row: {
+          created_at: string
+          id: string
+          phone_number: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone_number: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone_number?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_phone_numbers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_push_tokens: {
         Row: {
@@ -527,7 +721,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_recent_meetings: {
         Row: {
@@ -581,10 +783,26 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_settings: {
         Row: {
+          biometrics_enabled: boolean | null
           camera_default_on: boolean | null
           created_at: string | null
           email_notifications: boolean | null
@@ -600,6 +818,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          biometrics_enabled?: boolean | null
           camera_default_on?: boolean | null
           created_at?: string | null
           email_notifications?: boolean | null
@@ -615,6 +834,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          biometrics_enabled?: boolean | null
           camera_default_on?: boolean | null
           created_at?: string | null
           email_notifications?: boolean | null
@@ -629,17 +849,44 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
-      [_ in never]: never
+      users_view: {
+        Row: {
+          email: string | null
+          id: string | null
+        }
+        Insert: {
+          email?: string | null
+          id?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_participation_duration: {
         Args: { p_joined_at: string; p_left_at?: string }
         Returns: string
       }
+      cancel_scheduled_meeting: {
+        Args: { p_scheduled_id: string }
+        Returns: Json
+      }
+      generate_unique_phone_number: { Args: never; Returns: string }
       get_all_users_admin: {
         Args: never
         Returns: {
@@ -662,6 +909,13 @@ export type Database = {
       log_platform_usage: {
         Args: { _action: string; _country?: string; _user_id: string }
         Returns: undefined
+      }
+      user_ids_for_invite_emails: {
+        Args: { emails: string[] }
+        Returns: {
+          normalized_email: string
+          user_id: string
+        }[]
       }
     }
     Enums: {
