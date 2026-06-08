@@ -20,7 +20,7 @@ export const useConnectionManager = (options: ConnectionManagerOptions = {}) => 
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map());
   const { toast } = useToast();
 
-  // Enhanced ICE configuration with multiple fallbacks
+  // Enhanced ICE configuration with multiple fallbacks + free TURN relays
   const getOptimizedIceServers = useCallback(() => {
     return [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -30,8 +30,10 @@ export const useConnectionManager = (options: ConnectionManagerOptions = {}) => 
       { urls: 'stun:stun4.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' },
       { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'stun:relay.metered.ca:80' },
-      { urls: 'stun:openrelay.metered.ca:80' }
+      // Free public TURN relays (openrelay.metered.ca) — critical for symmetric NAT traversal
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     ];
   }, []);
 
