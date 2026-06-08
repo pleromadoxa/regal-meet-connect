@@ -17,7 +17,7 @@ export const Footer = ({ className = "" }: FooterProps) => {
           © {new Date().getFullYear()} Regal Meet. Connecting people across the globe. all rights reserved Regal Network Technologies.
         </p>
         <p className="text-slate-600 text-xs">
-          Powered By the LoveWorld Teens and Youth Ministry
+          Powered By PalaceGate by Regal Firewall
         </p>
       </div>
     </footer>
