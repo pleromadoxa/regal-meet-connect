@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Video, Users, Shield, Zap, Phone, Mic, VideoIcon, PhoneCall, Volume2 } from 'lucide-react';
 import { Footer } from '@/components/Footer';
 import heroImage from '@/assets/hero-conference.png';
+import regalLogo from '@/assets/regal-logo.png';
 
 const Index = () => {
   const { user, signOut } = useAuth();
@@ -64,7 +65,7 @@ const Index = () => {
       <header className="container mx-auto px-4 py-4 md:py-6 safe-area-inset-top">
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Video className="h-6 w-6 md:h-8 md:w-8 text-orange-400" />
+            <img src={regalLogo} alt="Regal Meet" className="h-7 w-7 md:h-9 md:w-9" />
             <span className="text-xl md:text-2xl font-bold text-white">Regal Meet</span>
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
@@ -119,7 +120,7 @@ const Index = () => {
             <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent"> Distance</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 mb-6 font-medium animate-fade-in" style={{animationDelay: '0.1s'}}>
-            Powered By the LoveWorld Teens and Youth Ministry
+            Powered By PalaceGate by Regal Firewall
           </p>
           <p className="text-lg md:text-xl text-slate-300 mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed px-4 animate-fade-in" style={{animationDelay: '0.2s'}}>
             Experience crystal-clear video conferences with real-time captions, 
