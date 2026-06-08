@@ -64,7 +64,7 @@ const Index = () => {
       <header className="container mx-auto px-4 py-4 md:py-6 safe-area-inset-top">
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Video className="h-6 w-6 md:h-8 md:w-8 text-orange-400" />
+            <img src={(await import('@/assets/regal-logo.png')).default} alt="Regal Meet" className="h-7 w-7 md:h-9 md:w-9" />
             <span className="text-xl md:text-2xl font-bold text-white">Regal Meet</span>
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
