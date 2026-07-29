@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Regal Meeting — Premium Video Conferencing</title>
+    <meta name="description" content="Regal Meeting: crystal-clear HD video calls, secure global meetings, and seamless collaboration for teams of any size." />
+    <meta name="author" content="Quantum Regal" />
+
+    <meta property="og:title" content="Regal Meeting — Premium Video Conferencing" />
+    <meta property="og:description" content="Crystal-clear HD video calls, secure meetings, and seamless collaboration." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://meet.regalmesh.com/" />
+    <meta property="og:site_name" content="Regal Meeting" />
+    <meta property="og:image" content="https://meet.regalmesh.com/regal-logo.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Regal Meeting" />
+    <meta name="twitter:description" content="Premium video conferencing for modern teams." />
+    <meta name="twitter:image" content="https://meet.regalmesh.com/regal-logo.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0a0612" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Regal Meeting" />
+    <link rel="apple-touch-icon" href="/regal-logo.png" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preload" href="/regal-logo.png" as="image" />
+
+    <style>
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(145deg, #0a0612 0%, #160a26 45%, #1a0d2e 100%);
+      }
+      #boot-splash img {
+        width: 6rem;
+        height: 6rem;
+        animation: boot-logo-pulse 1.1s ease-in-out infinite;
+        filter: drop-shadow(0 0 32px rgba(255, 107, 53, 0.45));
+      }
+      @keyframes boot-logo-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.88; }
+        50% { transform: scale(1.06); opacity: 1; }
+      }
+    </style>
+    
+    <!-- SPA routing fallback script for shared hosting -->
+    <script type="text/javascript">
+      // Handle SPA routing redirects from 404.html
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location))
+    </script>
+  </head>
+
+  <body style="margin:0;background:#0a0612;">
+    <div id="boot-splash" aria-hidden="true">
+      <img src="/regal-logo.png" alt="" width="96" height="96" decoding="sync" />
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

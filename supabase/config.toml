@@ -1,0 +1,7 @@
+project_id = "xexnwcmqnelgzuqhkvtx"
+# Shared with Regal Mail, Buzz, Flysend, etc. Meeting migrations must NOT alter
+# regal_*, buzz_*, flysend_* tables or global auth.users triggers. See
+# 20260622150000_meeting_shared_db_isolation.sql
+
+[functions.log-activity]
+verify_jwt = false

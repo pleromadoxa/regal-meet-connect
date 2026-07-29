@@ -1,0 +1,43 @@
+{
+  "name": "Regal Meeting",
+  "short_name": "Regal Meeting",
+  "description": "Premium HD video conferencing by Quantum Regal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0612",
+  "theme_color": "#0a0612",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/regal-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/regal-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "productivity",
+    "business",
+    "communication"
+  ],
+  "shortcuts": [
+    {
+      "name": "Join a meeting",
+      "short_name": "Join",
+      "url": "/join",
+      "description": "Enter a meeting code or invite link"
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Your meetings and profile"
+    }
+  ]
+}
