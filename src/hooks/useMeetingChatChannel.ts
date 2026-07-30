@@ -1,0 +1,108 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface MeetingChatMessage {
+  id: string;
+  userName: string;
+  message: string;
+  timestamp: Date;
+}
+
+interface ChatBroadcastPayload {
+  userName: string;
+  text: string;
+  ts: number;
+  id?: string;
+}
+
+/** Realtime in-meeting chat over Supabase broadcast (meeting-chat-{id}). */
+export function useMeetingChatChannel(meetingId: string | undefined, userName: string) {
+  const [messages, setMessages] = useState<MeetingChatMessage[]>([]);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subscribedRef = useRef(false);
+
+  useEffect(() => {
+    if (!meetingId) return;
+
+    subscribedRef.current = false;
+    setMessages([]);
+
+    const channel = supabase.channel(`meeting-chat-${meetingId}`);
+    channel
+      .on('broadcast', { event: 'message' }, ({ payload }) => {
+        const data = payload as ChatBroadcastPayload;
+        if (!data?.text?.trim()) return;
+
+        setMessages((prev) => {
+          const id = data.id ?? `${data.userName}-${data.ts}`;
+          if (prev.some((m) => m.id === id)) return prev;
+          return [
+            ...prev,
+            {
+              id,
+              userName: data.userName,
+              message: data.text.trim(),
+              timestamp: new Date(data.ts),
+            },
+          ];
+        });
+      })
+      .subscribe((status) => {
+        subscribedRef.current = status === 'SUBSCRIBED';
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      subscribedRef.current = false;
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [meetingId]);
+
+  const sendMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || !meetingId || !channelRef.current) return false;
+
+      if (!subscribedRef.current) {
+        await new Promise<void>((resolve) => {
+          const deadline = Date.now() + 3000;
+          const tick = () => {
+            if (subscribedRef.current || Date.now() > deadline) {
+              resolve();
+              return;
+            }
+            requestAnimationFrame(tick);
+          };
+          tick();
+        });
+      }
+
+      if (!subscribedRef.current) return false;
+
+      const ts = Date.now();
+      const id = `${userName}-${ts}-${Math.random().toString(36).slice(2, 7)}`;
+      const payload: ChatBroadcastPayload = { userName, text: trimmed, ts, id };
+
+      await channelRef.current.send({
+        type: 'broadcast',
+        event: 'message',
+        payload,
+      });
+
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === id)) return prev;
+        return [
+          ...prev,
+          { id, userName, message: trimmed, timestamp: new Date(ts) },
+        ];
+      });
+
+      return true;
+    },
+    [meetingId, userName]
+  );
+
+  return { messages, sendMessage };
+}

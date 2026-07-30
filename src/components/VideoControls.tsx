@@ -1,14 +1,13 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
 import { InMeetingChat } from '@/components/InMeetingChat';
-import { RaiseHand } from '@/components/RaiseHand';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
 import { VideoEffectsPanel } from '@/components/VideoEffectsPanel';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -55,41 +54,43 @@ export const VideoControls = ({
   const [handRaised, setHandRaised] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const { toast } = useToast();
+  const { broadcastHandRaise } = useMeetingHandsChannel(meetingId);
 
-  const handleHandRaise = () => {
+  const handleHandRaise = async () => {
     const newHandRaised = !handRaised;
     setHandRaised(newHandRaised);
-    
-    // Broadcast hand raise status to other participants
+
     if (meetingId) {
-      const channel = supabase.channel(`meeting-hands-${meetingId}`);
-      
-      channel.send({
-        type: 'broadcast',
-        event: 'hand-raised',
-        payload: {
-          userName: userName,
-          handRaised: newHandRaised,
-          timestamp: Date.now()
-        }
+      const sent = await broadcastHandRaise({
+        userName,
+        handRaised: newHandRaised,
+        timestamp: Date.now(),
       });
 
-      // Show toast notification
+      if (!sent) {
+        setHandRaised(!newHandRaised);
+        toast({
+          title: 'Hand raise failed',
+          description: 'Could not reach other participants. Check your connection and try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
-        title: newHandRaised ? "Hand Raised" : "Hand Lowered",
-        description: newHandRaised 
-          ? "Your hand has been raised. Other participants will be notified." 
-          : "Your hand has been lowered.",
-        duration: 3000
+        title: newHandRaised ? 'Hand Raised' : 'Hand Lowered',
+        description: newHandRaised
+          ? 'Other participants have been notified.'
+          : 'Your hand has been lowered.',
+        duration: 3000,
       });
     }
   };
 
-  // Get reference to local video element for effects
   const getLocalVideoRef = () => {
     const videoElements = document.querySelectorAll('video');
     for (const video of videoElements) {
-      if (video.muted) { // Local video is muted
+      if (video.muted) {
         localVideoRef.current = video;
         return video;
       }
@@ -99,7 +100,6 @@ export const VideoControls = ({
 
   return (
     <>
-      {/* Main Controls Dock */}
       <VideoControlsDock
         isVideoEnabled={isVideoEnabled}
         isAudioEnabled={isAudioEnabled}
@@ -121,19 +121,18 @@ export const VideoControls = ({
         onLeaveMeeting={onLeaveMeeting}
       />
 
-      {/* Settings Panel */}
       {showSettings && (
         <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-40 w-80 max-w-[90vw]">
           <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-4 animate-fade-in">
             <div className="space-y-4">
               <h3 className="text-white font-semibold mb-4">Device Settings</h3>
-              
+
               <DeviceSelector
                 type="audio"
                 currentDeviceId={currentAudioDevice}
                 onDeviceChange={(deviceId) => onDeviceChange('audio', deviceId)}
               />
-              
+
               <DeviceSelector
                 type="video"
                 currentDeviceId={currentVideoDevice}
@@ -144,7 +143,6 @@ export const VideoControls = ({
         </div>
       )}
 
-      {/* Video Effects Panel */}
       {showEffects && (
         <VideoEffectsPanel
           onClose={() => setShowEffects(false)}
@@ -152,22 +150,16 @@ export const VideoControls = ({
         />
       )}
 
-      {/* In-Meeting Chat */}
       {showChat && (
         <InMeetingChat
+          meetingId={meetingId}
           userName={userName}
           onClose={() => setShowChat(false)}
         />
       )}
 
-      {/* Video Reactions Overlay - positioned with higher z-index */}
       <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
         <VideoReactions />
-      </div>
-
-      {/* Raise Hand Component - integrated into dock but keeping for broadcast functionality */}
-      <div className="hidden">
-        <RaiseHand onHandRaise={setHandRaised} isRaised={handRaised} />
       </div>
     </>
   );

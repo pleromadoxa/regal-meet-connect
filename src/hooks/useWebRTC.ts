@@ -985,31 +985,40 @@ export const useWebRTC = (
       }
 
       // Restore camera video for all peer connections
-      peerConnectionsRef.current.forEach(async (pc) => {
-        const videoSender = pc.getSenders().find(s => s.track?.kind === 'video');
-        if (videoSender && localStreamRef.current) {
-          const cameraTrack = localStreamRef.current.getVideoTracks()[0];
-          if (cameraTrack) {
-            try {
-              await videoSender.replaceTrack(cameraTrack);
-              console.log('Restored camera track for peer connection');
-            } catch (error) {
-              console.error('Error restoring camera track:', error);
+      await Promise.all(
+        Array.from(peerConnectionsRef.current.entries()).map(async ([peerId, pc]) => {
+          const videoSender = pc.getSenders().find((s) => s.track?.kind === 'video');
+          if (videoSender && localStreamRef.current) {
+            const cameraTrack = localStreamRef.current.getVideoTracks()[0];
+            if (cameraTrack) {
+              try {
+                await videoSender.replaceTrack(cameraTrack);
+              } catch (error) {
+                console.error('Error restoring camera track:', error);
+              }
             }
           }
-        }
-        
-        // Remove any screen share audio tracks
-        const audioSenders = pc.getSenders().filter(s => s.track?.kind === 'audio' && s.track?.label.includes('Screen'));
-        audioSenders.forEach(sender => {
+
+          const audioSenders = pc.getSenders().filter(
+            (s) => s.track?.kind === 'audio' && s.track?.label.includes('Screen')
+          );
+          audioSenders.forEach((sender) => {
+            try {
+              pc.removeTrack(sender);
+            } catch (error) {
+              console.error('Error removing screen share audio:', error);
+            }
+          });
+
           try {
-            pc.removeTrack(sender);
-            console.log('Removed screen share audio track');
+            await restartPeerNegotiation(pc, async (offer) => {
+              sendSignalingMessageRef.current({ type: 'offer', to: peerId, data: offer });
+            });
           } catch (error) {
-            console.error('Error removing screen share audio:', error);
+            console.warn('Screen share stop renegotiation failed:', error);
           }
-        });
-      });
+        })
+      );
 
       setIsScreenSharing(false);
       setScreenShareStream(null);
@@ -1051,16 +1060,27 @@ export const useWebRTC = (
       localStreamRef.current = newStream;
   
       // Notify remote peers about the change
-      peerConnectionsRef.current.forEach(pc => {
-        pc.getSenders().forEach(sender => {
-          if (sender.track?.kind === kind) {
-            const newTrack = newStream.getTracks().find(track => track.kind === kind);
-            if (newTrack) {
-              sender.replaceTrack(newTrack);
-            }
+      await Promise.all(
+        Array.from(peerConnectionsRef.current.entries()).map(async ([peerId, pc]) => {
+          await Promise.all(
+            pc.getSenders().map(async (sender) => {
+              if (sender.track?.kind === kind) {
+                const newTrack = newStream.getTracks().find((track) => track.kind === kind);
+                if (newTrack) {
+                  await sender.replaceTrack(newTrack);
+                }
+              }
+            })
+          );
+          try {
+            await restartPeerNegotiation(pc, async (offer) => {
+              sendSignalingMessageRef.current({ type: 'offer', to: peerId, data: offer });
+            });
+          } catch (error) {
+            console.warn('Device change renegotiation failed:', error);
           }
-        });
-      });
+        })
+      );
     } catch (error) {
       console.error('Error changing device:', error);
       toast({

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { MAX_PEER_RECONNECT_ATTEMPTS } from '@/lib/webrtcSignaling';
+import { getRegalRtcConfiguration } from '@/lib/iceServers';
 
 interface ConnectionManagerOptions {
   enableHeartbeat?: boolean;
@@ -19,30 +20,9 @@ export const useConnectionManager = (options: ConnectionManagerOptions = {}) => 
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<Map<string, number>>(new Map());
 
-  const getOptimizedIceServers = useCallback(() => {
-    return [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' },
-      { urls: 'stun:stun.cloudflare.com:3478' },
-      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    ];
-  }, []);
+  const getOptimizedIceServers = useCallback(() => getRegalRtcConfiguration().iceServers ?? [], []);
 
-  const getOptimizedRTCConfiguration = useCallback((): RTCConfiguration => {
-    return {
-      iceServers: getOptimizedIceServers(),
-      iceCandidatePoolSize: 15,
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require',
-      iceTransportPolicy: 'all',
-    };
-  }, [getOptimizedIceServers]);
+  const getOptimizedRTCConfiguration = useCallback((): RTCConfiguration => getRegalRtcConfiguration(), []);
 
   /** Passive health logging — recovery is handled in useWebRTC via restartPeerNegotiation. */
   const monitorConnectionHealth = useCallback((peerConnection: RTCPeerConnection, peerId: string) => {

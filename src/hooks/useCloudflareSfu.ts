@@ -47,6 +47,38 @@ export function useCloudflareSfu({
   const pulledTrackKeysRef = useRef<Set<string>>(new Set());
   const registryChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const publishingRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const maxSfuReconnectAttempts = 5;
+  const rebuildRef = useRef<() => void>(() => undefined);
+
+  const resetSfuSession = useCallback(() => {
+    pcRef.current?.close();
+    pcRef.current = null;
+    sessionIdRef.current = null;
+    pulledTrackKeysRef.current.clear();
+    setIsConnected(false);
+  }, []);
+
+  const attachSfuRecoveryHandlers = useCallback((pc: RTCPeerConnection) => {
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        reconnectAttemptsRef.current = 0;
+        setIsConnected(true);
+        return;
+      }
+      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+        rebuildRef.current();
+      }
+    };
+  }, []);
+
+  const getOrCreatePc = useCallback(() => {
+    if (!pcRef.current) {
+      pcRef.current = createSfuPeerConnection();
+      attachSfuRecoveryHandlers(pcRef.current);
+    }
+    return pcRef.current;
+  }, [attachSfuRecoveryHandlers]);
 
   const broadcastPublishedTracks = useCallback(
     (tracks: PublishedSfuTrack[]) => {
@@ -68,10 +100,7 @@ export function useCloudflareSfu({
       if (!sessionIdRef.current) {
         sessionIdRef.current = await createSfuSession(meetingId);
       }
-      if (!pcRef.current) {
-        pcRef.current = createSfuPeerConnection();
-      }
-      const pc = pcRef.current;
+      const pc = getOrCreatePc();
       const sessionId = sessionIdRef.current;
 
       pc.getSenders().forEach((sender) => {
@@ -121,6 +150,7 @@ export function useCloudflareSfu({
 
       setPublishedTracks(published);
       broadcastPublishedTracks(published);
+      reconnectAttemptsRef.current = 0;
       setIsConnected(true);
     } finally {
       publishingRef.current = false;
@@ -134,7 +164,26 @@ export function useCloudflareSfu({
     userId,
     userName,
     broadcastPublishedTracks,
+    getOrCreatePc,
   ]);
+
+  const rebuildSfuConnection = useCallback(async () => {
+    if (!enabled) return;
+    if (reconnectAttemptsRef.current >= maxSfuReconnectAttempts) return;
+
+    reconnectAttemptsRef.current += 1;
+    resetSfuSession();
+
+    if (isPublisher) {
+      await ensurePublisherSession();
+    }
+  }, [enabled, isPublisher, resetSfuSession, ensurePublisherSession]);
+
+  useEffect(() => {
+    rebuildRef.current = () => {
+      void rebuildSfuConnection();
+    };
+  }, [rebuildSfuConnection]);
 
   const pullRemoteTracks = useCallback(
     async (publisher: { userId: string; sessionId: string; tracks: PublishedSfuTrack[] }) => {
@@ -150,10 +199,7 @@ export function useCloudflareSfu({
       if (!sessionIdRef.current) {
         sessionIdRef.current = await createSfuSession(meetingId);
       }
-      if (!pcRef.current) {
-        pcRef.current = createSfuPeerConnection();
-      }
-      const pc = pcRef.current;
+      const pc = getOrCreatePc();
       const sessionId = sessionIdRef.current;
 
       const remoteLocators: SfuTrackLocator[] = toPull.map((t) => ({
@@ -209,10 +255,26 @@ export function useCloudflareSfu({
       });
 
       setRemoteStreams(new Map(remoteStreamsRef.current));
+      reconnectAttemptsRef.current = 0;
       setIsConnected(true);
     },
-    [enabled, isPublisher, userId, meetingId]
+    [enabled, isPublisher, userId, meetingId, getOrCreatePc]
   );
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const onNetworkResume = () => {
+      void rebuildSfuConnection();
+    };
+
+    window.addEventListener('meeting-network-online', onNetworkResume);
+    window.addEventListener('meeting-visibility-resume', onNetworkResume);
+    return () => {
+      window.removeEventListener('meeting-network-online', onNetworkResume);
+      window.removeEventListener('meeting-visibility-resume', onNetworkResume);
+    };
+  }, [enabled, rebuildSfuConnection]);
 
   useEffect(() => {
     if (!enabled || !meetingId) return;

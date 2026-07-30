@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getSfuRtcConfiguration } from '@/lib/iceServers';
 
 export interface SfuSessionDescription {
   type: RTCSdpType;
@@ -107,10 +108,7 @@ export async function sfuTracksClose(
 }
 
 export function createSfuPeerConnection(): RTCPeerConnection {
-  return new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }],
-    bundlePolicy: 'max-bundle',
-  });
+  return new RTCPeerConnection(getSfuRtcConfiguration());
 }
 
 export async function waitForIceConnected(pc: RTCPeerConnection, timeoutMs = 12_000): Promise<void> {

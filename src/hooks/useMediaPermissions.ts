@@ -144,13 +144,23 @@ export const useMediaPermissions = () => {
         microphone: audio ? 'checking' : prev.microphone
       }));
 
+      const connection = (navigator as Navigator & { connection?: { effectiveType?: string } }).connection;
+      const slowNetwork =
+        connection?.effectiveType === '2g' || connection?.effectiveType === 'slow-2g';
+
       const constraints: MediaStreamConstraints = {
         video: video
-          ? {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              frameRate: { ideal: 30 },
-            }
+          ? slowNetwork
+            ? {
+                width: { ideal: 640, max: 854 },
+                height: { ideal: 360, max: 480 },
+                frameRate: { ideal: 15, max: 24 },
+              }
+            : {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                frameRate: { ideal: 30 },
+              }
           : false,
         audio: audio
           ? {
