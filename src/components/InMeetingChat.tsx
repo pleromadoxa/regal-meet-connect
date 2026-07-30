@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMeetingChatChannel, type MeetingChatMessage } from '@/hooks/useMeetingChatChannel';
+import { useToast } from '@/hooks/use-toast';
 
 interface InMeetingChatProps {
   userName: string;
@@ -26,7 +27,8 @@ export const InMeetingChat = ({
   const [currentMessage, setCurrentMessage] = useState('');
   const [localOnlyMessages, setLocalOnlyMessages] = useState<MeetingChatMessage[]>(externalMessages);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages: syncedMessages, sendMessage } = useMeetingChatChannel(meetingId, userName);
+  const { toast } = useToast();
+  const { messages: syncedMessages, sendMessage, isConnected } = useMeetingChatChannel(meetingId, userName);
 
   const chatMessages = meetingId ? syncedMessages : localOnlyMessages;
 
@@ -41,7 +43,14 @@ export const InMeetingChat = ({
 
     if (meetingId) {
       const sent = await sendMessage(currentMessage);
-      if (!sent) return;
+      if (!sent) {
+        toast({
+          title: 'Message not sent',
+          description: 'Could not reach the meeting chat. Check your connection and try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else {
       const newMessage: MeetingChatMessage = {
         id: Math.random().toString(36).substring(7),
@@ -80,6 +89,9 @@ export const InMeetingChat = ({
 
       <ScrollArea className="flex-1 p-3 min-h-0" ref={scrollRef}>
         <div className="space-y-3">
+          {meetingId && !isConnected && (
+            <p className="text-xs text-amber-300/80 text-center py-2">Connecting to chat…</p>
+          )}
           {chatMessages.length === 0 && (
             <p className="text-sm text-white/40 text-center py-8">
               {meetingId ? 'Send a message to everyone in the meeting.' : 'Chat is local only without a meeting ID.'}

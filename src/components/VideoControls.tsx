@@ -1,13 +1,11 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
 import { InMeetingChat } from '@/components/InMeetingChat';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
 import { VideoEffectsPanel } from '@/components/VideoEffectsPanel';
-import { useToast } from '@/hooks/use-toast';
-import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -25,7 +23,11 @@ interface VideoControlsProps {
   onToggleCaptions: () => void;
   captionsEnabled: boolean;
   userName: string;
+  userId?: string;
   meetingId?: string;
+  handRaised?: boolean;
+  onToggleHand?: () => void;
+  onToggleParticipants?: () => void;
   onNavigateToDashboard?: () => void;
 }
 
@@ -45,47 +47,17 @@ export const VideoControls = ({
   onToggleCaptions,
   captionsEnabled,
   userName,
+  userId,
   meetingId,
-  onNavigateToDashboard
+  handRaised = false,
+  onToggleHand,
+  onToggleParticipants,
+  onNavigateToDashboard,
 }: VideoControlsProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
-  const [handRaised, setHandRaised] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const { toast } = useToast();
-  const { broadcastHandRaise } = useMeetingHandsChannel(meetingId);
-
-  const handleHandRaise = async () => {
-    const newHandRaised = !handRaised;
-    setHandRaised(newHandRaised);
-
-    if (meetingId) {
-      const sent = await broadcastHandRaise({
-        userName,
-        handRaised: newHandRaised,
-        timestamp: Date.now(),
-      });
-
-      if (!sent) {
-        setHandRaised(!newHandRaised);
-        toast({
-          title: 'Hand raise failed',
-          description: 'Could not reach other participants. Check your connection and try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: newHandRaised ? 'Hand Raised' : 'Hand Lowered',
-        description: newHandRaised
-          ? 'Other participants have been notified.'
-          : 'Your hand has been lowered.',
-        duration: 3000,
-      });
-    }
-  };
 
   const getLocalVideoRef = () => {
     const videoElements = document.querySelectorAll('video');
@@ -115,8 +87,9 @@ export const VideoControls = ({
         onToggleCaptions={onToggleCaptions}
         onToggleSettings={() => setShowSettings(!showSettings)}
         onToggleChat={() => setShowChat(!showChat)}
-        onToggleHand={handleHandRaise}
+        onToggleHand={onToggleHand ?? (() => undefined)}
         onToggleEffects={() => setShowEffects(true)}
+        onToggleParticipants={onToggleParticipants}
         onNavigateToDashboard={onNavigateToDashboard}
         onLeaveMeeting={onLeaveMeeting}
       />
@@ -159,7 +132,7 @@ export const VideoControls = ({
       )}
 
       <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
-        <VideoReactions />
+        <VideoReactions meetingId={meetingId} userId={userId} userName={userName} />
       </div>
     </>
   );

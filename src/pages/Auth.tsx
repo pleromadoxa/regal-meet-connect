@@ -36,7 +36,7 @@ const Auth = () => {
 
   if (user) return null;
 
-  return <AuthPage onAuthSuccess={handleAuthSuccess} regalMailLoading={regalMailLoading} />;
+  return <AuthPage onAuthSuccess={handleAuthSuccess} regalMailLoading={regalMailLoading} redirectTo={redirectTo} />;
 };
 
 export default Auth;

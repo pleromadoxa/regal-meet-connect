@@ -16,9 +16,10 @@ import logo from '@/assets/regal-logo.png';
 interface AuthPageProps {
   onAuthSuccess: () => void;
   regalMailLoading?: boolean;
+  redirectTo?: string;
 }
 
-export const AuthPage = ({ onAuthSuccess, regalMailLoading }: AuthPageProps) => {
+export const AuthPage = ({ onAuthSuccess, regalMailLoading, redirectTo = '/dashboard' }: AuthPageProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,14 +40,11 @@ export const AuthPage = ({ onAuthSuccess, regalMailLoading }: AuthPageProps) => 
         toast({ title: 'Welcome back!', description: `Successfully signed in to ${PRODUCT_NAME}` });
         onAuthSuccess();
       } else {
-        const redirectUrl =
-          window.location.hostname === 'localhost'
-            ? `${window.location.origin}/`
-            : `${appOrigin()}/`;
+        const authReturnUrl = `${window.location.hostname === 'localhost' ? window.location.origin : appOrigin()}/auth?redirect=${encodeURIComponent(redirectTo)}`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: redirectUrl, data: { display_name: displayName } },
+          options: { emailRedirectTo: authReturnUrl, data: { display_name: displayName } },
         });
         if (error) throw error;
         setTimeout(() => logActivity('user_signup', undefined), 1000);

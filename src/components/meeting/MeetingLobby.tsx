@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useMeetingLobbyGuest } from '@/hooks/useMeetingLobbyGuest';
 import { Button } from '@/components/ui/button';
 import { Loader2, Crown, Video, ShieldCheck } from 'lucide-react';
 import lobbyImage from '@/assets/lobby-wait.jpg';
@@ -12,58 +11,14 @@ interface MeetingLobbyProps {
   onCancel: () => void;
 }
 
-type LobbyStatus = 'knocking' | 'admitted' | 'denied';
-
 export const MeetingLobby = ({ meetingId, userId, userName, onAdmit, onCancel }: MeetingLobbyProps) => {
-  const [status, setStatus] = useState<LobbyStatus>('knocking');
-  const channelRef = useRef<any>(null);
-  const knockIntervalRef = useRef<number | null>(null);
-
-  const onAdmitRef = useRef(onAdmit);
-  onAdmitRef.current = onAdmit;
-
-  useEffect(() => {
-    const channel = supabase.channel(`lobby-${meetingId}`, {
-      config: { broadcast: { self: false } },
-    });
-
-    const sendKnock = () => {
-      channel.send({
-        type: 'broadcast',
-        event: 'knock',
-        payload: { userId, userName, ts: Date.now() },
-      });
-    };
-
-    channel
-      .on('broadcast', { event: 'admit' }, ({ payload }) => {
-        if (payload?.userId === userId) {
-          setStatus('admitted');
-          // Small delay so user sees confirmation
-          setTimeout(() => onAdmitRef.current(), 600);
-        }
-      })
-      .on('broadcast', { event: 'deny' }, ({ payload }) => {
-        if (payload?.userId === userId) {
-          setStatus('denied');
-          setTimeout(() => onCancel(), 1500);
-        }
-      })
-      .subscribe((subStatus) => {
-        if (subStatus === 'SUBSCRIBED') {
-          sendKnock();
-          // Re-knock every 4s in case host joined late
-          knockIntervalRef.current = window.setInterval(sendKnock, 4000);
-        }
-      });
-
-    channelRef.current = channel;
-
-    return () => {
-      if (knockIntervalRef.current) window.clearInterval(knockIntervalRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [meetingId, userId, userName, onCancel]);
+  const { status } = useMeetingLobbyGuest({
+    meetingId,
+    userId,
+    userName,
+    onAdmit,
+    onDeny: onCancel,
+  });
 
   return (
     <div className="min-h-screen-safe flex flex-col lg:flex-row bg-[#0a0612]">

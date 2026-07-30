@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { VideoControls } from '@/components/VideoControls';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
 import { HostPresentationLayout } from '@/components/meeting/HostPresentationLayout';
 import { RemoteAudioMix } from '@/components/meeting/RemoteAudioMix';
 import {
-  useMeetingState as useMeetingHooks,
-  useHandRaiseNotifications,
+  useMeetingShellState,
   useFullscreenHandler,
   useConnectionQuality,
 } from '@/components/meeting/MeetingHooks';
 import { useMeetingState } from '@/hooks/useMeetingState';
+import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 import { useAudioOnlyWebRTC } from '@/hooks/useAudioOnlyWebRTC';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useRealTimeParticipants } from '@/hooks/useRealTimeParticipants';
@@ -60,9 +59,20 @@ export const AudioOnlyMeeting = ({
     setCurrentMeeting,
     isFullscreen,
     setIsFullscreen,
-    handNotifications,
-    setHandNotifications,
-  } = useMeetingHooks(meetingId, userName);
+  } = useMeetingShellState(meetingId, userName);
+
+  const [handRaised, setHandRaised] = useState(false);
+  const { broadcastHandRaise, handNotifications } = useMeetingHandsChannel(meetingId, {
+    userName,
+    onRemoteHandRaise: (payload) => {
+      if (!payload.handRaised) return;
+      toast({
+        title: 'Hand raised',
+        description: `${payload.userName} has raised their hand`,
+        duration: 5000,
+      });
+    },
+  });
 
   const {
     participants: dbParticipants,
@@ -149,8 +159,25 @@ export const AudioOnlyMeeting = ({
     currentParticipantId
   );
 
-  useHandRaiseNotifications(meetingId, userName, setHandNotifications);
   const { toggleFullscreen } = useFullscreenHandler(setIsFullscreen);
+
+  const handleToggleHand = async () => {
+    const next = !handRaised;
+    setHandRaised(next);
+    const sent = await broadcastHandRaise({
+      userName,
+      handRaised: next,
+      timestamp: Date.now(),
+    });
+    if (!sent) {
+      setHandRaised(!next);
+      toast({
+        title: 'Hand raise failed',
+        description: 'Could not reach other participants.',
+        variant: 'destructive',
+      });
+    }
+  };
   useConnectionQuality(connectedPeers, dbParticipants, () => {});
 
   const displayParticipantCount = Math.max(participantCount, connectedPeers.length + 1, 1);
@@ -360,6 +387,8 @@ export const AudioOnlyMeeting = ({
         mediaRole={topology.mediaRole}
         participantCount={displayParticipantCount}
         sfuAvailable={topology.sfuAvailable}
+        connectionError={topology.useSfu ? sfu.connectionError : null}
+        onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
       />
 
       <MeetingHeader
@@ -445,6 +474,16 @@ export const AudioOnlyMeeting = ({
               )}
             </Button>
           )}
+
+          <Button
+            size="lg"
+            variant={handRaised ? 'default' : 'secondary'}
+            className="h-12 w-12 rounded-full p-0"
+            onClick={() => void handleToggleHand()}
+            aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
+          >
+            ✋
+          </Button>
 
           <Button
             size="lg"

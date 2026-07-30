@@ -1,7 +1,7 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { waitForChannelSubscribed } from '@/lib/meetingBroadcast';
 
 export interface ParticipantState {
   id: string;
@@ -16,101 +16,70 @@ export interface ParticipantState {
   city?: string;
 }
 
-export interface ReactionEvent {
-  type: string;
-  participantId: string;
-  participantName: string;
-  timestamp: number;
-}
-
 export const useMeetingState = (meetingId: string, currentUserId: string) => {
   const [participants, setParticipants] = useState<ParticipantState[]>([]);
-  const [reactions, setReactions] = useState<ReactionEvent[]>([]);
-  const { toast } = useToast();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subscribedRef = useRef(false);
 
-  // Subscribe to participant state changes
   useEffect(() => {
     if (!meetingId || !currentUserId) return;
 
     const channel = supabase.channel(`meeting-state-${meetingId}`);
+    channelRef.current = channel;
 
-    // Listen for participant state updates
     channel
       .on('broadcast', { event: 'participant-state' }, (payload) => {
         const { participantId, state } = payload.payload;
-        
-        setParticipants(prev => 
-          prev.map(p => 
-            p.id === participantId ? { ...p, ...state } : p
-          )
+
+        setParticipants((prev) =>
+          prev.map((p) => (p.id === participantId ? { ...p, ...state } : p))
         );
       })
-      .on('broadcast', { event: 'reaction' }, (payload) => {
-        const reaction: ReactionEvent = payload.payload;
-        
-        setReactions(prev => [...prev, reaction]);
-        
-        // Remove reaction after 3 seconds
-        setTimeout(() => {
-          setReactions(prev => prev.filter(r => r.timestamp !== reaction.timestamp));
-        }, 3000);
-      })
-      .subscribe();
+      .subscribe((status) => {
+        subscribedRef.current = status === 'SUBSCRIBED';
+      });
 
     return () => {
+      subscribedRef.current = false;
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [meetingId, currentUserId]);
 
-  const broadcastParticipantState = useCallback((participantId: string, state: Partial<ParticipantState>) => {
-    if (!meetingId) return;
+  const broadcastParticipantState = useCallback(
+    async (participantId: string, state: Partial<ParticipantState>) => {
+      if (!meetingId || !channelRef.current) return;
 
-    const channel = supabase.channel(`meeting-state-${meetingId}`);
-    
-    channel.send({
-      type: 'broadcast',
-      event: 'participant-state',
-      payload: { participantId, state }
-    });
-  }, [meetingId]);
+      const ready = await waitForChannelSubscribed(subscribedRef);
+      if (!ready) return;
 
-  const broadcastReaction = useCallback((reaction: ReactionEvent) => {
-    if (!meetingId) return;
+      await channelRef.current.send({
+        type: 'broadcast',
+        event: 'participant-state',
+        payload: { participantId, state },
+      });
+    },
+    [meetingId]
+  );
 
-    const channel = supabase.channel(`meeting-state-${meetingId}`);
-    
-    channel.send({
-      type: 'broadcast',
-      event: 'reaction',
-      payload: reaction
-    });
-  }, [meetingId]);
+  const updateParticipantVideoState = useCallback(
+    (participantId: string, isVideoEnabled: boolean) => {
+      broadcastParticipantState(participantId, { isVideoEnabled });
+    },
+    [broadcastParticipantState]
+  );
 
-  const updateParticipantVideoState = useCallback((participantId: string, isVideoEnabled: boolean) => {
-    broadcastParticipantState(participantId, { isVideoEnabled });
-  }, [broadcastParticipantState]);
-
-  const updateParticipantAudioState = useCallback((participantId: string, isAudioEnabled: boolean) => {
-    broadcastParticipantState(participantId, { isAudioEnabled });
-  }, [broadcastParticipantState]);
-
-  const sendReaction = useCallback((type: string, participantName: string) => {
-    const reaction: ReactionEvent = {
-      type,
-      participantId: currentUserId,
-      participantName,
-      timestamp: Date.now()
-    };
-    
-    broadcastReaction(reaction);
-  }, [currentUserId, broadcastReaction]);
+  const updateParticipantAudioState = useCallback(
+    (participantId: string, isAudioEnabled: boolean) => {
+      broadcastParticipantState(participantId, { isAudioEnabled });
+    },
+    [broadcastParticipantState]
+  );
 
   return {
     participants,
     setParticipants,
-    reactions,
     updateParticipantVideoState,
     updateParticipantAudioState,
-    sendReaction
   };
 };

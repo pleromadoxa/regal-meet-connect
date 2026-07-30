@@ -1,61 +1,99 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  useMeetingReactionsChannel,
+  type MeetingReactionType,
+} from '@/hooks/useMeetingReactionsChannel';
 
-interface Reaction {
+interface FloatingReaction {
   id: string;
-  type: 'heart' | 'like' | 'celebration';
+  type: MeetingReactionType;
   x: number;
   y: number;
   timestamp: number;
 }
 
 interface VideoReactionsProps {
-  onSendReaction?: (type: 'heart' | 'like' | 'celebration') => void;
+  meetingId?: string;
+  userId?: string;
+  userName?: string;
 }
 
-export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
-  const [reactions, setReactions] = useState<Reaction[]>([]);
+const REACTION_EMOJI: Record<MeetingReactionType, string> = {
+  heart: '❤️',
+  like: '👍',
+  celebration: '🎉',
+  party: '🥳',
+  energy: '⚡',
+  coffee: '☕',
+  slow: '🐌',
+};
 
-  const addReaction = useCallback((type: 'heart' | 'like' | 'celebration') => {
-    const newReaction: Reaction = {
-      id: Math.random().toString(36).substring(7),
+const QUICK_REACTIONS: MeetingReactionType[] = ['heart', 'like', 'celebration', 'party'];
+
+export const VideoReactions = ({ meetingId, userId = '', userName = '' }: VideoReactionsProps) => {
+  const [localReactions, setLocalReactions] = useState<FloatingReaction[]>([]);
+  const { reactions: remoteReactions, sendReaction } = useMeetingReactionsChannel(
+    meetingId,
+    userId,
+    userName
+  );
+
+  const spawnFloating = useCallback((type: MeetingReactionType) => {
+    const floating: FloatingReaction = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
       x: Math.random() * 70 + 15,
       y: Math.random() * 60 + 20,
       timestamp: Date.now(),
     };
 
-    setReactions(prev => [...prev, newReaction]);
-    onSendReaction?.(type);
-
-    setTimeout(() => {
-      setReactions(prev => prev.filter(r => r.id !== newReaction.id));
+    setLocalReactions((prev) => [...prev, floating]);
+    window.setTimeout(() => {
+      setLocalReactions((prev) => prev.filter((r) => r.id !== floating.id));
     }, 3000);
-  }, [onSendReaction]);
+  }, []);
+
+  const seenTimestampsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    const handleRemoteReaction = (event: CustomEvent) => {
-      const { type } = event.detail;
-      addReaction(type);
-    };
+    remoteReactions.forEach((reaction) => {
+      if (seenTimestampsRef.current.has(reaction.timestamp)) return;
+      seenTimestampsRef.current.add(reaction.timestamp);
+      spawnFloating(reaction.type);
+    });
+  }, [remoteReactions, spawnFloating]);
 
-    window.addEventListener('remote-reaction', handleRemoteReaction as EventListener);
-    return () => window.removeEventListener('remote-reaction', handleRemoteReaction as EventListener);
-  }, [addReaction]);
-
-  // Expose the addReaction function globally so other components can trigger reactions
-  useEffect(() => {
-    (window as any).triggerReaction = addReaction;
-    return () => {
-      delete (window as any).triggerReaction;
-    };
-  }, [addReaction]);
+  const handleReaction = async (type: MeetingReactionType) => {
+    if (meetingId && userId) {
+      const sent = await sendReaction(type);
+      if (!sent) spawnFloating(type);
+      return;
+    }
+    spawnFloating(type);
+  };
 
   return (
     <>
-      {/* Floating Reactions Display */}
+      <div className="flex flex-col gap-2 pointer-events-auto">
+        {QUICK_REACTIONS.map((type) => (
+          <Button
+            key={type}
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={`Send ${type} reaction`}
+            className="h-11 w-11 rounded-full border-white/15 bg-black/60 text-xl hover:bg-black/80 backdrop-blur-md"
+            onClick={() => void handleReaction(type)}
+          >
+            {REACTION_EMOJI[type]}
+          </Button>
+        ))}
+      </div>
+
       <div className="fixed inset-0 pointer-events-none z-50">
-        {reactions.map((reaction) => (
+        {localReactions.map((reaction) => (
           <div
             key={reaction.id}
             className="absolute text-2xl animate-bounce"
@@ -65,14 +103,11 @@ export const VideoReactions = ({ onSendReaction }: VideoReactionsProps) => {
               animation: 'reaction-float 3s ease-out forwards',
             }}
           >
-            {reaction.type === 'heart' && '❤️'}
-            {reaction.type === 'like' && '👍'}
-            {reaction.type === 'celebration' && '🎉'}
+            {REACTION_EMOJI[reaction.type]}
           </div>
         ))}
       </div>
 
-      {/* Animation styles */}
       <style>{`
         @keyframes reaction-float {
           0% {

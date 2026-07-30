@@ -40,11 +40,14 @@ export function useCloudflareSfu({
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [publishedTracks, setPublishedTracks] = useState<PublishedSfuTrack[]>([]);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const pulledTrackKeysRef = useRef<Set<string>>(new Set());
+  const publisherSessionsRef = useRef<Map<string, string>>(new Map());
+  const lastKnownPublishersRef = useRef<Map<string, PublishedSfuTrack[]>>(new Map());
   const registryChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const publishingRef = useRef(false);
   const reconnectAttemptsRef = useRef(0);
@@ -63,6 +66,7 @@ export function useCloudflareSfu({
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
         reconnectAttemptsRef.current = 0;
+        setConnectionError(null);
         setIsConnected(true);
         return;
       }
@@ -113,8 +117,11 @@ export function useCloudflareSfu({
         transceivers.push(pc.addTransceiver(audioTrack, { direction: 'sendonly' }));
       }
       const screenTrack = screenShareStream?.getVideoTracks()[0];
+      const cameraTrack = !screenTrack ? localStream?.getVideoTracks()[0] : undefined;
       if (screenTrack) {
         transceivers.push(pc.addTransceiver(screenTrack, { direction: 'sendonly' }));
+      } else if (cameraTrack) {
+        transceivers.push(pc.addTransceiver(cameraTrack, { direction: 'sendonly' }));
       }
 
       if (transceivers.length === 0) return;
@@ -167,28 +174,34 @@ export function useCloudflareSfu({
     getOrCreatePc,
   ]);
 
-  const rebuildSfuConnection = useCallback(async () => {
-    if (!enabled) return;
-    if (reconnectAttemptsRef.current >= maxSfuReconnectAttempts) return;
-
-    reconnectAttemptsRef.current += 1;
-    resetSfuSession();
-
-    if (isPublisher) {
-      await ensurePublisherSession();
+  const clearPublisherRemoteState = useCallback((publisherUserId: string, priorSessionId?: string) => {
+    if (priorSessionId) {
+      for (const key of [...pulledTrackKeysRef.current]) {
+        if (key.startsWith(`${priorSessionId}:`)) {
+          pulledTrackKeysRef.current.delete(key);
+        }
+      }
     }
-  }, [enabled, isPublisher, resetSfuSession, ensurePublisherSession]);
 
-  useEffect(() => {
-    rebuildRef.current = () => {
-      void rebuildSfuConnection();
-    };
-  }, [rebuildSfuConnection]);
+    const stream = remoteStreamsRef.current.get(publisherUserId);
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      remoteStreamsRef.current.delete(publisherUserId);
+      setRemoteStreams(new Map(remoteStreamsRef.current));
+    }
+  }, []);
 
   const pullRemoteTracks = useCallback(
     async (publisher: { userId: string; sessionId: string; tracks: PublishedSfuTrack[] }) => {
       if (!enabled || isPublisher) return;
       if (publisher.userId === userId) return;
+
+      const priorSession = publisherSessionsRef.current.get(publisher.userId);
+      if (priorSession && priorSession !== publisher.sessionId) {
+        clearPublisherRemoteState(publisher.userId, priorSession);
+      }
+      publisherSessionsRef.current.set(publisher.userId, publisher.sessionId);
+      lastKnownPublishersRef.current.set(publisher.userId, publisher.tracks);
 
       const toPull = publisher.tracks.filter((t) => {
         const key = `${t.sessionId}:${t.trackName}`;
@@ -258,8 +271,37 @@ export function useCloudflareSfu({
       reconnectAttemptsRef.current = 0;
       setIsConnected(true);
     },
-    [enabled, isPublisher, userId, meetingId, getOrCreatePc]
+    [enabled, isPublisher, userId, meetingId, getOrCreatePc, clearPublisherRemoteState]
   );
+
+  const rebuildSfuConnection = useCallback(async () => {
+    if (!enabled) return;
+    if (reconnectAttemptsRef.current >= maxSfuReconnectAttempts) {
+      setConnectionError('Media server connection lost. Try leaving and rejoining the meeting.');
+      return;
+    }
+
+    reconnectAttemptsRef.current += 1;
+    const knownPublishers = new Map(lastKnownPublishersRef.current);
+    resetSfuSession();
+
+    if (isPublisher) {
+      await ensurePublisherSession();
+      return;
+    }
+
+    for (const [pubUserId, tracks] of knownPublishers) {
+      const sessionId = publisherSessionsRef.current.get(pubUserId);
+      if (!sessionId || !tracks.length) continue;
+      await pullRemoteTracks({ userId: pubUserId, sessionId, tracks });
+    }
+  }, [enabled, isPublisher, resetSfuSession, ensurePublisherSession, pullRemoteTracks]);
+
+  useEffect(() => {
+    rebuildRef.current = () => {
+      void rebuildSfuConnection();
+    };
+  }, [rebuildSfuConnection]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -324,6 +366,12 @@ export function useCloudflareSfu({
     };
   }, []);
 
+  const retryConnection = useCallback(async () => {
+    reconnectAttemptsRef.current = 0;
+    setConnectionError(null);
+    await rebuildSfuConnection();
+  }, [rebuildSfuConnection]);
+
   const hostScreenStream = (() => {
     if (isPublisher) return screenShareStream ?? null;
     for (const [id, stream] of remoteStreams) {
@@ -337,5 +385,7 @@ export function useCloudflareSfu({
     isConnected,
     publishedTracks,
     hostScreenStream,
+    connectionError,
+    retryConnection,
   };
 }

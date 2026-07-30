@@ -16,6 +16,7 @@ import { ConnectionQualityIndicator } from './meeting/ConnectionQualityIndicator
 import { MediaPermissionsModal } from './meeting/MediaPermissionsModal';
 import { useMediaPermissions } from '@/hooks/useMediaPermissions';
 import { useLobbyHost } from '@/hooks/useLobbyHost';
+import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 import { useMeetingPresentation } from '@/hooks/useMeetingPresentation';
 import { useMeetingTopology } from '@/hooks/useMeetingTopology';
 import { useMeetingPlanContext } from '@/hooks/useMeetingPlanContext';
@@ -50,7 +51,50 @@ export const VideoConference = ({
   const [showMediaPermissions, setShowMediaPermissions] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(true);
-  const [handNotifications, setHandNotifications] = useState<any[]>([]);
+  const [handRaised, setHandRaised] = useState(false);
+
+  const { broadcastHandRaise, handNotifications } = useMeetingHandsChannel(meetingId, {
+    userName,
+    onRemoteHandRaise: (payload) => {
+      if (!payload.handRaised) return;
+      toast({
+        title: 'Hand raised',
+        description: `${payload.userName} has raised their hand`,
+        duration: 5000,
+      });
+    },
+  });
+
+  const handleToggleHand = useCallback(async () => {
+    const next = !handRaised;
+    setHandRaised(next);
+
+    if (!meetingId) return;
+
+    const sent = await broadcastHandRaise({
+      userName,
+      handRaised: next,
+      timestamp: Date.now(),
+    });
+
+    if (!sent) {
+      setHandRaised(!next);
+      toast({
+        title: 'Hand raise failed',
+        description: 'Could not reach other participants. Check your connection and try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: next ? 'Hand raised' : 'Hand lowered',
+      description: next
+        ? 'Other participants have been notified.'
+        : 'Your hand has been lowered.',
+      duration: 3000,
+    });
+  }, [handRaised, meetingId, broadcastHandRaise, userName, toast]);
 
   // Listen for guest "knock" requests when this user is the host
   useLobbyHost(meetingId, isHost);
@@ -482,6 +526,8 @@ export const VideoConference = ({
           mediaRole={topology.mediaRole}
           participantCount={totalParticipantCount}
           sfuAvailable={topology.sfuAvailable}
+          connectionError={topology.useSfu ? sfu.connectionError : null}
+          onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
         />
         {/* Meeting Header */}
         <MeetingHeader
@@ -569,7 +615,11 @@ export const VideoConference = ({
           onToggleCaptions={toggleCaptions}
           captionsEnabled={captionsEnabled}
           userName={userName}
+          userId={user?.id}
           meetingId={meetingId}
+          handRaised={handRaised}
+          onToggleHand={handleToggleHand}
+          onToggleParticipants={() => setShowParticipants(!showParticipants)}
           onNavigateToDashboard={onNavigateToDashboard}
         />
 
