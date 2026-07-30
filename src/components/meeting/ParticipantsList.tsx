@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, Shield, Mic, MicOff, User, Upload, Files } from 'lucide-react';
+import { X, Users, Shield, Mic, MicOff, User, Upload, Files, Hand } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +30,7 @@ interface ParticipantsListProps {
   onToggleMute?: (participantId: string, isMuted: boolean) => void;
   onSelectVideo?: (streamId: string) => void;
   selectedVideoId?: string;
+  raisedHands?: Set<string>;
 }
 
 export const ParticipantsList = ({
@@ -43,7 +44,8 @@ export const ParticipantsList = ({
   onClose,
   onToggleMute,
   onSelectVideo,
-  selectedVideoId
+  selectedVideoId,
+  raisedHands = new Set(),
 }: ParticipantsListProps) => {
   const [participants, setParticipants] = useState<Participant[]>(initialParticipants);
   const { toast } = useToast();
@@ -173,18 +175,7 @@ export const ParticipantsList = ({
     const canViewEmail = isCurrentUserHost || isCurrentUser;
     const canMute = isCurrentUserHost && !isCurrentUser;
     const actualIsHost = isCurrentUser ? isCurrentUserHost : participant.is_host;
-    
-    console.log('ParticipantCard Debug:', {
-      participantName: participant.user_name,
-      isCurrentUserHost,
-      isCurrentUser,
-      canMute,
-      actualIsHost,
-      currentUserId,
-      participantUserId: participant.user_id,
-      allParticipantsCount: allParticipants.length,
-      urlParams: window.location.search
-    });
+    const handRaised = raisedHands.has(participant.user_name);
 
     // Get the actual user email if it's the current user, otherwise use a placeholder
     const displayEmail = isCurrentUser && user?.email 
@@ -215,6 +206,12 @@ export const ParticipantsList = ({
                   <Badge variant="secondary" className="bg-orange-500/20 text-orange-400 text-xs">
                     <Shield className="h-3 w-3 mr-1" />
                     Host
+                  </Badge>
+                )}
+                {handRaised && (
+                  <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-300 text-xs">
+                    <Hand className="h-3 w-3 mr-1" />
+                    Hand raised
                   </Badge>
                 )}
               </div>

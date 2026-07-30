@@ -47,6 +47,7 @@ interface MeetingLayoutProps {
   hostScreenStream?: MediaStream | null;
   participantCount?: number;
   meetingTitle?: string;
+  raisedHands?: Set<string>;
 }
 
 export const MeetingLayout = ({
@@ -68,6 +69,7 @@ export const MeetingLayout = ({
   hostScreenStream,
   participantCount,
   meetingTitle,
+  raisedHands = new Set(),
 }: MeetingLayoutProps) => {
   const isCompact = useCompactMeetingLayout();
   const meetingId = window.location.pathname.split('/meeting/')[1]?.split('?')[0] || '';
@@ -95,6 +97,7 @@ export const MeetingLayout = ({
       onToggleMute={onToggleMute}
       onSelectVideo={onVideoSelect}
       selectedVideoId={selectedVideoId}
+      raisedHands={raisedHands}
     />
   );
 

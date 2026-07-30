@@ -53,7 +53,7 @@ export const VideoConference = ({
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
 
-  const { broadcastHandRaise, handNotifications } = useMeetingHandsChannel(meetingId, {
+  const { broadcastHandRaise, handNotifications, raisedHands } = useMeetingHandsChannel(meetingId, {
     userName,
     onRemoteHandRaise: (payload) => {
       if (!payload.handRaised) return;
@@ -577,6 +577,7 @@ export const VideoConference = ({
           localScreenStream={screenShareStream}
           hostScreenStream={hostScreenStream}
           participantCount={totalParticipantCount}
+          raisedHands={raisedHands}
         />
 
         {showConnectingShell && (

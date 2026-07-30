@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  lint-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,11 +18,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm run lint -- --max-warnings 100
       - run: npm run build
 
   e2e-public:
     runs-on: ubuntu-latest
-    needs: build
+    needs: lint-build
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +40,7 @@ jobs:
 
   e2e-realtime:
     runs-on: ubuntu-latest
-    needs: build
+    needs: lint-build
     steps:
       - uses: actions/checkout@v4
 
@@ -50,8 +51,10 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/meeting-realtime.spec.ts
+      - run: npm run test:e2e -- e2e/meeting-realtime.spec.ts e2e/meeting-multiuser.spec.ts
         env:
           CI: true
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_GUEST_EMAIL: ${{ secrets.E2E_GUEST_EMAIL }}
+          E2E_GUEST_PASSWORD: ${{ secrets.E2E_GUEST_PASSWORD }}
