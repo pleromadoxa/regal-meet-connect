@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LegalPageLayout } from '@/components/legal/LegalPageLayout';
-import { COMPANY_NAME, PRODUCT_NAME, SITE_URL } from '@/constants/site';
+import { COMPANY_LEGAL_NAME, PRODUCT_NAME, SITE_URL } from '@/constants/site';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const Terms = () => {
@@ -10,7 +10,7 @@ const Terms = () => {
     <LegalPageLayout title="Terms of Service">
       <p>
         By accessing or using {PRODUCT_NAME} at <a href={SITE_URL}>{SITE_URL}</a>, you agree to
-        these Terms of Service with {COMPANY_NAME}.
+        these Terms of Service with {COMPANY_LEGAL_NAME}.
       </p>
 
       <section>
@@ -44,7 +44,7 @@ const Terms = () => {
       <section>
         <h2>Intellectual property</h2>
         <p>
-          {PRODUCT_NAME}, its branding, and underlying software are owned by {COMPANY_NAME}. You
+          {PRODUCT_NAME}, its branding, and underlying software are owned by {COMPANY_LEGAL_NAME}. You
           retain ownership of content you share in meetings; you grant us a limited license to host
           and transmit that content solely to operate the service.
         </p>

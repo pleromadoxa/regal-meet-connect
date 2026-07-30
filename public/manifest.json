@@ -1,7 +1,7 @@
 {
   "name": "Regal Meeting",
   "short_name": "Regal Meeting",
-  "description": "Premium HD video conferencing by Quantum Regal",
+  "description": "Premium HD video conferencing by Spatial Regal",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0612",

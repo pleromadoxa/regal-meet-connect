@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, LayoutDashboard, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PRODUCT_NAME } from '@/constants/site';
+import { COMPANY_NAME, PRODUCT_NAME } from '@/constants/site';
 import logo from '@/assets/regal-logo.png';
 
 interface ErrorBoundaryState {
@@ -74,7 +74,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 </Link>
               </Button>
             </div>
-            <p className="mt-8 text-xs text-white/30">{PRODUCT_NAME} by Quantum Regal</p>
+            <p className="mt-8 text-xs text-white/30">{PRODUCT_NAME} by {COMPANY_NAME}</p>
           </div>
         </div>
       );

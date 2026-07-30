@@ -10,7 +10,7 @@ import { RegalMailAuthButton } from '@/components/auth/RegalMailAuthButton';
 import { AuthHeroPanel } from '@/components/auth/AuthHeroPanel';
 import { AuthHeroStrip } from '@/components/auth/AuthHeroStrip';
 import { isRegalMailAuthAvailable } from '@/services/regalMailAuth';
-import { appOrigin, COMPANY_NAME, PRODUCT_NAME } from '@/constants/site';
+import { appOrigin, COMPANY_LEGAL_NAME, COMPANY_NAME, PRODUCT_NAME } from '@/constants/site';
 import logo from '@/assets/regal-logo.png';
 
 interface AuthPageProps {
@@ -246,7 +246,7 @@ export const AuthPage = ({ onAuthSuccess, regalMailLoading }: AuthPageProps) => 
         </div>
 
         <div className="mt-6 space-y-2 text-center text-xs text-white/30 sm:mt-8">
-          <p>© {new Date().getFullYear()} {COMPANY_NAME}. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.</p>
           <p>
             <Link to="/privacy" className="hover:text-white/50">Privacy</Link>
             {' · '}

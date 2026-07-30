@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LegalPageLayout } from '@/components/legal/LegalPageLayout';
-import { COMPANY_NAME, PRODUCT_NAME, SITE_URL } from '@/constants/site';
+import { COMPANY_LEGAL_NAME, PRODUCT_NAME, SITE_URL } from '@/constants/site';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 const Privacy = () => {
@@ -9,7 +9,7 @@ const Privacy = () => {
   return (
     <LegalPageLayout title="Privacy Policy">
       <p>
-        {COMPANY_NAME} (&quot;we&quot;, &quot;us&quot;) operates {PRODUCT_NAME} at{' '}
+        {COMPANY_LEGAL_NAME} (&quot;we&quot;, &quot;us&quot;) operates {PRODUCT_NAME} at{' '}
         <a href={SITE_URL}>{SITE_URL}</a>. This policy explains what we collect, why we collect it,
         and how we protect your information when you use our video meeting service.
       </p>
@@ -66,7 +66,7 @@ const Privacy = () => {
         <h2>Your choices</h2>
         <p>
           You may update your profile and device defaults in Settings, delete meetings you host, and
-          request account deletion by contacting {COMPANY_NAME}. You can deny camera/microphone
+          request account deletion by contacting {COMPANY_LEGAL_NAME}. You can deny camera/microphone
           permission in your browser at any time.
         </p>
       </section>
@@ -78,7 +78,7 @@ const Privacy = () => {
           <a href="https://regalmesh.com" target="_blank" rel="noopener noreferrer">
             regalmesh.com
           </a>{' '}
-          or email your {COMPANY_NAME} administrator.
+          or email your {COMPANY_LEGAL_NAME} administrator.
         </p>
       </section>
 

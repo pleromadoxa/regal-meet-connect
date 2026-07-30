@@ -13,7 +13,7 @@ This document is **self-contained**. It describes every public-facing user featu
 | Item | Value |
 |---|---|
 | Product name | **Regal Meeting** |
-| Company | Quantum Regal |
+| Company | Spatial Regal Digital Ltd |
 | Supabase project ref | `ytbilvvrqokjqvzbbtpd` |
 | Supabase URL | `https://ytbilvvrqokjqvzbbtpd.supabase.co` |
 | REST endpoint | `https://ytbilvvrqokjqvzbbtpd.supabase.co/rest/v1` |
@@ -583,4 +583,4 @@ All tables are RLS-enabled. Always authenticate the user first; the same anon ke
 
 ---
 
-© 2025 Quantum Regal — Regal Meeting.
+© 2025 Spatial Regal Digital Ltd — Regal Meeting.

@@ -89,7 +89,7 @@ const renderHtml = (opts: {
                 © ${new Date().getFullYear()} Regal Meeting. All rights reserved.
               </p>
               <p style="margin:6px 0 0;color:#8b8298;font-size:12px;">
-                Powered by <strong style="color:#7B2CBF;">Quantum Regal</strong>
+                Powered by <strong style="color:#7B2CBF;">Spatial Regal</strong>
               </p>
             </td>
           </tr>

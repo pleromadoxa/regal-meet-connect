@@ -6,7 +6,10 @@ export const SITE_URL =
 export const MEET_DOMAIN = 'meet.regalmesh.com';
 
 export const PRODUCT_NAME = 'Regal Meeting' as const;
-export const COMPANY_NAME = 'Quantum Regal' as const;
+/** Short brand name for UI */
+export const COMPANY_NAME = 'Spatial Regal' as const;
+/** Full legal entity name */
+export const COMPANY_LEGAL_NAME = 'Spatial Regal Digital Ltd' as const;
 
 export function appOrigin(): string {
   if (typeof window !== 'undefined') return window.location.origin;

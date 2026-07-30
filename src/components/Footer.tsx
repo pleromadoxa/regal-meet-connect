@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import logo from '@/assets/regal-logo.png';
-import { PRODUCT_NAME, COMPANY_NAME } from '@/constants/site';
+import { PRODUCT_NAME, COMPANY_NAME, COMPANY_LEGAL_NAME } from '@/constants/site';
 
 interface FooterProps {
   className?: string;
@@ -31,7 +31,7 @@ export const Footer = ({ className = "" }: FooterProps) => {
           </a>
         </nav>
         <p className="text-slate-400 text-sm md:text-base">
-          © {new Date().getFullYear()} {COMPANY_NAME}. All rights reserved.
+          © {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.
         </p>
         <p className="text-slate-400/80 text-sm">
           {PRODUCT_NAME} — connecting people across the globe.
