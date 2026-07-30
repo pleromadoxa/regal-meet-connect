@@ -214,9 +214,10 @@ export const useWebRTC = (
       peerConnectionsRef.current.forEach((pc, peerId) => {
         if (pc.connectionState !== 'connected') {
           console.warn(`Connection issue detected for ${peerId}:`, pc.connectionState);
-          // Attempt to restart ICE if connection is degraded
-          if (pc.connectionState === 'disconnected') {
-            pc.restartIce();
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+            void restartPeerNegotiation(pc, async (offer) => {
+              sendSignalingMessageRef.current({ type: 'offer', to: peerId, data: offer });
+            });
           }
         }
       });
@@ -284,7 +285,9 @@ export const useWebRTC = (
       pc.oniceconnectionstatechange = () => {
         console.log(`ICE state for ${remoteUserId}:`, pc.iceConnectionState);
         if (pc.iceConnectionState === 'failed') {
-          try { pc.restartIce(); } catch (e) { console.warn('restartIce failed', e); }
+          void restartPeerNegotiation(pc, async (offer) => {
+            sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
+          });
         }
       };
 
@@ -333,10 +336,11 @@ export const useWebRTC = (
 
         if (pc.connectionState === 'failed') {
           schedulePeerDisconnectCleanup(remoteUserId, () => {
-            if (pc.connectionState === 'failed') {
-              console.log('Cleaning up failed peer connection for:', remoteUserId);
-              pc.close();
-              cleanupPeer();
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+              console.log('Peer failed after grace — attempting renegotiation:', remoteUserId);
+              void restartPeerNegotiation(pc, async (offer) => {
+                sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
+              });
             }
           });
           return;
@@ -466,7 +470,7 @@ export const useWebRTC = (
           pendingCandidatesRef.delete(remoteUserId);
           makingOfferRef.delete(remoteUserId);
         }
-        if (localStreamRef.current && createOfferRef.current) {
+        if (createOfferRef.current) {
           void createOfferRef.current(remoteUserId);
         }
       } else if (message.type === 'audio-toggle') {
@@ -575,7 +579,7 @@ export const useWebRTC = (
       
       currentPeers.forEach(peerId => {
         if (!mediaRoutingRef.current.shouldConnectToPeer(peerId)) return;
-        if (!peerConnectionsRef.current.has(peerId) && localStreamRef.current) {
+        if (!peerConnectionsRef.current.has(peerId)) {
           if (signalingPeers.size + 1 > MEETING_LIMITS.maxMeshPeerConnections) return;
           peerQueueRef.current?.enqueue(peerId);
         }
@@ -589,7 +593,7 @@ export const useWebRTC = (
 
   useEffect(() => {
     const reconnectAll = () => {
-      if (!mediaRoutingRef.current.useMesh || !localStreamRef.current) return;
+      if (!mediaRoutingRef.current.useMesh) return;
       Array.from(signalingPeers).forEach((peerId) => {
         if (!mediaRoutingRef.current.shouldConnectToPeer(peerId)) return;
         const pc = peerConnectionsRef.current.get(peerId);
@@ -611,6 +615,15 @@ export const useWebRTC = (
       window.removeEventListener('meeting-visibility-resume', reconnectAll);
     };
   }, [signalingPeers, syncPeerConnections]);
+
+  // Drop to audio-only locally when network quality is critical
+  useEffect(() => {
+    if (connectionQuality.metrics.qualityLevel !== 'potato') return;
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = false;
+    });
+    if (isVideoEnabled) setIsVideoEnabled(false);
+  }, [connectionQuality.metrics.qualityLevel, isVideoEnabled]);
 
   useEffect(() => {
     syncHostScreenFromRemotes();

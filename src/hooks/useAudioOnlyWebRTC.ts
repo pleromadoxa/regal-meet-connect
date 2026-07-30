@@ -188,6 +188,19 @@ export const useAudioOnlyWebRTC = (
     console.log('Initializing Audio-Only WebRTC for:', { meetingId, userName, userId });
     
     const signalingChannel = initializeSignalingRef.current();
+    const pendingCandidatesRef = new Map<string, RTCIceCandidateInit[]>();
+
+    const flushPendingCandidates = async (remoteUserId: string, pc: RTCPeerConnection) => {
+      const queue = pendingCandidatesRef.get(remoteUserId) || [];
+      while (queue.length) {
+        const c = queue.shift()!;
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(c));
+        } catch (err) {
+          console.warn('Failed to flush queued ICE candidate:', err);
+        }
+      }
+    };
 
     const addVideoToPeerConnection = (pc: RTCPeerConnection) => {
       const publish = localStreamRef.current && mediaRoutingRef.current.publishToMesh !== false;
@@ -245,6 +258,14 @@ export const useAudioOnlyWebRTC = (
         syncHostScreenRef.current();
       };
 
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'failed') {
+          void restartPeerNegotiation(pc, async (offer) => {
+            sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
+          });
+        }
+      };
+
       pc.onconnectionstatechange = () => {
         console.log('Audio peer connection state change:', pc.connectionState);
         const cleanupPeer = () => {
@@ -270,8 +291,11 @@ export const useAudioOnlyWebRTC = (
 
         if (pc.connectionState === 'failed') {
           schedulePeerDisconnectCleanup(remoteUserId, () => {
-            pc.close();
-            cleanupPeer();
+            if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+              void restartPeerNegotiation(pc, async (offer) => {
+                sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
+              });
+            }
           });
           return;
         }
@@ -330,6 +354,7 @@ export const useAudioOnlyWebRTC = (
 
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          await flushPendingCandidates(remoteUserId, pc);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(new RTCSessionDescription(answer));
 
@@ -347,18 +372,24 @@ export const useAudioOnlyWebRTC = (
         if (pc) {
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+            await flushPendingCandidates(remoteUserId, pc);
           } catch (error) {
             console.error('Error handling audio answer:', error);
           }
         }
       } else if (message.type === 'ice-candidate') {
         const pc = peerConnectionsRef.current.get(remoteUserId);
-        if (pc && message.data) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(message.data));
-          } catch (error) {
-            console.error('Error adding ICE candidate:', error);
-          }
+        if (!pc || !message.data) return;
+        if (!pc.remoteDescription?.type) {
+          const q = pendingCandidatesRef.get(remoteUserId) || [];
+          q.push(message.data);
+          pendingCandidatesRef.set(remoteUserId, q);
+          return;
+        }
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(message.data));
+        } catch (error) {
+          console.warn('Error adding ICE candidate:', error);
         }
       } else if (message.type === 'leave') {
         cancelPeerDisconnectCleanup(remoteUserId);

@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import {
+  aggregatePeerMetrics,
+  qualityLevelFromMetrics,
+  type InboundRtpSnapshot,
+} from '@/lib/webrtcStats';
 
 interface NetworkStats {
   bandwidth: number;
@@ -19,139 +23,67 @@ export const useNetworkOptimization = () => {
   const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality>({
     level: 'good',
     metrics: {
-      bandwidth: 1000,
+      bandwidth: 0,
       packetLoss: 0,
       rtt: 50,
       jitter: 0,
-      qualityLevel: 'high'
+      qualityLevel: 'high',
     },
-    recommendation: 'Connection stable'
+    recommendation: 'Connection stable',
   });
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const { toast } = useToast();
+  const monitoredPeersRef = useRef<Set<RTCPeerConnection>>(new Set());
+  const inboundSnapshotsRef = useRef<Map<RTCPeerConnection, InboundRtpSnapshot>>(new Map());
 
-  // Monitor network statistics
-  const monitorNetworkStats = useCallback(async (peerConnection: RTCPeerConnection) => {
-    try {
-      const stats = await peerConnection.getStats();
-      let bandwidth = 0;
-      let packetLoss = 0;
-      let rtt = 0;
-      let jitter = 0;
-
-      stats.forEach((report) => {
-        if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
-          bandwidth = report.bytesReceived || 0;
-          packetLoss = report.packetsLost || 0;
-          jitter = report.jitter || 0;
-        }
-        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-          rtt = report.currentRoundTripTime ? report.currentRoundTripTime * 1000 : 0;
-        }
-      });
-
-      // Calculate quality level based on metrics
-      let qualityLevel: NetworkStats['qualityLevel'] = 'high';
-      let level: ConnectionQuality['level'] = 'excellent';
-      let recommendation = 'Connection excellent';
-
-      if (rtt > 300 || packetLoss > 5) {
-        qualityLevel = 'potato';
-        level = 'poor';
-        recommendation = 'Very poor connection - switching to audio only mode';
-      } else if (rtt > 200 || packetLoss > 3) {
-        qualityLevel = 'low';
-        level = 'poor';
-        recommendation = 'Poor connection - reducing video quality';
-      } else if (rtt > 100 || packetLoss > 1) {
-        qualityLevel = 'medium';
-        level = 'fair';
-        recommendation = 'Fair connection - optimizing quality';
-      } else if (rtt > 50) {
-        qualityLevel = 'medium';
-        level = 'good';
-        recommendation = 'Good connection';
-      }
-
-      const newStats: NetworkStats = {
-        bandwidth: Math.round(bandwidth / 1024), // Convert to KB
-        packetLoss: Math.round(packetLoss * 100) / 100,
-        rtt: Math.round(rtt),
-        jitter: Math.round(jitter * 1000),
-        qualityLevel
-      };
-
-      setConnectionQuality({
-        level,
-        metrics: newStats,
-        recommendation
-      });
-
-      return newStats;
-    } catch (error) {
-      console.error('Error monitoring network stats:', error);
-      return null;
-    }
-  }, []);
-
-  // Apply adaptive bitrate based on connection quality
   const applyAdaptiveBitrate = useCallback(async (
     peerConnection: RTCPeerConnection,
     qualityLevel: NetworkStats['qualityLevel']
   ) => {
     try {
       setIsOptimizing(true);
-      
-      const senders = peerConnection.getSenders();
-      const videoSender = senders.find(sender => 
-        sender.track && sender.track.kind === 'video'
-      );
 
-      if (!videoSender || !videoSender.track) {
-        setIsOptimizing(false);
+      const senders = peerConnection.getSenders();
+      const videoSender = senders.find((sender) => sender.track?.kind === 'video');
+
+      if (!videoSender?.track) {
         return;
       }
 
       const params = videoSender.getParameters();
-      if (!params.encodings || params.encodings.length === 0) {
-        setIsOptimizing(false);
-        return;
-      }
+      if (!params.encodings?.length) return;
 
-      // Set bitrate based on quality level
       let maxBitrate: number;
       let maxFramerate: number;
 
       switch (qualityLevel) {
         case 'potato':
-          maxBitrate = 100000; // 100 Kbps
+          maxBitrate = 100_000;
           maxFramerate = 10;
+          videoSender.track.enabled = false;
           break;
         case 'low':
-          maxBitrate = 300000; // 300 Kbps
+          maxBitrate = 300_000;
           maxFramerate = 15;
+          videoSender.track.enabled = true;
           break;
         case 'medium':
-          maxBitrate = 800000; // 800 Kbps
+          maxBitrate = 800_000;
           maxFramerate = 24;
+          videoSender.track.enabled = true;
           break;
         case 'high':
         default:
-          maxBitrate = 2000000; // 2 Mbps
+          maxBitrate = 2_000_000;
           maxFramerate = 30;
+          videoSender.track.enabled = true;
           break;
       }
 
       params.encodings[0].maxBitrate = maxBitrate;
       params.encodings[0].maxFramerate = maxFramerate;
-
       await videoSender.setParameters(params);
-      
-      console.log(`Applied adaptive bitrate: ${maxBitrate / 1000} Kbps, ${maxFramerate} fps for ${qualityLevel} quality`);
-      
     } catch (error) {
       console.error('Error applying adaptive bitrate:', error);
     } finally {
@@ -159,94 +91,85 @@ export const useNetworkOptimization = () => {
     }
   }, []);
 
-  // Enable connection recovery mechanisms
-  const enableConnectionRecovery = useCallback((peerConnection: RTCPeerConnection) => {
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
+  const refreshAggregatedStats = useCallback(async () => {
+    const peers = [...monitoredPeersRef.current].filter((pc) => pc.connectionState !== 'closed');
+    if (peers.length === 0) return;
 
-    peerConnection.addEventListener('connectionstatechange', () => {
-      const state = peerConnection.connectionState;
-      console.log('Connection state changed:', state);
+    const aggregated = await aggregatePeerMetrics(peers, inboundSnapshotsRef.current);
+    if (!aggregated) return;
 
-      if (state === 'disconnected' || state === 'failed') {
-        setConnectionQuality(prev => ({
-          ...prev,
-          level: 'disconnected',
-          recommendation: 'Connection lost - attempting to reconnect...'
-        }));
+    const qualityLevel = qualityLevelFromMetrics(aggregated.rttMs, aggregated.packetLossPct);
 
-        if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectAttempts++;
-          console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})`);
-          
-          setTimeout(() => {
-            if (peerConnection.connectionState === 'failed') {
-              peerConnection.restartIce();
-            }
-          }, 1000 * reconnectAttempts);
-        } else {
-          toast({
-            title: "Connection Failed",
-            description: "Trying to restore your connection automatically…",
-            variant: "destructive"
-          });
-        }
-      } else if (state === 'connected') {
-        reconnectAttempts = 0;
-        toast({
-          title: "Connection Restored",
-          description: "Video connection has been restored.",
-          variant: "default"
-        });
-      }
-    });
-  }, [toast]);
+    let level: ConnectionQuality['level'] = 'excellent';
+    let recommendation = 'Connection excellent';
 
-  // Start monitoring for a peer connection
-  const startMonitoring = useCallback((peerConnection: RTCPeerConnection) => {
-    peerConnectionRef.current = peerConnection;
-    enableConnectionRecovery(peerConnection);
-
-    if (statsIntervalRef.current) {
-      clearInterval(statsIntervalRef.current);
+    if (qualityLevel === 'potato') {
+      level = 'poor';
+      recommendation = 'Very poor connection — audio-only mode active';
+    } else if (qualityLevel === 'low') {
+      level = 'poor';
+      recommendation = 'Poor connection — reducing video quality';
+    } else if (qualityLevel === 'medium') {
+      level = 'fair';
+      recommendation = 'Fair connection — optimizing quality';
+    } else if (aggregated.rttMs > 50) {
+      level = 'good';
+      recommendation = 'Good connection';
     }
 
-    statsIntervalRef.current = setInterval(async () => {
-      const stats = await monitorNetworkStats(peerConnection);
-      if (stats && stats.qualityLevel !== connectionQuality.metrics.qualityLevel) {
-        await applyAdaptiveBitrate(peerConnection, stats.qualityLevel);
+    setConnectionQuality((prev) => {
+      const next: ConnectionQuality = {
+        level,
+        metrics: {
+          bandwidth: Math.round(aggregated.inboundKbps),
+          packetLoss: Math.round(aggregated.packetLossPct * 100) / 100,
+          rtt: Math.round(aggregated.rttMs),
+          jitter: Math.round(aggregated.jitterMs),
+          qualityLevel,
+        },
+        recommendation,
+      };
+
+      if (prev.metrics.qualityLevel !== qualityLevel) {
+        peers.forEach((pc) => {
+          void applyAdaptiveBitrate(pc, qualityLevel);
+        });
       }
-    }, 1000); // Check every second for faster optimization
 
-  }, [monitorNetworkStats, applyAdaptiveBitrate, connectionQuality.metrics.qualityLevel]);
+      return next;
+    });
+  }, [applyAdaptiveBitrate]);
 
-  // Stop monitoring
+  const startMonitoring = useCallback((peerConnection: RTCPeerConnection) => {
+    monitoredPeersRef.current.add(peerConnection);
+
+    if (statsIntervalRef.current) return;
+
+    statsIntervalRef.current = setInterval(() => {
+      void refreshAggregatedStats();
+    }, 2000);
+  }, [refreshAggregatedStats]);
+
   const stopMonitoring = useCallback(() => {
     if (statsIntervalRef.current) {
       clearInterval(statsIntervalRef.current);
       statsIntervalRef.current = null;
     }
-    peerConnectionRef.current = null;
+    monitoredPeersRef.current.clear();
+    inboundSnapshotsRef.current.clear();
   }, []);
 
-  // Manual quality override
   const setQualityOverride = useCallback(async (qualityLevel: NetworkStats['qualityLevel']) => {
-    if (peerConnectionRef.current) {
-      await applyAdaptiveBitrate(peerConnectionRef.current, qualityLevel);
-      setConnectionQuality(prev => ({
-        ...prev,
-        metrics: { ...prev.metrics, qualityLevel },
-        recommendation: `Quality manually set to ${qualityLevel}`
-      }));
-    }
+    const peers = [...monitoredPeersRef.current];
+    await Promise.all(peers.map((pc) => applyAdaptiveBitrate(pc, qualityLevel)));
+    setConnectionQuality((prev) => ({
+      ...prev,
+      metrics: { ...prev.metrics, qualityLevel },
+      recommendation: `Quality manually set to ${qualityLevel}`,
+    }));
   }, [applyAdaptiveBitrate]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopMonitoring();
-    };
-  }, [stopMonitoring]);
+  useEffect(() => () => stopMonitoring(), [stopMonitoring]);
 
   return {
     connectionQuality,
@@ -254,6 +177,5 @@ export const useNetworkOptimization = () => {
     startMonitoring,
     stopMonitoring,
     setQualityOverride,
-    monitorNetworkStats
   };
 };

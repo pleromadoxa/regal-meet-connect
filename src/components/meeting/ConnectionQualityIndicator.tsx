@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, AlertTriangle, Signal } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Wifi, WifiOff, AlertTriangle, Signal, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  aggregatePeerMetrics,
+  type InboundRtpSnapshot,
+} from '@/lib/webrtcStats';
 
 interface ConnectionStats {
   rtt: number; // Round trip time in ms
@@ -19,7 +23,7 @@ export const ConnectionQualityIndicator = ({
   peerConnections, 
   className = "" 
 }: ConnectionQualityIndicatorProps) => {
-  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'offline'>('good');
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'offline' | 'connecting'>('connecting');
   const [stats, setStats] = useState<ConnectionStats>({
     rtt: 0,
     packetLoss: 0,
@@ -27,6 +31,8 @@ export const ConnectionQualityIndicator = ({
     jitter: 0
   });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  const inboundSnapshotsRef = useRef<Map<RTCPeerConnection, InboundRtpSnapshot>>(new Map());
 
   // Monitor network status
   useEffect(() => {
@@ -51,73 +57,36 @@ export const ConnectionQualityIndicator = ({
 
     const collectStats = async () => {
       if (peerConnections.size === 0) {
-        setConnectionQuality('good');
+        setConnectionQuality('connecting');
         return;
       }
 
-      let totalRtt = 0;
-      let totalPacketLoss = 0;
-      let totalBitrate = 0;
-      let totalJitter = 0;
-      let connectionsAnalyzed = 0;
-
-      for (const [peerId, pc] of peerConnections) {
-        try {
-          const stats = await pc.getStats();
-          
-          stats.forEach((report) => {
-            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-              if (report.currentRoundTripTime !== undefined) {
-                totalRtt += report.currentRoundTripTime * 1000; // Convert to ms
-              }
-            }
-            
-            if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
-              if (report.packetsLost !== undefined && report.packetsReceived !== undefined) {
-                const packetLoss = (report.packetsLost / (report.packetsLost + report.packetsReceived)) * 100;
-                totalPacketLoss += packetLoss;
-              }
-              
-              if (report.bytesReceived !== undefined && report.timestamp) {
-                // This is a simplified bitrate calculation
-                totalBitrate += (report.bytesReceived * 8) / 1000; // Convert to kbps
-              }
-              
-              if (report.jitter !== undefined) {
-                totalJitter += report.jitter * 1000; // Convert to ms
-              }
-              
-              connectionsAnalyzed++;
-            }
-          });
-        } catch (error) {
-          console.warn(`Failed to get stats for peer ${peerId}:`, error);
-        }
+      const aggregated = await aggregatePeerMetrics(peerConnections.values(), inboundSnapshotsRef.current);
+      if (!aggregated) {
+        setConnectionQuality('fair');
+        return;
       }
 
-      if (connectionsAnalyzed > 0) {
-        const avgStats: ConnectionStats = {
-          rtt: totalRtt / connectionsAnalyzed,
-          packetLoss: totalPacketLoss / connectionsAnalyzed,
-          bitrate: totalBitrate / connectionsAnalyzed,
-          jitter: totalJitter / connectionsAnalyzed
-        };
+      const avgStats: ConnectionStats = {
+        rtt: aggregated.rttMs,
+        packetLoss: aggregated.packetLossPct,
+        bitrate: aggregated.inboundKbps,
+        jitter: aggregated.jitterMs,
+      };
 
-        setStats(avgStats);
+      setStats(avgStats);
 
-        // Determine connection quality based on stats
-        let quality: 'excellent' | 'good' | 'fair' | 'poor' | 'offline' = 'excellent';
+      let quality: 'excellent' | 'good' | 'fair' | 'poor' | 'offline' | 'connecting' = 'excellent';
 
-        if (avgStats.rtt > 300 || avgStats.packetLoss > 5 || avgStats.jitter > 100) {
-          quality = 'poor';
-        } else if (avgStats.rtt > 200 || avgStats.packetLoss > 2 || avgStats.jitter > 50) {
-          quality = 'fair';
-        } else if (avgStats.rtt > 100 || avgStats.packetLoss > 1 || avgStats.jitter > 30) {
-          quality = 'good';
-        }
-
-        setConnectionQuality(quality);
+      if (avgStats.rtt > 300 || avgStats.packetLoss > 5 || avgStats.jitter > 100) {
+        quality = 'poor';
+      } else if (avgStats.rtt > 200 || avgStats.packetLoss > 2 || avgStats.jitter > 50) {
+        quality = 'fair';
+      } else if (avgStats.rtt > 100 || avgStats.packetLoss > 1 || avgStats.jitter > 30) {
+        quality = 'good';
       }
+
+      setConnectionQuality(quality);
     };
 
     // Collect stats every 3 seconds
@@ -174,6 +143,15 @@ export const ConnectionQualityIndicator = ({
           label: 'Offline',
           description: 'No internet connection'
         };
+      case 'connecting':
+        return {
+          icon: Loader2,
+          color: 'text-slate-300',
+          bgColor: 'bg-slate-500/20',
+          borderColor: 'border-slate-500/30',
+          label: 'Connecting',
+          description: 'Establishing peer connections…'
+        };
     }
   };
 
@@ -192,7 +170,7 @@ export const ConnectionQualityIndicator = ({
                 hover:opacity-80 transition-opacity cursor-help
               `}
             >
-              <IconComponent className="w-3 h-3 mr-1" />
+              <IconComponent className={`w-3 h-3 mr-1 ${connectionQuality === 'connecting' ? 'animate-spin' : ''}`} />
               <span className="text-xs">{qualityInfo.label}</span>
             </Badge>
           </div>
@@ -200,7 +178,7 @@ export const ConnectionQualityIndicator = ({
         <TooltipContent side="top" className="bg-slate-800 border-slate-600">
           <div className="space-y-1">
             <p className="font-medium">{qualityInfo.description}</p>
-            {connectionQuality !== 'offline' && (
+            {connectionQuality !== 'offline' && connectionQuality !== 'connecting' && (
               <div className="text-xs space-y-1">
                 <div className="flex justify-between">
                   <span>Latency:</span>

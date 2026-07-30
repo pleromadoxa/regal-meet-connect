@@ -35,6 +35,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
   const [peerUserNames, setPeerUserNames] = useState<Map<string, string>>(new Map());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const pendingLeaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const channelRetryCountRef = useRef(0);
   const sessionEpochRef = useRef(String(Date.now()));
   const { toast } = useToast();
 
@@ -194,6 +195,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
 
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
+        channelRetryCountRef.current = 0;
         sessionEpochRef.current = String(Date.now());
         await channel.track({
           user_id: userId,
@@ -218,8 +220,15 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
       }
 
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        console.warn('Signaling channel error, resubscribing…', status);
-        setTimeout(() => void subscribeChannel(), 2000);
+        const attempt = channelRetryCountRef.current;
+        if (attempt >= 12) {
+          console.error('Signaling channel max retries reached');
+          return;
+        }
+        channelRetryCountRef.current = attempt + 1;
+        const delay = Math.min(2000 * Math.pow(2, attempt), 30000);
+        console.warn(`Signaling channel error, resubscribing in ${delay}ms (attempt ${attempt + 1})…`, status);
+        setTimeout(() => void subscribeChannel(), delay);
       }
     });
 
