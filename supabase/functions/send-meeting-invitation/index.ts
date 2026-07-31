@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 import { Resend } from "npm:resend@2.0.0";
+import { COMPANY_LEGAL_NAME, COMPANY_NAME, PRODUCT_NAME } from "../_shared/brand.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,10 +87,10 @@ const renderHtml = (opts: {
           <tr>
             <td style="padding:24px 32px;text-align:center;border-top:1px solid #efeaf6;background:#fafafa;">
               <p style="margin:0;color:#6b5e7a;font-size:12px;">
-                © ${new Date().getFullYear()} Regal Meeting. All rights reserved.
+                © ${new Date().getFullYear()} ${COMPANY_LEGAL_NAME}. All rights reserved.
               </p>
               <p style="margin:6px 0 0;color:#8b8298;font-size:12px;">
-                Powered by <strong style="color:#7B2CBF;">Spatial Regal</strong>
+                ${PRODUCT_NAME} by <strong style="color:#7B2CBF;">${COMPANY_NAME}</strong>
               </p>
             </td>
           </tr>
