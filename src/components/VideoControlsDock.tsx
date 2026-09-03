@@ -39,7 +39,7 @@ export const VideoControlsDock = ({
   isVideoEnabled, isAudioEnabled, isScreenSharing, captionsEnabled,
   showChat, handRaised,
   onToggleVideo, onToggleAudio, onToggleScreenShare, onSwitchCamera,
-  onToggleCaptions, onToggleSettings, onToggleHand, onToggleEffects,
+  onToggleCaptions, onToggleSettings, onToggleChat, onToggleHand, onToggleEffects,
   onNavigateToDashboard, onLeaveMeeting, onToggleParticipants,
 }: VideoControlsDockProps) => {
   const isMobile = useIsMobile();
