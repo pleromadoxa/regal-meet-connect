@@ -1,5 +1,5 @@
 
-import { Suspense, lazy, useCallback, useState, useEffect } from 'react';
+import { Suspense, lazy } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -12,7 +12,6 @@ import Auth from './pages/Auth';
 import NotFound from './pages/NotFound';
 import { SessionManager } from './components/SessionManager';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
-import { SplashScreen } from './components/SplashScreen';
 import { AuthProvider } from '@/hooks/useAuth';
 import { RegalPageLoader } from '@/components/layout/RegalPageLoader';
 
@@ -42,66 +41,40 @@ const KeepAliveBoundary = () => {
   return null;
 };
 
-const SPLASH_KEY = 'regal-splash-seen';
-
-const App = () => {
-  const [splashDone, setSplashDone] = useState(
-    () => typeof window !== 'undefined' && sessionStorage.getItem(SPLASH_KEY) === '1'
-  );
-
-  const handleSplashComplete = useCallback(() => {
-    sessionStorage.setItem(SPLASH_KEY, '1');
-    setSplashDone(true);
-  }, []);
-
-  // Never block the app behind splash if timers fail
-  useEffect(() => {
-    if (splashDone) return;
-    const fallback = window.setTimeout(handleSplashComplete, 3500);
-    return () => window.clearTimeout(fallback);
-  }, [splashDone, handleSplashComplete]);
-
-  return (
-    <ErrorBoundary>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="regal-meeting-theme">
+const App = () => (
+  <ErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem storageKey="regal-meeting-theme">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
           <Sonner />
           <AuthProvider>
-          {!splashDone && (
-            <SplashScreen
-              duration={1200}
-              onComplete={handleSplashComplete}
-            />
-          )}
-          <BrowserRouter>
-            <KeepAliveBoundary />
-            <SessionManager />
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/join/:meetingId?" element={<Join />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/calendar" element={<Calendar />} />
-                <Route path="/calendar/book/:slug" element={<CalendarBook />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/meeting/:meetingId" element={<Meeting />} />
-                <Route path="/audio-meeting/:meetingId" element={<AudioMeeting />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
+            <BrowserRouter>
+              <KeepAliveBoundary />
+              <SessionManager />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/join/:meetingId?" element={<Join />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/calendar" element={<Calendar />} />
+                  <Route path="/calendar/book/:slug" element={<CalendarBook />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/meeting/:meetingId" element={<Meeting />} />
+                  <Route path="/audio-meeting/:meetingId" element={<AudioMeeting />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
-  );
-};
+    </ThemeProvider>
+  </ErrorBoundary>
+);
 
 export default App;
