@@ -125,9 +125,29 @@
 }
 
 /* Full viewport height on mobile/tablet (avoids iOS Safari toolbar jump) */
-.min-h-screen-safe {
+.min-h-screen-safe,
+.h-screen-safe {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.h-screen-safe {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Meeting UI vertical stack — filmstrip + control dock */
+:root {
+  --meeting-dock-height: 5.5rem;
+  --meeting-filmstrip-height: 6.5rem;
+  --meeting-stack-height: calc(var(--meeting-dock-height) + var(--meeting-filmstrip-height));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --meeting-filmstrip-height: 0rem;
+    --meeting-stack-height: var(--meeting-dock-height);
+  }
 }
 
 /* Enhanced Mobile Support */
@@ -445,13 +465,13 @@
 @keyframes splash-title-in {
   0% {
     opacity: 0;
-    transform: translateY(10px);
-    letter-spacing: 0.35em;
+    clip-path: inset(0 100% 0 0);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
+    clip-path: inset(0 0 0 0);
     transform: translateY(0);
-    letter-spacing: 0.22em;
   }
 }
 
@@ -465,7 +485,7 @@
 }
 
 .splash-screen {
-  background: linear-gradient(145deg, #0a0612 0%, #160a26 45%, #1a0d2e 100%);
+  background: #0a0a0a;
 }
 
 .splash-logo-wrap {
@@ -489,7 +509,7 @@
 }
 
 .splash-title {
-  animation: splash-title-in 600ms ease-out 520ms both;
+  animation: splash-title-in 700ms ease-out 480ms both;
 }
 
 .splash-progress-bar {
@@ -522,7 +542,7 @@
 }
 
 .landing-bg {
-  background: #0a0612;
+  background: #0a0a0a;
 }
 
 .landing-aurora {
@@ -589,4 +609,54 @@
 
 .landing-feature-card {
   animation: landing-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* App preview peek (Cron / Frame.io style) */
+.landing-app-preview {
+  position: relative;
+  margin-top: 3rem;
+  perspective: 1200px;
+}
+
+@media (min-width: 768px) {
+  .landing-app-preview {
+    margin-top: 4rem;
+  }
+}
+
+.landing-app-window {
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 960px;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: none;
+  background: #0d0d0d;
+  box-shadow:
+    0 -8px 60px rgba(255, 107, 53, 0.08),
+    0 24px 80px rgba(0, 0, 0, 0.6);
+  transform: rotateX(4deg) translateY(12%);
+  transform-origin: center bottom;
+}
+
+@media (min-width: 768px) {
+  .landing-app-window {
+    transform: rotateX(6deg) translateY(18%);
+  }
+}
+
+@keyframes meeting-preview-avatar-speak {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.03) translateY(-1px);
+  }
+}
+
+.meeting-preview-avatar-speaking {
+  animation: meeting-preview-avatar-speak 2.4s ease-in-out infinite;
 }

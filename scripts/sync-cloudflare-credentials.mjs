@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Import Cloudflare credentials from ~/Documents/CLOUDFLARE 2.md into .env.local
+ * Also ensures a Realtime Calls (SFU) app exists via Cloudflare API when possible.
  * Run: npm run sync:cloudflare-credentials
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -35,7 +36,56 @@ function upsertEnv(lines, key, value) {
   return next;
 }
 
-function main() {
+function loadEnv(path) {
+  if (!existsSync(path)) return {};
+  const out = {};
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq < 1) continue;
+    out[trimmed.slice(0, eq)] = trimmed.slice(eq + 1).replace(/^["']|["']$/g, '');
+  }
+  return out;
+}
+
+async function ensureRealtimeSfuApp(envPath) {
+  const env = loadEnv(envPath);
+  if (env.CLOUDFLARE_REALTIME_APP_ID && env.CLOUDFLARE_REALTIME_APP_SECRET) {
+    console.log('Realtime SFU app credentials already present in .env.local');
+    return;
+  }
+  const token = env.CLOUDFLARE_API_TOKEN;
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID || env.R2_ACCOUNT_ID;
+  if (!token || !accountId) {
+    throw new Error('CLOUDFLARE_API_TOKEN / ACCOUNT_ID required to create SFU app');
+  }
+
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/calls/apps`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: `regal-meeting-sfu-${Date.now()}` }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json?.success) {
+    throw new Error(json?.errors?.[0]?.message || `HTTP ${res.status}`);
+  }
+
+  const appId = json.result.uid;
+  const secret = json.result.secret;
+  let lines = readFileSync(envPath, 'utf8').split('\n');
+  lines = upsertEnv(lines, 'CLOUDFLARE_REALTIME_APP_ID', appId);
+  lines = upsertEnv(lines, 'CLOUDFLARE_REALTIME_APP_SECRET', secret);
+  lines = upsertEnv(lines, 'CALLS_APP_ID', appId);
+  lines = upsertEnv(lines, 'CALLS_APP_SECRET', secret);
+  writeFileSync(envPath, lines.filter((l, i, a) => l !== '' || i < a.length - 1).join('\n') + '\n');
+  console.log(`Created Cloudflare Realtime SFU app and saved to .env.local (id prefix ${String(appId).slice(0, 6)}…)`);
+}
+
+async function main() {
   const source = SOURCES.find((p) => existsSync(p));
   if (!source) {
     console.error('Could not find CLOUDFLARE 2.md in Documents');
@@ -71,7 +121,20 @@ function main() {
 
   writeFileSync(envPath, lines.filter((l, i, a) => l !== '' || i < a.length - 1).join('\n') + '\n');
   console.log(`Synced Cloudflare credentials from ${source} → .env.local`);
+
+  // Ensure Realtime SFU app credentials exist (create one if missing)
+  try {
+    await ensureRealtimeSfuApp(envPath);
+  } catch (err) {
+    console.warn('⚠ Could not ensure Realtime SFU app:', err?.message || err);
+    console.warn('  Set CLOUDFLARE_REALTIME_APP_ID / CLOUDFLARE_REALTIME_APP_SECRET manually if needed.');
+  }
+
   console.log('Next: npm run setup:cloudflare  or  npm run deploy');
+  console.log('      supabase secrets set CLOUDFLARE_REALTIME_APP_ID=... CLOUDFLARE_REALTIME_APP_SECRET=...');
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

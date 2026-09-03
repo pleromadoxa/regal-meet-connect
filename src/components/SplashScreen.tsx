@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import logo from '@/assets/regal-logo.png';
+import { PRODUCT_NAME } from '@/constants/site';
 
 interface SplashScreenProps {
   onComplete?: () => void;
@@ -41,8 +42,9 @@ export const SplashScreen = ({ onComplete, duration = 1400 }: SplashScreenProps)
       aria-live="polite"
       aria-label="Loading Regal Meeting"
     >
-      <div className="relative flex flex-col items-center gap-8">
-        <div className="relative flex h-40 w-40 items-center justify-center sm:h-44 sm:w-44">
+      <div className="relative flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative flex h-40 w-40 items-center justify-center sm:h-44 sm:w-44">
           <div
             className="splash-glow pointer-events-none absolute inset-2 rounded-full bg-orange-500/25 blur-2xl"
             aria-hidden
@@ -83,12 +85,14 @@ export const SplashScreen = ({ onComplete, duration = 1400 }: SplashScreenProps)
               aria-hidden
             />
           </div>
+          </div>
+
+          <p className="splash-title text-xl font-bold tracking-tight text-white sm:text-2xl">
+            {PRODUCT_NAME}
+          </p>
         </div>
 
-        <div className="flex flex-col items-center gap-4">
-          <p className="splash-title text-xs font-bold uppercase tracking-[0.22em] text-white/70 sm:text-sm">
-            Regal Meeting
-          </p>
+        <div className="flex flex-col items-center">
           <div
             className="h-0.5 w-28 overflow-hidden rounded-full bg-white/10 sm:w-32"
             aria-hidden

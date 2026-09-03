@@ -17,12 +17,13 @@ export const StableVideoElement = memo(({
   streamId,
   isLocal = false,
   className = "w-full h-full object-cover",
-  muted = false,
+  muted: _mutedProp = true,
   autoPlay = true,
   playsInline = true,
   onLoadedMetadata,
   onError
 }: StableVideoElementProps) => {
+  void _mutedProp; // API kept for callers; remote audio always goes through RemoteAudioMix
   const videoRef = useRef<HTMLVideoElement>(null);
   const currentStreamRef = useRef<MediaStream | null>(null);
   const streamIdRef = useRef<string>('');
@@ -128,7 +129,8 @@ export const StableVideoElement = memo(({
     <video
       ref={videoRef}
       className={className}
-      muted={muted || isLocal}
+      // Remote audio is owned by RemoteAudioMix — never play it from <video>
+      muted
       autoPlay={autoPlay}
       playsInline={playsInline}
       preload="metadata"

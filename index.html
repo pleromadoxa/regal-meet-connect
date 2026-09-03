@@ -26,10 +26,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Regal Meeting" />
-    <link rel="apple-touch-icon" href="/regal-logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/regal-logo.png" />
     <link rel="preload" href="/regal-logo.png" as="image" />
 
     <style>
@@ -38,9 +39,11 @@
         inset: 0;
         z-index: 99999;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(145deg, #0a0612 0%, #160a26 45%, #1a0d2e 100%);
+        gap: 1rem;
+        background: #0a0a0a;
       }
       #boot-splash img {
         width: 6rem;
@@ -48,9 +51,30 @@
         animation: boot-logo-pulse 1.1s ease-in-out infinite;
         filter: drop-shadow(0 0 32px rgba(255, 107, 53, 0.45));
       }
+      #boot-splash-title {
+        margin: 0;
+        color: #ffffff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        animation: boot-title-write 700ms ease-out 180ms both;
+      }
       @keyframes boot-logo-pulse {
         0%, 100% { transform: scale(1); opacity: 0.88; }
         50% { transform: scale(1.06); opacity: 1; }
+      }
+      @keyframes boot-title-write {
+        0% {
+          opacity: 0;
+          clip-path: inset(0 100% 0 0);
+          transform: translateY(6px);
+        }
+        100% {
+          opacity: 1;
+          clip-path: inset(0 0 0 0);
+          transform: translateY(0);
+        }
       }
     </style>
     
@@ -73,6 +97,7 @@
   <body style="margin:0;background:#0a0612;">
     <div id="boot-splash" aria-hidden="true">
       <img src="/regal-logo.png" alt="" width="96" height="96" decoding="sync" />
+      <p id="boot-splash-title">Regal Meeting</p>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

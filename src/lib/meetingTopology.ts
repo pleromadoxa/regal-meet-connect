@@ -1,5 +1,7 @@
-/** When participant count exceeds this, meetings auto-switch to SFU (or host-hub fallback). */
-export const SFU_AUTO_THRESHOLD = 50;
+/** When participant count exceeds this, meetings auto-switch to SFU (or host-hub fallback).
+ * Kept low because full-mesh video cost grows O(n²) — ~12 peers is the practical ceiling.
+ */
+export const SFU_AUTO_THRESHOLD = 12;
 
 /** Below this count everyone uses full mesh WebRTC. */
 export const MESH_MAX_PARTICIPANTS = SFU_AUTO_THRESHOLD;

@@ -52,6 +52,7 @@ export const VideoConference = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState<string | null>(null);
 
   const { broadcastHandRaise, handNotifications, raisedHands } = useMeetingHandsChannel(meetingId, {
     userName,
@@ -518,9 +519,27 @@ export const VideoConference = ({
     }
   };
 
+  useEffect(() => {
+    if (!meetingId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from('meetings')
+        .select('title')
+        .eq('meeting_id', meetingId)
+        .maybeSingle();
+      if (!cancelled && data?.title) {
+        setMeetingTitle(String(data.title));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [meetingId]);
+
   return (
-    <div className="min-h-screen bg-[#202124] relative overflow-hidden">
-      <div className="relative z-10 flex flex-col h-screen">
+    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden bg-[#0b0b0f]">
+      <div className="relative z-10 flex h-full min-h-0 flex-col">
         <LargeMeetingBanner
           mediaMode={topology.mediaMode}
           mediaRole={topology.mediaRole}
@@ -529,9 +548,10 @@ export const VideoConference = ({
           connectionError={topology.useSfu ? sfu.connectionError : null}
           onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
         />
-        {/* Meeting Header */}
+
         <MeetingHeader
           meetingId={meetingId}
+          meetingTitle={meetingTitle}
           isCurrentUserHost={isHost}
           totalParticipantCount={totalParticipantCount}
           handNotifications={handNotifications}
@@ -544,9 +564,9 @@ export const VideoConference = ({
           onToggleVideoMode={handleToggleVideoMode}
           onNavigateToSettings={handleNavigateToSettings}
           onSignOut={handleSignOut}
+          onNavigateBack={onNavigateToDashboard}
         />
 
-        {/* Meeting Layout */}
         <MeetingLayout
           localStream={localStream}
           remoteStreams={remoteStreamsArray}
@@ -577,6 +597,7 @@ export const VideoConference = ({
           localScreenStream={screenShareStream}
           hostScreenStream={hostScreenStream}
           participantCount={totalParticipantCount}
+          meetingTitle={meetingTitle ?? undefined}
           raisedHands={raisedHands}
         />
 
@@ -587,8 +608,7 @@ export const VideoConference = ({
           />
         )}
 
-        {/* Connection Quality Indicator */}
-        <div className="fixed top-4 left-4 z-40 hidden sm:block">
+        <div className="fixed left-14 top-3 z-40 sm:left-16 sm:top-4 safe-area-inset-top">
           <ConnectionQualityIndicator peerConnections={peerConnections} />
         </div>
 

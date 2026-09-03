@@ -111,7 +111,7 @@ const Meeting = () => {
 
   if (loading || isValidating) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center px-4">
+      <div className="min-h-screen-safe flex items-center justify-center bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] px-4">
         <div className="text-center text-white max-w-sm">
           <div className="animate-spin w-10 h-10 border-4 border-orange-500/30 border-t-orange-400 rounded-full mx-auto mb-4" />
           <div className="text-lg font-semibold mb-1">
@@ -127,7 +127,7 @@ const Meeting = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center px-4">
+      <div className="min-h-screen-safe flex items-center justify-center bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] px-4">
         <div className="text-center text-white">
           <div className="animate-spin w-10 h-10 border-4 border-orange-500/30 border-t-orange-400 rounded-full mx-auto mb-4" />
           <p className="text-white/70">Redirecting to sign in…</p>
@@ -138,7 +138,7 @@ const Meeting = () => {
 
   if (validationError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center px-4">
+      <div className="min-h-screen-safe flex items-center justify-center bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] px-4">
         <div className="text-center text-white max-w-md glass-morphism rounded-2xl p-8 border border-white/10">
           <h1 className="text-2xl font-bold mb-2">Couldn&apos;t join meeting</h1>
           <p className="text-white/60 mb-6">{validationError}</p>
@@ -161,7 +161,7 @@ const Meeting = () => {
 
   if (!meetingId || !userName || !isReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center px-4">
+      <div className="min-h-screen-safe flex items-center justify-center bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] px-4">
         <div className="text-center text-white">
           <h1 className="text-2xl font-bold mb-4">Invalid meeting link</h1>
           <p className="mb-6 text-white/60">Missing meeting information or validation failed.</p>

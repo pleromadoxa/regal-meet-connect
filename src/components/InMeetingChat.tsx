@@ -8,6 +8,8 @@ import { Send, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMeetingChatChannel, type MeetingChatMessage } from '@/hooks/useMeetingChatChannel';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface InMeetingChatProps {
   userName: string;
@@ -24,6 +26,7 @@ export const InMeetingChat = ({
   onSendMessage,
   messages: externalMessages = [],
 }: InMeetingChatProps) => {
+  const isMobile = useIsMobile();
   const [currentMessage, setCurrentMessage] = useState('');
   const [localOnlyMessages, setLocalOnlyMessages] = useState<MeetingChatMessage[]>(externalMessages);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -73,7 +76,14 @@ export const InMeetingChat = ({
   };
 
   return (
-    <Card className="fixed bottom-20 sm:bottom-24 right-4 w-80 h-96 bg-black/90 backdrop-blur-xl border-white/20 shadow-2xl z-50 flex flex-col">
+    <Card
+      className={cn(
+        'fixed z-50 flex flex-col border-white/20 bg-black/90 shadow-2xl backdrop-blur-xl',
+        isMobile
+          ? 'inset-x-0 bottom-0 top-auto h-[min(70dvh,520px)] w-full max-w-none rounded-t-2xl rounded-b-none safe-area-inset-bottom'
+          : 'bottom-[calc(var(--meeting-stack-height)+0.5rem)] right-4 h-96 w-80 max-w-[calc(100vw-2rem)] sm:right-6'
+      )}
+    >
       <div className="flex items-center justify-between p-3 border-b border-white/20">
         <h3 className="text-white font-semibold">Meeting Chat</h3>
         <Button

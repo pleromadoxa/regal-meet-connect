@@ -2,7 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
 import { HostPresentationLayout } from '@/components/meeting/HostPresentationLayout';
+import { RegalGlassAudioLayout } from '@/components/meeting/RegalGlassAudioLayout';
 import { RemoteAudioMix } from '@/components/meeting/RemoteAudioMix';
+import { VideoControlsDock } from '@/components/VideoControlsDock';
+import { VideoReactions } from '@/components/VideoReactions';
+import { InMeetingChat } from '@/components/InMeetingChat';
 import {
   useMeetingShellState,
   useFullscreenHandler,
@@ -22,14 +26,14 @@ import { useRecentMeetings } from '@/hooks/useRecentMeetings';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Mic, MicOff, Monitor, MonitorOff, PhoneCall } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { useMeetingTopology } from '@/hooks/useMeetingTopology';
 import { useMeetingPlanContext } from '@/hooks/useMeetingPlanContext';
 import { useMeetingDurationLimit } from '@/hooks/useMeetingPlanEnforcement';
 import type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
 import { useCloudflareSfu } from '@/hooks/useCloudflareSfu';
 import { LargeMeetingBanner } from '@/components/meeting/LargeMeetingBanner';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface AudioOnlyMeetingProps {
   meetingId: string;
@@ -44,11 +48,14 @@ export const AudioOnlyMeeting = ({
   userName,
   isHost = false,
   onLeaveMeeting,
+  onNavigateToDashboard,
 }: AudioOnlyMeetingProps) => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showParticipantsList, setShowParticipantsList] = useState(true);
+  const [showChat, setShowChat] = useState(false);
+  const [selectedParticipantId, setSelectedParticipantId] = useState('local');
   const { addRecentMeeting } = useRecentMeetings();
   const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
 
@@ -62,7 +69,7 @@ export const AudioOnlyMeeting = ({
   } = useMeetingShellState(meetingId, userName);
 
   const [handRaised, setHandRaised] = useState(false);
-  const { broadcastHandRaise, handNotifications } = useMeetingHandsChannel(meetingId, {
+  const { broadcastHandRaise, handNotifications, raisedHands } = useMeetingHandsChannel(meetingId, {
     userName,
     onRemoteHandRaise: (payload) => {
       if (!payload.handRaised) return;
@@ -84,7 +91,9 @@ export const AudioOnlyMeeting = ({
   const { toggleMuteParticipant } = useMeetingManagement();
 
   const isCurrentUserHost =
-    isHost || meetingHostIdFromLookup === user?.id || dbParticipants.some((p) => p.user_id === user?.id && p.is_host);
+    isHost ||
+    meetingHostIdFromLookup === user?.id ||
+    dbParticipants.some((p) => p.user_id === user?.id && p.is_host);
 
   const participantCount = Math.max(dbParticipants.length, 1);
 
@@ -125,13 +134,13 @@ export const AudioOnlyMeeting = ({
     hostScreenStream: meshHostScreenStream,
     toggleScreenShare,
     toggleAudio,
+    toggleCamera,
     initialize,
     cleanup,
     connectedPeers,
     peerUserNames,
     connectionQuality,
     isOptimizing,
-    setQualityOverride,
     speakingParticipants,
   } = useAudioOnlyWebRTC(meetingId, userName, user?.id || '', mediaRouting);
 
@@ -207,14 +216,21 @@ export const AudioOnlyMeeting = ({
     }
 
     return enrichParticipantNames(base, peerUserNames);
-  }, [
-    dbParticipants,
-    peerUserNames,
-    user?.id,
-    userName,
-    isCurrentUserHost,
-    isAudioEnabled,
-  ]);
+  }, [dbParticipants, peerUserNames, user?.id, userName, isCurrentUserHost, isAudioEnabled]);
+
+  const remoteStreamsArray = useMemo(() => {
+    if (!(remoteStreams instanceof Map)) {
+      return [] as { id: string; stream: MediaStream; userName: string }[];
+    }
+    return Array.from(remoteStreams.entries()).map(([id, stream]) => ({
+      id,
+      stream,
+      userName:
+        peerUserNames.get(id) ||
+        presentationParticipants.find((p) => p.user_id === id)?.user_name ||
+        'Guest',
+    }));
+  }, [remoteStreams, peerUserNames, presentationParticipants]);
 
   const effectivePresentation = presentationActive || isScreenSharing;
 
@@ -378,137 +394,141 @@ export const AudioOnlyMeeting = ({
     toggleMuteParticipant(participantId, muted);
   };
 
+  const handleNavigateBack = () => {
+    if (onNavigateToDashboard) {
+      onNavigateToDashboard();
+      return;
+    }
+    navigate('/dashboard');
+  };
+
   return (
-    <div className="flex min-h-screen-safe flex-col bg-[#121212] text-white">
+    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden bg-[#0b0b0f] text-white">
       <RemoteAudioMix streams={remoteStreams} />
 
-      <LargeMeetingBanner
-        mediaMode={topology.mediaMode}
-        mediaRole={topology.mediaRole}
-        participantCount={displayParticipantCount}
-        sfuAvailable={topology.sfuAvailable}
-        connectionError={topology.useSfu ? sfu.connectionError : null}
-        onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
-      />
-
-      <MeetingHeader
-        meetingId={meetingId}
-        isCurrentUserHost={isCurrentUserHost}
-        totalParticipantCount={displayParticipantCount}
-        handNotifications={handNotifications}
-        isFullscreen={isFullscreen}
-        showParticipants={showParticipantsList}
-        isVideoMode={false}
-        onCopyMeetingId={copyMeetingId}
-        onToggleFullscreen={toggleFullscreen}
-        onToggleParticipants={() => setShowParticipantsList((v) => !v)}
-        onToggleVideoMode={handleToggleVideoMode}
-        onNavigateToSettings={() => navigate('/settings')}
-        onSignOut={async () => {
-          cleanup();
-          await signOut();
-        }}
-      />
-
-      {showParticipantsList ? (
-        <HostPresentationLayout
-          meetingTitle={currentMeeting?.title}
-          meetingDescription={currentMeeting?.description}
-          isHost={isCurrentUserHost}
-          userName={userName}
-          userId={user?.id || ''}
-          participants={presentationParticipants}
-          speakingUserIds={speakingParticipants}
-          presentationActive={effectivePresentation}
-          presenterName={isCurrentUserHost && isScreenSharing ? userName : presenterName}
-          screenStream={hostScreenStream}
-          localScreenStream={screenShareStream}
+      <div className="relative z-10 flex h-full min-h-0 flex-col">
+        <LargeMeetingBanner
+          mediaMode={topology.mediaMode}
+          mediaRole={topology.mediaRole}
           participantCount={displayParticipantCount}
-          isCurrentUserHost={isCurrentUserHost}
-          onToggleMute={handleToggleMute}
+          sfuAvailable={topology.sfuAvailable}
+          connectionError={topology.useSfu ? sfu.connectionError : null}
+          onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
         />
-      ) : (
-        <div className="flex flex-1 items-center justify-center p-6 text-white/50 text-sm">
-          Participants panel hidden — tap People to show the list
+
+        <MeetingHeader
+          meetingId={meetingId}
+          meetingTitle={currentMeeting?.title}
+          isCurrentUserHost={isCurrentUserHost}
+          totalParticipantCount={displayParticipantCount}
+          handNotifications={handNotifications}
+          isFullscreen={isFullscreen}
+          showParticipants={showParticipantsList}
+          isVideoMode={false}
+          onCopyMeetingId={copyMeetingId}
+          onToggleFullscreen={toggleFullscreen}
+          onToggleParticipants={() => setShowParticipantsList((v) => !v)}
+          onToggleVideoMode={handleToggleVideoMode}
+          onNavigateToSettings={() => navigate('/settings')}
+          onNavigateBack={handleNavigateBack}
+          onSignOut={async () => {
+            cleanup();
+            await signOut();
+          }}
+        />
+
+        {effectivePresentation ? (
+          <HostPresentationLayout
+            meetingTitle={currentMeeting?.title}
+            meetingDescription={currentMeeting?.description}
+            isHost={isCurrentUserHost}
+            userName={userName}
+            userId={user?.id || ''}
+            participants={presentationParticipants}
+            speakingUserIds={speakingParticipants}
+            presentationActive={effectivePresentation}
+            presenterName={isCurrentUserHost && isScreenSharing ? userName : presenterName}
+            screenStream={hostScreenStream}
+            localScreenStream={screenShareStream}
+            participantCount={displayParticipantCount}
+            isCurrentUserHost={isCurrentUserHost}
+            onToggleMute={handleToggleMute}
+          />
+        ) : (
+          <RegalGlassAudioLayout
+            localStream={localStream}
+            remoteStreams={remoteStreamsArray}
+            userName={userName}
+            selectedParticipantId={selectedParticipantId}
+            onSelectParticipant={setSelectedParticipantId}
+            isCurrentUserHost={isCurrentUserHost}
+            participants={presentationParticipants}
+            currentUserId={user?.id || ''}
+            speakingParticipants={speakingParticipants}
+            raisedHands={raisedHands}
+          />
+        )}
+
+        <CaptionsDisplay
+          captions={captions}
+          participants={presentationParticipants}
+          isVisible={captionsEnabled}
+        />
+
+        <VideoControlsDock
+          isVideoEnabled={false}
+          isAudioEnabled={isAudioEnabled}
+          isScreenSharing={isScreenSharing}
+          captionsEnabled={captionsEnabled}
+          showSettings={false}
+          showChat={showChat}
+          handRaised={handRaised}
+          onToggleVideo={handleToggleVideoMode}
+          onToggleAudio={() => void enhancedToggleAudio()}
+          onToggleScreenShare={() => void handlePresentationToggle()}
+          onSwitchCamera={() => undefined}
+          onToggleCaptions={() => {
+            toggleCaptions();
+            logFeatureUsage('toggle_captions', user?.id);
+          }}
+          onToggleSettings={() => navigate('/settings')}
+          onToggleChat={() => setShowChat((v) => !v)}
+          onToggleHand={() => void handleToggleHand()}
+          onToggleEffects={() => undefined}
+          onNavigateToDashboard={handleNavigateBack}
+          onLeaveMeeting={handleLeaveMeeting}
+          onToggleParticipants={() => setShowParticipantsList((v) => !v)}
+        />
+
+        <div className="fixed right-3 top-[42%] z-[60] -translate-y-1/2 sm:right-4 sm:top-1/2">
+          <VideoReactions meetingId={meetingId} userId={user?.id} userName={userName} />
         </div>
-      )}
 
-      <CaptionsDisplay
-        captions={captions}
-        participants={presentationParticipants}
-        isVisible={captionsEnabled}
-      />
-
-      <div className="border-t border-white/10 bg-black/40 p-3 backdrop-blur-md safe-area-inset-bottom">
-        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-3">
-          <Button
-            size="lg"
-            variant={isAudioEnabled ? 'secondary' : 'destructive'}
-            className="h-12 w-12 rounded-full p-0"
-            onClick={enhancedToggleAudio}
-            aria-label={isAudioEnabled ? 'Mute' : 'Unmute'}
-          >
-            {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-          </Button>
-
-          {isCurrentUserHost && (
-            <Button
-              size="lg"
-              className={`h-12 rounded-full px-5 ${
-                isScreenSharing
-                  ? 'bg-orange-500 hover:bg-orange-600'
-                  : 'bg-white/10 hover:bg-white/20'
-              }`}
-              onClick={handlePresentationToggle}
-            >
-              {isScreenSharing ? (
-                <>
-                  <MonitorOff className="mr-2 h-5 w-5" />
-                  Stop presenting
-                </>
-              ) : (
-                <>
-                  <Monitor className="mr-2 h-5 w-5" />
-                  Present screen
-                </>
-              )}
-            </Button>
+        <button
+          type="button"
+          onClick={() => setShowChat((v) => !v)}
+          aria-label={showChat ? 'Close chat' : 'Open chat'}
+          className={cn(
+            'fixed bottom-4 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full',
+            'bg-[hsl(var(--accent))] text-white shadow-2xl shadow-purple-900/40',
+            'transition hover:brightness-110 active:scale-95',
+            'safe-area-inset-bottom sm:bottom-6 sm:right-6',
+            showChat && 'ring-2 ring-white/40'
           )}
+        >
+          <MessageSquare className="h-6 w-6" />
+        </button>
 
-          <Button
-            size="lg"
-            variant={handRaised ? 'default' : 'secondary'}
-            className="h-12 w-12 rounded-full p-0"
-            onClick={() => void handleToggleHand()}
-            aria-label={handRaised ? 'Lower hand' : 'Raise hand'}
-          >
-            ✋
-          </Button>
+        {showChat && (
+          <InMeetingChat
+            meetingId={meetingId}
+            userName={userName}
+            onClose={() => setShowChat(false)}
+          />
+        )}
 
-          <Button
-            size="lg"
-            variant={captionsEnabled ? 'default' : 'secondary'}
-            className="h-12 rounded-full px-4"
-            onClick={() => {
-              toggleCaptions();
-              logFeatureUsage('toggle_captions', user?.id);
-            }}
-          >
-            CC
-          </Button>
-
-          <Button
-            size="lg"
-            variant="destructive"
-            className="h-12 w-12 rounded-full p-0"
-            onClick={handleLeaveMeeting}
-            aria-label="Leave meeting"
-          >
-            <PhoneCall className="h-5 w-5 rotate-[135deg]" />
-          </Button>
-        </div>
         {displayParticipantCount > 50 && (
-          <p className="mt-2 text-center text-xs text-white/35">
+          <p className="pointer-events-none absolute bottom-24 left-1/2 z-30 -translate-x-1/2 text-center text-xs text-white/40">
             Large meeting — {topology.isSfuMode ? 'SFU' : topology.mediaMode} ·{' '}
             {topology.isListener ? 'listening' : 'speaking'} · {displayParticipantCount} people
             {connectionQuality ? ` · ${connectionQuality}` : ''}

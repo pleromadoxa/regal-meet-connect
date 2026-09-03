@@ -33,7 +33,7 @@ export function RegalMeetingPlanPanel() {
     : null;
 
   return (
-    <Card className="bg-white/5 backdrop-blur-xl border-white/10">
+    <Card className="border-white/10 bg-white/[0.03] backdrop-blur-xl">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
           <CardTitle className="flex items-center gap-2 text-lg text-white">
@@ -49,46 +49,44 @@ export function RegalMeetingPlanPanel() {
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-xl border border-border/50 bg-background/40 p-4">
+        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Current plan</p>
-              <p className="text-lg font-semibold">{planDisplayName(plan)}</p>
-              <p className="text-sm text-muted-foreground">{meetingTierLabel(plan)}</p>
+              <p className="text-xs uppercase tracking-wide text-white/50">Current plan</p>
+              <p className="text-lg font-semibold text-white">{planDisplayName(plan)}</p>
+              <p className="text-sm text-white/60">{meetingTierLabel(plan)}</p>
             </div>
             <div className="text-right text-sm">
-              <p className="font-medium">{subscriptionStatusLabel(status)}</p>
-              {renewal && <p className="text-muted-foreground">Renews {renewal}</p>}
-              {plan_source && (
-                <p className="text-xs text-muted-foreground">via {plan_source}</p>
-              )}
+              <p className="font-medium text-white">{subscriptionStatusLabel(status)}</p>
+              {renewal && <p className="text-white/50">Renews {renewal}</p>}
+              {plan_source && <p className="text-xs text-white/45">via {plan_source}</p>}
             </div>
           </div>
         </div>
 
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div className="rounded-lg border border-border/40 px-3 py-2">
-            <dt className="text-muted-foreground">Participants</dt>
-            <dd className="font-medium">Up to {limits.maxParticipants}</dd>
+          <div className="rounded-lg border border-white/10 px-3 py-2">
+            <dt className="text-white/50">Participants</dt>
+            <dd className="font-medium text-white">Up to {limits.maxParticipants}</dd>
           </div>
-          <div className="rounded-lg border border-border/40 px-3 py-2">
-            <dt className="text-muted-foreground">Session length</dt>
-            <dd className="font-medium">{formatDurationLimit(limits.maxDurationMinutes)}</dd>
+          <div className="rounded-lg border border-white/10 px-3 py-2">
+            <dt className="text-white/50">Session length</dt>
+            <dd className="font-medium text-white">{formatDurationLimit(limits.maxDurationMinutes)}</dd>
           </div>
-          <div className="rounded-lg border border-border/40 px-3 py-2">
-            <dt className="text-muted-foreground">Video quality</dt>
-            <dd className="font-medium">
+          <div className="rounded-lg border border-white/10 px-3 py-2">
+            <dt className="text-white/50">Video quality</dt>
+            <dd className="font-medium text-white">
               {limits.hdVideo ? `HD up to ${limits.maxVideoHeight}p` : 'Standard (480p)'}
             </dd>
           </div>
-          <div className="rounded-lg border border-border/40 px-3 py-2">
-            <dt className="text-muted-foreground">Large meetings (50+)</dt>
-            <dd className="font-medium">{limits.sfuEnabled ? 'Cloudflare SFU' : 'Not included'}</dd>
+          <div className="rounded-lg border border-white/10 px-3 py-2">
+            <dt className="text-white/50">Large meetings (50+)</dt>
+            <dd className="font-medium text-white">{limits.sfuEnabled ? 'Cloudflare SFU' : 'Not included'}</dd>
           </div>
         </dl>
 
         {paystack_subscription_id && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-white/50">
             Paystack subscription active — renewals update automatically via webhook.
           </p>
         )}
@@ -111,14 +109,14 @@ export function RegalMeetingPlanPanel() {
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="border-white/10 bg-white/5 text-white/80 hover:bg-white/10">
             <a href={REGAL_ONE_SITE_URL} target="_blank" rel="noopener noreferrer">
               Compare all plans
               <ExternalLink className="ml-2 h-3.5 w-3.5" />
             </a>
           </Button>
           {!paystack_configured && (
-            <p className="text-xs text-muted-foreground self-center">
+            <p className="text-xs text-white/50 self-center">
               Paystack billing is managed on regalmesh.com
             </p>
           )}

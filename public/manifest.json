@@ -34,6 +34,12 @@
       "description": "Enter a meeting code or invite link"
     },
     {
+      "name": "Regal Calendar",
+      "short_name": "Calendar",
+      "url": "/calendar",
+      "description": "Team calendar and scheduling"
+    },
+    {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "/dashboard",

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PRODUCT_NAME } from '@/constants/site';
+import { PRODUCT_NAME, CALENDAR_PRODUCT_NAME } from '@/constants/site';
 
 interface LandingCtaProps {
   isAuthenticated?: boolean;
@@ -19,7 +19,7 @@ export const LandingCta = ({ isAuthenticated = false }: LandingCtaProps) => {
             Ready for your next {PRODUCT_NAME}?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-white/55 sm:text-base">
-            Start a room in seconds or jump into an invite — same premium experience every time.
+            Start a room in seconds, schedule on {CALENDAR_PRODUCT_NAME}, or jump into an invite — one account for both.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button
@@ -35,6 +35,14 @@ export const LandingCta = ({ isAuthenticated = false }: LandingCtaProps) => {
               variant="outline"
               size="lg"
               className="min-w-[200px] rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10"
+              onClick={() => navigate(isAuthenticated ? '/calendar' : '/calendar')}
+            >
+              {isAuthenticated ? 'Open calendar' : `Try ${CALENDAR_PRODUCT_NAME}`}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="min-w-[200px] rounded-xl border-white/15 bg-transparent text-white/70 hover:bg-white/5 sm:hidden"
               onClick={() => document.getElementById('join')?.scrollIntoView({ behavior: 'smooth' })}
             >
               I have a code

@@ -36,7 +36,7 @@ export const CaptionsDisplay = ({ captions, participants, isVisible, currentTran
   };
 
   return (
-    <Card className="fixed bottom-20 sm:bottom-24 left-4 right-4 sm:left-6 sm:right-6 max-w-2xl mx-auto bg-black/90 backdrop-blur-xl border-white/20 max-h-32 sm:max-h-40 z-40">
+    <Card className="fixed bottom-[calc(var(--meeting-stack-height)+0.5rem)] left-3 right-3 z-40 mx-auto max-h-28 max-w-2xl border-white/20 bg-black/90 backdrop-blur-xl sm:left-6 sm:right-6 sm:max-h-40 lg:bottom-24">
       <ScrollArea className="h-full p-3 sm:p-4" ref={scrollRef}>
         <div className="space-y-2">
           {captions.length === 0 && !currentTranscript ? (

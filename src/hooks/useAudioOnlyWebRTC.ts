@@ -9,6 +9,7 @@ import {
   getAudioConstraintsForParticipantCount,
   isScreenShareTrack,
   MEETING_LIMITS,
+  peerConnectDelayForCount,
 } from '@/lib/largeMeeting';
 import { acquireUserMedia, getMediaAccessErrorInfo } from '@/lib/mediaAccess';
 import { loadMeetingMediaPrefs } from '@/lib/meetingMediaPrefs';
@@ -22,7 +23,7 @@ import {
   restartPeerNegotiation,
   schedulePeerDisconnectCleanup,
 } from '@/lib/peerReconnection';
-import { clearOutgoingVideoTrack, replaceOrAddVideoTrack } from '@/lib/videoPeerTrack';
+import { clearOutgoingVideoTrack, replaceOrAddVideoTrack, syncLocalTracksToPeer } from '@/lib/videoPeerTrack';
 
 export type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
 
@@ -189,6 +190,7 @@ export const useAudioOnlyWebRTC = (
     
     const signalingChannel = initializeSignalingRef.current();
     const pendingCandidatesRef = new Map<string, RTCIceCandidateInit[]>();
+    const makingOfferRef = new Map<string, boolean>();
 
     const flushPendingCandidates = async (remoteUserId: string, pc: RTCPeerConnection) => {
       const queue = pendingCandidatesRef.get(remoteUserId) || [];
@@ -262,7 +264,7 @@ export const useAudioOnlyWebRTC = (
         if (pc.iceConnectionState === 'failed') {
           void restartPeerNegotiation(pc, async (offer) => {
             sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-          });
+          }, remoteUserId);
         }
       };
 
@@ -279,7 +281,7 @@ export const useAudioOnlyWebRTC = (
           schedulePeerDisconnectCleanup(remoteUserId, () => {
             void restartPeerNegotiation(pc, async (offer) => {
               sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-            });
+            }, remoteUserId);
           });
           return;
         }
@@ -294,7 +296,7 @@ export const useAudioOnlyWebRTC = (
             if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
               void restartPeerNegotiation(pc, async (offer) => {
                 sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-              });
+              }, remoteUserId);
             }
           });
           return;
@@ -318,6 +320,10 @@ export const useAudioOnlyWebRTC = (
       addVideoToPeerConnection(pc);
 
       peerConnectionsRef.current.set(remoteUserId, pc);
+      if (typeof window !== 'undefined') {
+        (window as unknown as { __REGAL_PEER_CONNECTIONS__?: Map<string, RTCPeerConnection> })
+          .__REGAL_PEER_CONNECTIONS__ = peerConnectionsRef.current;
+      }
 
       // Start monitoring with audio-optimized settings
       startMonitoring(pc);
@@ -349,19 +355,32 @@ export const useAudioOnlyWebRTC = (
         let pc = peerConnectionsRef.current.get(remoteUserId);
         if (!pc) {
           pc = createPeerConnection(remoteUserId);
-          peerConnectionsRef.current.set(remoteUserId, pc);
+        }
+
+        const polite = userId < remoteUserId;
+        const offerCollision = makingOfferRef.get(remoteUserId) || pc.signalingState !== 'stable';
+        if (offerCollision && !polite) {
+          console.log('Impolite audio peer ignoring colliding offer from', remoteUserId);
+          return;
         }
 
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          if (offerCollision) {
+            await Promise.all([
+              pc.setLocalDescription({ type: 'rollback' } as RTCSessionDescriptionInit).catch(() => undefined),
+              pc.setRemoteDescription(new RTCSessionDescription(message.data)),
+            ]);
+          } else {
+            await pc.setRemoteDescription(new RTCSessionDescription(message.data));
+          }
           await flushPendingCandidates(remoteUserId, pc);
           const answer = await pc.createAnswer();
-          await pc.setLocalDescription(new RTCSessionDescription(answer));
+          await pc.setLocalDescription(answer);
 
           sendSignalingMessageRef.current({
             type: 'answer',
             to: remoteUserId,
-            data: answer
+            data: pc.localDescription
           });
         } catch (error) {
           console.error('Error handling audio offer:', error);
@@ -369,7 +388,7 @@ export const useAudioOnlyWebRTC = (
       } else if (message.type === 'answer') {
         console.log('Received audio answer from:', remoteUserId);
         const pc = peerConnectionsRef.current.get(remoteUserId);
-        if (pc) {
+        if (pc && pc.signalingState === 'have-local-offer') {
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(message.data));
             await flushPendingCandidates(remoteUserId, pc);
@@ -445,6 +464,12 @@ export const useAudioOnlyWebRTC = (
       if (!mediaRoutingRef.current.useMesh || !mediaRoutingRef.current.shouldConnectToPeer(remoteUserId)) {
         return;
       }
+      // Perfect negotiation: only lower userId initiates (avoids glare)
+      if (!(userId < remoteUserId)) {
+        console.log('Skipping audio offer initiation (other peer is initiator):', remoteUserId);
+        if (!peerConnectionsRef.current.has(remoteUserId)) createPeerConnection(remoteUserId);
+        return;
+      }
       console.log('Creating audio offer for:', remoteUserId);
       if (peerConnectionsRef.current.has(remoteUserId)) {
         console.log('Audio peer connection already exists for:', remoteUserId);
@@ -452,19 +477,22 @@ export const useAudioOnlyWebRTC = (
       }
 
       const pc = createPeerConnection(remoteUserId);
-      peerConnectionsRef.current.set(remoteUserId, pc);
 
       try {
+        makingOfferRef.set(remoteUserId, true);
         const offer = await pc.createOffer();
-        await pc.setLocalDescription(new RTCSessionDescription(offer));
+        if (pc.signalingState !== 'stable') return;
+        await pc.setLocalDescription(offer);
 
         sendSignalingMessageRef.current({
           type: 'offer',
           to: remoteUserId,
-          data: offer
+          data: pc.localDescription
         });
       } catch (error) {
         console.error('Error creating audio offer:', error);
+      } finally {
+        makingOfferRef.set(remoteUserId, false);
       }
     };
 
@@ -472,7 +500,7 @@ export const useAudioOnlyWebRTC = (
 
     peerQueueRef.current = createPeerConnectionQueue((peerId) => {
       if (createOfferRef.current) createOfferRef.current(peerId);
-    });
+    }, peerConnectDelayForCount(signalingPeers.size + 1));
 
     // Listen for host mute commands
     const muteChannel = supabase.channel(`meeting-mute-${userId}`);
@@ -541,6 +569,7 @@ export const useAudioOnlyWebRTC = (
 
     const handleNewPeers = () => {
       const count = signalingPeers.size + 1;
+      peerQueueRef.current?.setDelay(peerConnectDelayForCount(count));
       const currentPeers = Array.from(signalingPeers);
 
       currentPeers.forEach((peerId) => {
@@ -601,6 +630,22 @@ export const useAudioOnlyWebRTC = (
       localStreamRef.current = stream;
       setLocalStream(stream);
       setIsAudioEnabled(stream.getAudioTracks().length > 0);
+
+      if (mediaRoutingRef.current.publishToMesh !== false) {
+        for (const [peerId, pc] of peerConnectionsRef.current.entries()) {
+          try {
+            await syncLocalTracksToPeer(pc, stream);
+          } catch (err) {
+            console.warn('Failed syncing audio tracks to', peerId, err);
+          }
+        }
+      }
+      Array.from(signalingPeers).forEach((peerId) => {
+        if (!mediaRoutingRef.current.shouldConnectToPeer(peerId)) return;
+        if (!peerConnectionsRef.current.has(peerId)) {
+          peerQueueRef.current?.enqueue(peerId);
+        }
+      });
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {

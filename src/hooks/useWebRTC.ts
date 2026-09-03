@@ -13,6 +13,7 @@ import {
   createPeerConnectionQueue,
   isScreenShareTrack,
   MEETING_LIMITS,
+  peerConnectDelayForCount,
 } from '@/lib/largeMeeting';
 import {
   defaultMediaRouting,
@@ -24,7 +25,7 @@ import {
   restartPeerNegotiation,
   schedulePeerDisconnectCleanup,
 } from '@/lib/peerReconnection';
-import { replaceOrAddVideoTrack } from '@/lib/videoPeerTrack';
+import { replaceOrAddVideoTrack, syncLocalTracksToPeer } from '@/lib/videoPeerTrack';
 import { MAX_PEER_RECONNECT_ATTEMPTS } from '@/lib/webrtcSignaling';
 
 export type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
@@ -65,6 +66,10 @@ export const useWebRTC = (
 
   const syncPeerConnections = useCallback(() => {
     setPeerConnections(new Map(peerConnectionsRef.current));
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __REGAL_PEER_CONNECTIONS__?: Map<string, RTCPeerConnection> })
+        .__REGAL_PEER_CONNECTIONS__ = peerConnectionsRef.current;
+    }
   }, []);
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -211,14 +216,13 @@ export const useWebRTC = (
 
     // Listen for connection check events
     const handleConnectionCheck = () => {
+      // Background heartbeat: only nudge truly failed peers (grace timer owns "disconnected")
       peerConnectionsRef.current.forEach((pc, peerId) => {
-        if (pc.connectionState !== 'connected') {
-          console.warn(`Connection issue detected for ${peerId}:`, pc.connectionState);
-          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-            void restartPeerNegotiation(pc, async (offer) => {
-              sendSignalingMessageRef.current({ type: 'offer', to: peerId, data: offer });
-            });
-          }
+        if (pc.connectionState === 'failed' || pc.iceConnectionState === 'failed') {
+          console.warn(`Connection failed for ${peerId}:`, pc.connectionState, pc.iceConnectionState);
+          void restartPeerNegotiation(pc, async (offer) => {
+            sendSignalingMessageRef.current({ type: 'offer', to: peerId, data: offer });
+          }, peerId);
         }
       });
     };
@@ -287,7 +291,7 @@ export const useWebRTC = (
         if (pc.iceConnectionState === 'failed') {
           void restartPeerNegotiation(pc, async (offer) => {
             sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-          });
+          }, remoteUserId);
         }
       };
 
@@ -323,7 +327,7 @@ export const useWebRTC = (
               console.log('Peer still disconnected after grace — attempting ICE restart:', remoteUserId);
               void restartPeerNegotiation(pc, async (offer) => {
                 sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-              });
+              }, remoteUserId);
             }
           });
           return;
@@ -340,7 +344,7 @@ export const useWebRTC = (
               console.log('Peer failed after grace — attempting renegotiation:', remoteUserId);
               void restartPeerNegotiation(pc, async (offer) => {
                 sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-              });
+              }, remoteUserId);
             }
           });
           return;
@@ -369,7 +373,7 @@ export const useWebRTC = (
       handleConnectionRecovery(pc, remoteUserId, () => {
         void restartPeerNegotiation(pc, async (offer) => {
           sendSignalingMessageRef.current({ type: 'offer', to: remoteUserId, data: offer });
-        });
+        }, remoteUserId);
       });
 
       return pc;
@@ -511,7 +515,7 @@ export const useWebRTC = (
 
     peerQueueRef.current = createPeerConnectionQueue((peerId) => {
       if (createOfferRef.current) void createOfferRef.current(peerId);
-    });
+    }, peerConnectDelayForCount(signalingPeers.size + 1));
 
     // Listen for host mute commands
     const muteChannel = supabase.channel(`meeting-mute-${userId}`);
@@ -574,6 +578,11 @@ export const useWebRTC = (
     }
 
     const handleNewPeers = () => {
+      // Wait for local media so we never publish recvonly forever
+      if (!localStreamRef.current) return;
+
+      peerQueueRef.current?.setDelay(peerConnectDelayForCount(signalingPeers.size + 1));
+
       const currentPeers = Array.from(signalingPeers);
       console.log('Current signaling peers:', currentPeers);
       
@@ -673,6 +682,23 @@ export const useWebRTC = (
         setCurrentVideoDevice(videoTrack.label);
       }
 
+      // Promote any early recvonly peers to sendrecv and connect waiting peers
+      if (mediaRoutingRef.current.publishToMesh !== false) {
+        for (const [peerId, pc] of peerConnectionsRef.current.entries()) {
+          try {
+            await syncLocalTracksToPeer(pc, stream);
+          } catch (err) {
+            console.warn('Failed syncing local tracks to', peerId, err);
+          }
+        }
+      }
+      Array.from(signalingPeers).forEach((peerId) => {
+        if (!mediaRoutingRef.current.shouldConnectToPeer(peerId)) return;
+        if (!peerConnectionsRef.current.has(peerId)) {
+          peerQueueRef.current?.enqueue(peerId);
+        }
+      });
+
       console.log('🚀 WebRTC media initialization complete');
     } catch (error) {
       console.error('❌ WebRTC initialization failed:', error);
@@ -685,7 +711,7 @@ export const useWebRTC = (
       });
       throw error;
     }
-  }, [toast, getOptimizedMediaConstraints, userId]);
+  }, [toast, getOptimizedMediaConstraints, userId, signalingPeers]);
 
   const toggleVideo = useCallback(async (): Promise<boolean> => {
     if (!localStreamRef.current) return isVideoEnabled;

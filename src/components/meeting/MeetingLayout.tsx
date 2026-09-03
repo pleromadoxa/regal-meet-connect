@@ -1,26 +1,15 @@
-
-import React, { useEffect, useState } from 'react';
-import { ResponsiveVideoGrid } from './ResponsiveVideoGrid';
-import { AudioOnlyGrid } from './AudioOnlyGrid';
-import { ParticipantsList } from './ParticipantsList';
-import { HostPresentationLayout } from './HostPresentationLayout';
+import React from 'react';
+import { ParticipantsList } from '@/components/ParticipantsList';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { RemoteAudioMix } from './RemoteAudioMix';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-
-function useCompactMeetingLayout() {
-  const [compact, setCompact] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches
-  );
-
-  useEffect(() => {
-    const mql = window.matchMedia('(max-width: 1023px)');
-    const onChange = () => setCompact(mql.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-
-  return compact;
-}
+import { RegalGlassMeetingLayout } from './RegalGlassMeetingLayout';
+import { RegalGlassAudioLayout } from './RegalGlassAudioLayout';
+import { HostPresentationLayout } from './HostPresentationLayout';
 
 interface RemoteStream {
   id: string;
@@ -71,9 +60,6 @@ export const MeetingLayout = ({
   meetingTitle,
   raisedHands = new Set(),
 }: MeetingLayoutProps) => {
-  const isCompact = useCompactMeetingLayout();
-  const meetingId = window.location.pathname.split('/meeting/')[1]?.split('?')[0] || '';
-
   const remoteStreamMap = React.useMemo(() => {
     const map = new Map<string, MediaStream>();
     remoteStreams.forEach((r) => map.set(r.id, r.stream));
@@ -82,27 +68,13 @@ export const MeetingLayout = ({
 
   const hasAnyVideo =
     !presentationActive &&
-    (isVideoEnabled || remoteStreams.some((stream) => stream.stream?.getVideoTracks()?.some((track) => track.enabled)));
-
-  const participantsPanel = (
-    <ParticipantsList
-      participants={participants}
-      remoteStreams={remoteStreams}
-      localStream={localStream}
-      isCurrentUserHost={isCurrentUserHost}
-      currentUserId={currentUserId}
-      userName={userName}
-      meetingId={meetingId}
-      onClose={onCloseParticipants}
-      onToggleMute={onToggleMute}
-      onSelectVideo={onVideoSelect}
-      selectedVideoId={selectedVideoId}
-      raisedHands={raisedHands}
-    />
-  );
+    (isVideoEnabled ||
+      remoteStreams.some((stream) =>
+        stream.stream?.getVideoTracks()?.some((track) => track.enabled)
+      ));
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <RemoteAudioMix streams={remoteStreamMap} />
 
       {presentationActive ? (
@@ -120,48 +92,60 @@ export const MeetingLayout = ({
           isCurrentUserHost={isCurrentUserHost}
           onToggleMute={onToggleMute}
         />
+      ) : hasAnyVideo ? (
+        <RegalGlassMeetingLayout
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          isVideoEnabled={isVideoEnabled}
+          selectedVideoId={selectedVideoId}
+          onVideoSelect={onVideoSelect}
+          isCurrentUserHost={isCurrentUserHost}
+          participants={participants}
+          currentUserId={currentUserId}
+          raisedHands={raisedHands}
+        />
       ) : (
-    <div className="flex flex-1 flex-col lg:flex-row gap-4 p-4 overflow-hidden min-h-0">
-      <div className="flex-1 min-w-0 relative">
-        {hasAnyVideo ? (
-          <ResponsiveVideoGrid
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            userName={userName}
-            isVideoEnabled={isVideoEnabled}
-            participants={participants}
-            currentUserId={currentUserId}
-            isCurrentUserHost={isCurrentUserHost}
-          />
-        ) : (
-          <AudioOnlyGrid
-            localStream={localStream}
-            remoteStreams={remoteStreams}
-            userName={userName}
-            participants={participants}
-            currentUserId={currentUserId}
-            isCurrentUserHost={isCurrentUserHost}
-          />
-        )}
-      </div>
-
-      {/* Desktop sidebar */}
-      {showParticipants && !isCompact && (
-        <div className="hidden lg:block w-80 shrink-0 bg-slate-900/95 backdrop-blur-lg border border-slate-700/50 rounded-lg overflow-hidden">
-          {participantsPanel}
-        </div>
+        <RegalGlassAudioLayout
+          localStream={localStream}
+          remoteStreams={remoteStreams}
+          userName={userName}
+          selectedParticipantId={selectedVideoId}
+          onSelectParticipant={onVideoSelect}
+          isCurrentUserHost={isCurrentUserHost}
+          participants={participants}
+          currentUserId={currentUserId}
+          raisedHands={raisedHands}
+        />
       )}
 
-      <Sheet open={showParticipants && isCompact} onOpenChange={(open) => !open && onCloseParticipants()}>
-        <SheetContent side="right" className="w-full sm:max-w-md bg-slate-900 border-slate-700 p-0">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Participants</SheetTitle>
+      <Sheet open={showParticipants} onOpenChange={(open) => !open && onCloseParticipants()}>
+        <SheetContent
+          side="right"
+          className="w-full border-white/10 bg-[#0b0b0f]/95 p-0 text-white backdrop-blur-xl sm:max-w-sm"
+        >
+          <SheetHeader className="border-b border-white/10 px-4 py-4">
+            <SheetTitle className="text-left text-white">
+              Participants ({participants.length})
+            </SheetTitle>
           </SheetHeader>
-          {participantsPanel}
+          <div className="overflow-y-auto p-4">
+            <ParticipantsList
+              participants={participants}
+              remoteStreams={remoteStreams}
+              localStream={localStream}
+              currentUserId={currentUserId}
+              isHost={isCurrentUserHost}
+              onToggleMute={onToggleMute}
+              onSelectVideo={(id) => {
+                onVideoSelect(id === currentUserId ? 'local' : id);
+                onCloseParticipants();
+              }}
+              selectedVideoId={selectedVideoId === 'local' ? currentUserId : selectedVideoId}
+            />
+          </div>
         </SheetContent>
       </Sheet>
-    </div>
-      )}
     </div>
   );
 };

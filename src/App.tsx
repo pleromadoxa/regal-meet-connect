@@ -14,12 +14,15 @@ import { SessionManager } from './components/SessionManager';
 import { useKeepAlive } from '@/hooks/useKeepAlive';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthProvider } from '@/hooks/useAuth';
+import { RegalPageLoader } from '@/components/layout/RegalPageLoader';
 
 const Join = lazy(() => import('./pages/Join'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const CalendarBook = lazy(() => import('./pages/CalendarBookPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Meeting = lazy(() => import('./pages/Meeting'));
 const AudioMeeting = lazy(() =>
@@ -32,11 +35,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const PageLoader = () => (
-  <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center">
-    <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-400" />
-  </div>
-);
+const PageLoader = () => <RegalPageLoader />;
 
 const KeepAliveBoundary = () => {
   useKeepAlive();
@@ -78,6 +77,8 @@ const App = () => {
                 <Route path="/join/:meetingId?" element={<Join />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/calendar/book/:slug" element={<CalendarBook />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />

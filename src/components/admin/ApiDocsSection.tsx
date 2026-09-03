@@ -4,26 +4,27 @@ import { Badge } from '@/components/ui/badge';
 import { FileText, Download, FileType2, BookOpen } from 'lucide-react';
 
 const sections = [
-  'Project endpoints & keys',
-  'Authentication (sign up / in / reset)',
-  'Profiles & avatar upload',
+  'Project endpoints & keys (meet.regalmesh.com / xexnw…)',
+  'Authentication (email + Regal Mail SSO)',
+  'Profiles & avatar upload (R2)',
   'User settings',
   'Meetings (CRUD + join validation)',
   'Scheduled meetings & invitations',
   'Lobby flow (knock / admit / deny)',
   'Participants & presence',
-  'WebRTC signalling',
-  'In-meeting chat',
-  'File sharing',
+  'WebRTC dual signalling (web ↔ mobile)',
+  'ICE / TURN configuration',
+  'Media topology (mesh / SFU / host-hub)',
+  'Cloudflare SFU (meeting-sfu)',
+  'Plans & billing (meeting-billing)',
+  'In-meeting chat / hands / reactions',
+  'File sharing (meeting-r2)',
   'Recordings',
   'Captions',
   'Notifications & push',
   'Recent meetings',
-  'Activity logging',
-  'Active speaker / pin',
-  'Color scheme & design tokens',
-  'Mobile UX requirements',
-  'Keep-alive & error handling',
+  'Mobile-only (Regal Number, CALL-*, biometrics)',
+  'Brand tokens (Spatial Regal)',
 ];
 
 export const ApiDocsSection = () => {

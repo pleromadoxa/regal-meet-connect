@@ -1,4 +1,5 @@
-import { REGAL_MAIL_DOMAIN } from './regalMailProduct';
+import { REGAL_MAIL_DOMAIN, REGAL_MAIL_SIGNUP_URL } from './regalMailProduct';
+import { appOrigin, sanitizeRedirectPath } from './site';
 
 export { REGAL_MAIL_DOMAIN };
 
@@ -38,4 +39,13 @@ export function normalizeRegalMailInput(raw: string): string {
   const domain = trimmed.slice(at + 1);
   if (!local || domain !== REGAL_MAIL_DOMAIN) return '';
   return `${local}@${REGAL_MAIL_DOMAIN}`;
+}
+
+/** Regal Mail signup with optional return to Meeting/Calendar auth after account creation. */
+export function regalMailSignupUrl(redirectTo?: string | null): string {
+  const safeRedirect = sanitizeRedirectPath(redirectTo ?? '/dashboard');
+  const returnUrl = `${appOrigin()}/auth?redirect=${encodeURIComponent(safeRedirect)}`;
+  const url = new URL(REGAL_MAIL_SIGNUP_URL);
+  url.searchParams.set('redirect', returnUrl);
+  return url.toString();
 }

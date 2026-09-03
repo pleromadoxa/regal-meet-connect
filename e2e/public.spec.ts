@@ -10,12 +10,12 @@ test.describe('Public pages', () => {
     await expect(page.getByRole('button', { name: /Join now/i })).toBeVisible();
   });
 
-  test('auth page renders sign-in form', async ({ page }) => {
+  test('auth page uses Regal Mail sign-in', async ({ page }) => {
     await page.goto('/auth');
 
-    await expect(page.getByPlaceholder('name@example.com')).toBeVisible();
-    await expect(page.getByPlaceholder('••••••••')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Sign In', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Sign in with Regal Mail/i })).toBeVisible();
+    await expect(page.getByPlaceholder(`you@${'regalmail.me'}`)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Sign in with Regal Mail/i })).toBeVisible();
   });
 
   test('privacy page loads', async ({ page }) => {

@@ -6,6 +6,15 @@ export const SITE_URL =
 export const MEET_DOMAIN = 'meet.regalmesh.com';
 
 export const PRODUCT_NAME = 'Regal Meeting' as const;
+export const CALENDAR_PRODUCT_NAME = 'Regal Calendar' as const;
+
+export type RegalProduct = 'meeting' | 'calendar';
+
+export const REGAL_PRODUCTS: { id: RegalProduct; label: string; path: string }[] = [
+  { id: 'meeting', label: PRODUCT_NAME, path: '/' },
+  { id: 'calendar', label: CALENDAR_PRODUCT_NAME, path: '/calendar' },
+];
+
 /** Short brand name for UI */
 export const COMPANY_NAME = 'Spatial Regal' as const;
 /** Full legal entity name */

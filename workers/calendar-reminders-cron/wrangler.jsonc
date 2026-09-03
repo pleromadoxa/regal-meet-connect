@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "regal-calendar-reminders-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-22",
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "vars": {
+    "REMINDERS_FUNCTION_URL": "https://xexnwcmqnelgzuqhkvtx.supabase.co/functions/v1/process-calendar-reminders"
+  }
+}

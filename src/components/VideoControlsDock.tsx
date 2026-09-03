@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import {
   Mic, MicOff, Video, VideoOff, Monitor, MonitorOff,
-  Settings, MessageSquare, Hand, Sparkles, RotateCcw,
-  Captions, CaptionsOff, PhoneOff, LayoutDashboard,
-  MoreVertical, Smile, Users
+  Settings, Hand, PhoneOff, RotateCcw, Sparkles, Captions, CaptionsOff,
+  LayoutDashboard, MoreVertical, MessageSquare, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,138 +33,177 @@ interface VideoControlsDockProps {
 }
 
 /**
- * Google Meet-style control dock.
- * Round pill buttons on a translucent dark surface, distinct red end-call button.
- * On mobile: 5 essential buttons + a "More" sheet.
+ * Floating circular control buttons — Regal glass call bar (design mock).
  */
 export const VideoControlsDock = ({
   isVideoEnabled, isAudioEnabled, isScreenSharing, captionsEnabled,
   showChat, handRaised,
   onToggleVideo, onToggleAudio, onToggleScreenShare, onSwitchCamera,
-  onToggleCaptions, onToggleSettings, onToggleChat, onToggleHand, onToggleEffects,
+  onToggleCaptions, onToggleSettings, onToggleHand, onToggleEffects,
   onNavigateToDashboard, onLeaveMeeting, onToggleParticipants,
 }: VideoControlsDockProps) => {
   const isMobile = useIsMobile();
 
-  const pill = "h-12 w-12 rounded-full flex items-center justify-center transition-all duration-150 active:scale-95";
-  const baseOn = "bg-white/10 hover:bg-white/20 text-white border border-white/10";
-  const baseOff = "bg-red-500/90 hover:bg-red-500 text-white border border-red-400/40";
-  const accent = "bg-white/10 hover:bg-white/20 text-white border border-white/10";
-  const accentActive = "bg-blue-500/90 hover:bg-blue-500 text-white border border-blue-400/40";
+  const circle =
+    'h-12 w-12 sm:h-[3.75rem] sm:w-[3.75rem] rounded-full flex shrink-0 items-center justify-center shadow-xl transition-all duration-150 active:scale-95 touch-target';
+  const light =
+    'bg-white text-neutral-900 hover:bg-white/90 border border-white/80';
+  const muted =
+    'bg-red-500 text-white hover:bg-red-500/90 border border-red-400/50';
+  const active =
+    'bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/40';
 
-  const Btn = ({ onClick, active, children, label, danger = false, off = false }: any) => (
+  const Btn = ({
+    onClick,
+    label,
+    children,
+    variant = 'light',
+    pressed = false,
+  }: {
+    onClick: () => void;
+    label: string;
+    children: React.ReactNode;
+    variant?: 'light' | 'muted' | 'active' | 'end';
+    pressed?: boolean;
+  }) => (
     <button
       type="button"
       aria-label={label}
       title={label}
+      aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        pill,
-        danger ? "h-12 w-16 rounded-full bg-red-600 hover:bg-red-500 text-white" :
-        off ? baseOff :
-        active ? accentActive : baseOn
+        circle,
+        variant === 'end' && 'bg-red-600 text-white hover:bg-red-500 border border-red-500 shadow-red-900/40',
+        variant === 'light' && light,
+        variant === 'muted' && muted,
+        variant === 'active' && active,
+        pressed && 'ring-2 ring-white/50'
       )}
     >
       {children}
     </button>
   );
 
-  const moreItems = (
-    <>
-      <DropdownMenuItem onClick={onSwitchCamera}>
-        <RotateCcw className="h-4 w-4 mr-2" /> Flip camera
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={onToggleEffects}>
-        <Sparkles className="h-4 w-4 mr-2" /> Visual effects
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={onToggleSettings}>
-        <Settings className="h-4 w-4 mr-2" /> Device settings
-      </DropdownMenuItem>
-      {onNavigateToDashboard && (
-        <DropdownMenuItem onClick={onNavigateToDashboard}>
-          <LayoutDashboard className="h-4 w-4 mr-2" /> Dashboard
-        </DropdownMenuItem>
-      )}
-    </>
-  );
-
   return (
-    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-50 px-2 w-full max-w-[100vw] flex justify-center">
-      <div className="bg-[#202124]/95 backdrop-blur-xl rounded-full px-3 py-2 flex items-center gap-2 shadow-2xl border border-white/5 overflow-x-auto scrollbar-hide max-w-[calc(100vw-1rem)]">
-        {/* Mic */}
-        <Btn onClick={onToggleAudio} off={!isAudioEnabled} label={isAudioEnabled ? 'Mute' : 'Unmute'}>
-          {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-        </Btn>
-
-        {/* Camera */}
-        <Btn onClick={onToggleVideo} off={!isVideoEnabled} label={isVideoEnabled ? 'Stop video' : 'Start video'}>
-          {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-        </Btn>
-
-        {/* Captions */}
-        <Btn onClick={onToggleCaptions} active={captionsEnabled} label="Captions">
-          {captionsEnabled ? <Captions className="h-5 w-5" /> : <CaptionsOff className="h-5 w-5" />}
-        </Btn>
-
-        {!isMobile && (
-          <>
-            {/* Reactions = effects shortcut for emoji */}
-            <Btn onClick={onToggleEffects} label="Reactions">
-              <Smile className="h-5 w-5" />
-            </Btn>
-
-            {/* Raise hand */}
-            <Btn onClick={onToggleHand} active={handRaised} label="Raise hand">
-              <Hand className="h-5 w-5" />
-            </Btn>
-
-            {/* Screen share */}
-            <Btn onClick={onToggleScreenShare} active={isScreenSharing} label="Present">
-              {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
-            </Btn>
-          </>
-        )}
-
-        {/* Participants */}
-        {onToggleParticipants && (
-          <Btn onClick={onToggleParticipants} label="People">
-            <Users className="h-5 w-5" />
+    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-50 flex justify-center px-2 safe-area-inset-bottom sm:bottom-6">
+      <div className="pointer-events-auto max-w-full overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-2 px-1 sm:gap-3.5">
+          <Btn
+            onClick={onToggleAudio}
+            label={isAudioEnabled ? 'Mute' : 'Unmute'}
+            variant={isAudioEnabled ? 'light' : 'muted'}
+          >
+            {isAudioEnabled ? <Mic className="h-5 w-5 sm:h-6 sm:w-6" /> : <MicOff className="h-5 w-5 sm:h-6 sm:w-6" />}
           </Btn>
-        )}
 
-        {/* Chat */}
-        <Btn onClick={onToggleChat} active={showChat} label="Chat">
-          <MessageSquare className="h-5 w-5" />
-        </Btn>
+          <Btn
+            onClick={onToggleVideo}
+            label={isVideoEnabled ? 'Stop video' : 'Start video'}
+            variant={isVideoEnabled ? 'light' : 'muted'}
+          >
+            {isVideoEnabled ? <Video className="h-5 w-5 sm:h-6 sm:w-6" /> : <VideoOff className="h-5 w-5 sm:h-6 sm:w-6" />}
+          </Btn>
 
-        {/* More */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className={cn(pill, accent)} aria-label="More options">
-              <MoreVertical className="h-5 w-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="end" className="bg-[#202124] text-white border-white/10">
-            {isMobile && (
-              <>
-                <DropdownMenuItem onClick={onToggleHand}>
-                  <Hand className="h-4 w-4 mr-2" /> {handRaised ? 'Lower hand' : 'Raise hand'}
-                </DropdownMenuItem>
+          {!isMobile && (
+            <Btn
+              onClick={onToggleScreenShare}
+              label={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+              variant={isScreenSharing ? 'active' : 'light'}
+            >
+              {isScreenSharing ? <MonitorOff className="h-5 w-5 sm:h-6 sm:w-6" /> : <Monitor className="h-5 w-5 sm:h-6 sm:w-6" />}
+            </Btn>
+          )}
+
+          <Btn
+            onClick={onToggleHand}
+            label={handRaised ? 'Lower hand' : 'Raise hand'}
+            variant={handRaised ? 'active' : 'light'}
+          >
+            <Hand className="h-5 w-5 sm:h-6 sm:w-6" />
+          </Btn>
+
+          {isMobile && onToggleParticipants && (
+            <Btn onClick={onToggleParticipants} label="Participants" variant="light">
+              <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+            </Btn>
+          )}
+
+          {isMobile && (
+            <Btn
+              onClick={onToggleChat}
+              label={showChat ? 'Close chat' : 'Open chat'}
+              variant={showChat ? 'active' : 'light'}
+              pressed={showChat}
+            >
+              <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
+            </Btn>
+          )}
+
+          {!isMobile ? (
+            <>
+              <Btn onClick={onToggleSettings} label="Settings" variant="light">
+                <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+              </Btn>
+              <Btn
+                onClick={onToggleChat}
+                label={showChat ? 'Close chat' : 'Open chat'}
+                variant={showChat ? 'active' : 'light'}
+                pressed={showChat}
+              >
+                <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
+              </Btn>
+            </>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(circle, light)}
+                  aria-label="More options"
+                >
+                  <MoreVertical className="h-5 w-5 sm:h-6 sm:w-6" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="center"
+                className="border-white/10 bg-black/90 text-white backdrop-blur-xl"
+              >
                 <DropdownMenuItem onClick={onToggleScreenShare}>
-                  <Monitor className="h-4 w-4 mr-2" /> {isScreenSharing ? 'Stop sharing' : 'Present'}
+                  <Monitor className="mr-2 h-4 w-4" />
+                  {isScreenSharing ? 'Stop sharing' : 'Present'}
                 </DropdownMenuItem>
-              </>
-            )}
-            {moreItems}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <DropdownMenuItem onClick={onToggleCaptions}>
+                  {captionsEnabled ? (
+                    <CaptionsOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Captions className="mr-2 h-4 w-4" />
+                  )}
+                  Captions
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onSwitchCamera}>
+                  <RotateCcw className="mr-2 h-4 w-4" /> Flip camera
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleEffects}>
+                  <Sparkles className="mr-2 h-4 w-4" /> Visual effects
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onToggleSettings}>
+                  <Settings className="mr-2 h-4 w-4" /> Device settings
+                </DropdownMenuItem>
+                {onNavigateToDashboard && (
+                  <DropdownMenuItem onClick={onNavigateToDashboard}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-        <div className="w-px h-8 bg-white/10 mx-1" />
-
-        {/* End call */}
-        <Btn onClick={onLeaveMeeting} danger label="Leave call">
-          <PhoneOff className="h-5 w-5" />
-        </Btn>
+          <Btn onClick={onLeaveMeeting} label="Leave call" variant="end">
+            <PhoneOff className="h-5 w-5 sm:h-6 sm:w-6" />
+          </Btn>
+        </div>
       </div>
     </div>
   );

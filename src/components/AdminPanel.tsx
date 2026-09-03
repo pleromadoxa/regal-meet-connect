@@ -5,25 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from '@/components/ui/navigation-menu';
 import { useAdmin } from '@/hooks/useAdmin';
-import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Home, ArrowLeft, Calendar, Trash2, Video } from 'lucide-react';
+import { Users, Activity, Globe, Settings, Shield, BarChart3, Crown, LogOut, Calendar, Trash2, Video } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { Link } from 'react-router-dom';
 import { AdminMeetingCreator } from './AdminMeetingCreator';
 import { ApiDocsSection } from './admin/ApiDocsSection';
+import { CalendarAnalyticsSection } from './admin/CalendarAnalyticsSection';
 import { BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 
 export const AdminPanel = () => {
-  const { users, meetings, logs, countryStats, loading, assignRole, createMeeting, deleteMeeting, refreshData } = useAdmin();
+  const { users, meetings, logs, countryStats, calendarStats, calendarStatsLoading, loading, assignRole, createMeeting, deleteMeeting, refreshData } = useAdmin();
   const { signOut } = useAuth();
   const [selectedTab, setSelectedTab] = useState('overview');
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white text-xl">Loading Admin Panel...</div>
+      <div className="flex items-center justify-center py-24">
+        <div className="text-white/70">Loading admin panel…</div>
       </div>
     );
   }
@@ -36,37 +35,7 @@ export const AdminPanel = () => {
   const activeCountries = countryStats.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-6">
-      {/* Navigation Bar */}
-      <div className="mb-6">
-        <NavigationMenu className="justify-start">
-          <NavigationMenuList className="flex space-x-4">
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild>
-                <Link 
-                  to="/" 
-                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 focus:bg-white/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to App
-                </Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuLink asChild>
-                <Link 
-                  to="/" 
-                  className="group inline-flex h-10 w-max items-center justify-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20 focus:bg-white/20 focus:outline-none disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Main App
-                </Link>
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
-      </div>
-
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-3">
@@ -180,6 +149,10 @@ export const AdminPanel = () => {
           <TabsTrigger value="analytics" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
             <Globe className="h-4 w-4 mr-2" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
+            <Calendar className="h-4 w-4 mr-2" />
+            Calendar
           </TabsTrigger>
           <TabsTrigger value="api-docs" className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-100">
             <BookOpen className="h-4 w-4 mr-2" />
@@ -502,6 +475,10 @@ export const AdminPanel = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="calendar" className="space-y-6">
+          <CalendarAnalyticsSection stats={calendarStats} loading={calendarStatsLoading} />
         </TabsContent>
 
         <TabsContent value="api-docs" className="space-y-6">

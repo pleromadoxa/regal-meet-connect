@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { DeviceSelector } from '@/components/DeviceSelector';
@@ -6,6 +5,7 @@ import { InMeetingChat } from '@/components/InMeetingChat';
 import { VideoReactions } from '@/components/VideoReactions';
 import { VideoControlsDock } from '@/components/VideoControlsDock';
 import { VideoEffectsPanel } from '@/components/VideoEffectsPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface VideoControlsProps {
   isVideoEnabled: boolean;
@@ -35,7 +35,6 @@ export const VideoControls = ({
   isVideoEnabled,
   isAudioEnabled,
   isScreenSharing,
-  currentFacingMode,
   currentAudioDevice,
   currentVideoDevice,
   onToggleVideo,
@@ -54,6 +53,7 @@ export const VideoControls = ({
   onToggleParticipants,
   onNavigateToDashboard,
 }: VideoControlsProps) => {
+  const isMobile = useIsMobile();
   const [showSettings, setShowSettings] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
@@ -94,11 +94,22 @@ export const VideoControls = ({
         onLeaveMeeting={onLeaveMeeting}
       />
 
+      {/* Reactions — left side on phones to avoid dock overlap */}
+      <div
+        className={
+          isMobile
+            ? 'fixed left-3 z-[55] safe-area-inset-bottom bottom-[calc(var(--meeting-dock-height)+0.75rem)]'
+            : 'fixed right-3 top-[42%] z-[55] -translate-y-1/2 sm:right-4 sm:top-1/2'
+        }
+      >
+        <VideoReactions meetingId={meetingId} userId={userId} userName={userName} />
+      </div>
+
       {showSettings && (
-        <div className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-40 w-80 max-w-[90vw]">
-          <Card className="bg-black/90 backdrop-blur-xl border-white/20 p-4 animate-fade-in">
+        <div className="fixed bottom-[calc(var(--meeting-stack-height)+0.5rem)] left-1/2 z-40 w-80 max-w-[calc(100vw-2rem)] -translate-x-1/2 safe-area-inset-bottom">
+          <Card className="animate-fade-in border-white/20 bg-black/90 p-4 backdrop-blur-xl">
             <div className="space-y-4">
-              <h3 className="text-white font-semibold mb-4">Device Settings</h3>
+              <h3 className="mb-4 font-semibold text-white">Device Settings</h3>
 
               <DeviceSelector
                 type="audio"
@@ -130,10 +141,6 @@ export const VideoControls = ({
           onClose={() => setShowChat(false)}
         />
       )}
-
-      <div className="fixed top-1/2 right-4 transform -translate-y-1/2 z-[60]">
-        <VideoReactions meetingId={meetingId} userId={userId} userName={userName} />
-      </div>
     </>
   );
 };

@@ -53,6 +53,9 @@ export function useCloudflareSfu({
   const reconnectAttemptsRef = useRef(0);
   const maxSfuReconnectAttempts = 5;
   const rebuildRef = useRef<() => void>(() => undefined);
+  const publishedTracksRef = useRef<PublishedSfuTrack[]>([]);
+  const isPublisherRef = useRef(isPublisher);
+  isPublisherRef.current = isPublisher;
 
   const resetSfuSession = useCallback(() => {
     pcRef.current?.close();
@@ -70,8 +73,13 @@ export function useCloudflareSfu({
         setIsConnected(true);
         return;
       }
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-        rebuildRef.current();
+      if (pc.iceConnectionState === 'failed') {
+        // Debounce rebuild — transient "disconnected" recovers without tearing SFU down
+        window.setTimeout(() => {
+          if (pc.iceConnectionState === 'failed') {
+            rebuildRef.current();
+          }
+        }, 3_000);
       }
     };
   }, []);
@@ -86,6 +94,7 @@ export function useCloudflareSfu({
 
   const broadcastPublishedTracks = useCallback(
     (tracks: PublishedSfuTrack[]) => {
+      publishedTracksRef.current = tracks;
       registryChannelRef.current?.send({
         type: 'broadcast',
         event: 'tracks-published',
@@ -94,6 +103,18 @@ export function useCloudflareSfu({
     },
     [userId, userName]
   );
+
+  /** Late joiners ask publishers to re-announce; also answers roster probes. */
+  const respondToTrackRequest = useCallback(() => {
+    if (!isPublisherRef.current) return;
+    const tracks = publishedTracksRef.current;
+    if (!tracks.length || !sessionIdRef.current) return;
+    registryChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'tracks-published',
+      payload: { userId, userName, sessionId: sessionIdRef.current, tracks },
+    });
+  }, [userId, userName]);
 
   const ensurePublisherSession = useCallback(async () => {
     if (!enabled || !isPublisher || publishingRef.current) return;
@@ -156,6 +177,7 @@ export function useCloudflareSfu({
         }));
 
       setPublishedTracks(published);
+      publishedTracksRef.current = published;
       broadcastPublishedTracks(published);
       reconnectAttemptsRef.current = 0;
       setIsConnected(true);
@@ -330,25 +352,56 @@ export function useCloudflareSfu({
           sessionId: string;
           tracks: PublishedSfuTrack[];
         };
-        if (!data?.tracks?.length || isPublisher) return;
+        if (!data?.tracks?.length || isPublisherRef.current) return;
         void pullRemoteTracks({
           userId: data.userId,
           sessionId: data.sessionId,
           tracks: data.tracks,
         });
       })
+      .on('broadcast', { event: 'request-tracks' }, ({ payload }) => {
+        const requesterId = (payload as { userId?: string } | null)?.userId;
+        // Ignore our own probe; publishers re-announce for late joiners
+        if (requesterId === userId) return;
+        respondToTrackRequest();
+      })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && isPublisher) {
+        if (status !== 'SUBSCRIBED') return;
+        if (isPublisherRef.current) {
           await ensurePublisherSession();
+          // Help any listeners who subscribed just before we published
+          respondToTrackRequest();
+          return;
         }
+        // Listener late-join: ask active publishers for their current track roster
+        await channel.send({
+          type: 'broadcast',
+          event: 'request-tracks',
+          payload: { userId, at: Date.now() },
+        });
+        // Retry once — first broadcast can race channel membership
+        window.setTimeout(() => {
+          void channel.send({
+            type: 'broadcast',
+            event: 'request-tracks',
+            payload: { userId, at: Date.now() },
+          });
+        }, 1500);
       });
 
     registryChannelRef.current = channel;
+
+    // Periodic re-announce so mid-call joiners always discover publishers
+    const announceTimer = window.setInterval(() => {
+      if (isPublisherRef.current) respondToTrackRequest();
+    }, 12_000);
+
     return () => {
+      window.clearInterval(announceTimer);
       supabase.removeChannel(channel);
       registryChannelRef.current = null;
     };
-  }, [enabled, meetingId, isPublisher, pullRemoteTracks, ensurePublisherSession]);
+  }, [enabled, meetingId, userId, pullRemoteTracks, ensurePublisherSession, respondToTrackRequest]);
 
   useEffect(() => {
     if (!enabled || !isPublisher) return;

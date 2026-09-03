@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Copy, Users, Settings, MoreVertical, Shield, Maximize, Minimize, LogOut, Video, Mic } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, Settings, Maximize, Minimize, LogOut, Video, Mic, Shield, Users } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,11 +7,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useIsMobile } from '@/hooks/use-mobile';
-import logo from '@/assets/regal-logo.png';
+import { PRODUCT_NAME, MEET_DOMAIN } from '@/constants/site';
+import { cn } from '@/lib/utils';
 
 interface MeetingHeaderProps {
   meetingId: string;
+  meetingTitle?: string | null;
   isCurrentUserHost: boolean;
   totalParticipantCount: number;
   handNotifications: any[];
@@ -25,6 +25,7 @@ interface MeetingHeaderProps {
   onToggleVideoMode: () => void;
   onNavigateToSettings: () => void;
   onSignOut: () => void;
+  onNavigateBack?: () => void;
 }
 
 const formatElapsed = (sec: number) => {
@@ -36,14 +37,13 @@ const formatElapsed = (sec: number) => {
 };
 
 /**
- * Minimal Google Meet-style top bar.
- * Shows logo, meeting ID, elapsed time, participant count, and a more menu.
+ * Floating glass overlays — back control (top-left) and meeting info + share (top-right).
  */
 export const MeetingHeader = ({
   meetingId,
+  meetingTitle,
   isCurrentUserHost,
   totalParticipantCount,
-  handNotifications,
   isFullscreen,
   showParticipants,
   isVideoMode,
@@ -53,8 +53,8 @@ export const MeetingHeader = ({
   onToggleVideoMode,
   onNavigateToSettings,
   onSignOut,
+  onNavigateBack,
 }: MeetingHeaderProps) => {
-  const isMobile = useIsMobile();
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -62,87 +62,121 @@ export const MeetingHeader = ({
     return () => clearInterval(id);
   }, []);
 
+  const title = (meetingTitle && meetingTitle.trim()) || PRODUCT_NAME;
+  const shareHint = `${MEET_DOMAIN}/${meetingId}`;
+
   return (
-    <header className="bg-[#202124]/95 backdrop-blur-md border-b border-white/5 px-3 sm:px-4 py-2 flex items-center justify-between z-30">
-      {/* Left: brand + meeting */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <img src={logo} alt="Regal Meeting" className="h-8 w-8 rounded-lg flex-shrink-0" />
-        <div className="hidden sm:block min-w-0">
-          <div className="text-white text-sm font-semibold truncate">Regal Meeting</div>
-          <div className="text-white/50 text-xs truncate">{meetingId}</div>
-        </div>
-        <div className="sm:hidden text-white/70 text-xs font-mono truncate max-w-[100px]">{meetingId}</div>
-      </div>
-
-      {/* Center: live indicator + timer */}
-      <div className="hidden md:flex items-center gap-2 text-white/70 text-sm">
-        <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="font-mono">{formatElapsed(elapsed)}</span>
-        {isCurrentUserHost && (
-          <span className="ml-2 inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-300 text-xs px-2 py-0.5 rounded-full border border-yellow-500/20">
-            <Shield className="h-3 w-3" /> Host
-          </span>
+    <>
+      {/* Top left — back + timer */}
+      <div className="pointer-events-none absolute left-3 top-3 z-40 flex max-w-[calc(100vw-8rem)] items-center gap-2 safe-area-inset-top">
+        {onNavigateBack && (
+          <button
+            type="button"
+            onClick={onNavigateBack}
+            className={cn(
+              'pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
+              'border border-white/20 bg-white/90 text-neutral-900 shadow-lg',
+              'transition hover:bg-white active:scale-95'
+            )}
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
         )}
-      </div>
 
-      {/* Right: actions */}
-      <div className="flex items-center gap-1 sm:gap-2">
-        <Button
-          onClick={onCopyMeetingId}
-          variant="ghost"
-          size="sm"
-          className="text-white/80 hover:bg-white/10 hover:text-white"
-          aria-label="Copy meeting ID"
-        >
-          <Copy className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Copy ID</span>
-        </Button>
-
-        <Button
-          onClick={onToggleParticipants}
-          variant="ghost"
-          size="sm"
-          className={`hover:bg-white/10 hover:text-white ${
-            showParticipants ? 'bg-white/15 text-white' : 'text-white/80'
-          }`}
-          aria-label="Show participants"
-        >
-          <Users className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">
-            {totalParticipantCount} participant{totalParticipantCount !== 1 ? 's' : ''}
-          </span>
-          {handNotifications.length > 0 && (
-            <span className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded-full bg-yellow-500 text-[10px] text-black font-bold">
-              {handNotifications.length}
+        <div className="pointer-events-none flex min-w-0 items-center gap-2 rounded-full border border-white/15 bg-black/35 px-2.5 py-1.5 text-xs text-white/80 backdrop-blur-xl sm:px-3">
+          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+          <span className="font-mono tabular-nums">{formatElapsed(elapsed)}</span>
+          {isCurrentUserHost && (
+            <span className="hidden items-center gap-1 text-amber-300 sm:inline-flex">
+              <Shield className="h-3 w-3" /> Host
             </span>
           )}
-        </Button>
+        </div>
+      </div>
+
+      {/* Top right — title + share + menu */}
+      <div className="pointer-events-none absolute right-3 top-3 z-40 flex max-w-[min(24rem,70vw)] items-start gap-1.5 safe-area-inset-top sm:gap-2">
+        <div className="pointer-events-none min-w-0 text-right">
+          <p className="truncate text-sm font-semibold tracking-tight text-white drop-shadow-md sm:text-lg">
+            {title}
+          </p>
+          <p className="hidden truncate text-xs text-white/65 drop-shadow-sm sm:block sm:text-sm">{shareHint}</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleParticipants}
+          className={cn(
+            'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target lg:hidden',
+            'border border-white/20 shadow-lg backdrop-blur-xl transition active:scale-95',
+            showParticipants
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-white/15 text-white hover:bg-white/25'
+          )}
+          aria-label="Participants"
+          title={`${totalParticipantCount} participants`}
+        >
+          <Users className="h-4 w-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onCopyMeetingId}
+          className={cn(
+            'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
+            'border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-xl',
+            'transition hover:bg-white/25 active:scale-95'
+          )}
+          aria-label="Copy meeting link"
+          title="Share meeting"
+        >
+          <Send className="h-4 w-4 -translate-x-px translate-y-px" />
+        </button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="text-white/80 hover:bg-white/10 hover:text-white" aria-label="More">
+            <button
+              type="button"
+              className={cn(
+                'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
+                'border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-xl',
+                'transition hover:bg-white/25'
+              )}
+              aria-label="More"
+            >
               <MoreVertical className="h-4 w-4" />
-            </Button>
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-[#202124] text-white border-white/10 min-w-[200px]">
+          <DropdownMenuContent
+            align="end"
+            className="min-w-[200px] border-white/10 bg-black/90 text-white backdrop-blur-xl"
+          >
+            <DropdownMenuItem onClick={onToggleParticipants} className="lg:hidden">
+              <Users className="mr-2 h-4 w-4" />
+              Participants ({totalParticipantCount})
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onToggleVideoMode}>
-              {isVideoMode ? <Mic className="h-4 w-4 mr-2" /> : <Video className="h-4 w-4 mr-2" />}
+              {isVideoMode ? <Mic className="mr-2 h-4 w-4" /> : <Video className="mr-2 h-4 w-4" />}
               {isVideoMode ? 'Switch to audio-only' : 'Switch to video'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onToggleFullscreen}>
-              {isFullscreen ? <Minimize className="h-4 w-4 mr-2" /> : <Maximize className="h-4 w-4 mr-2" />}
+              {isFullscreen ? <Minimize className="mr-2 h-4 w-4" /> : <Maximize className="mr-2 h-4 w-4" />}
               {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onNavigateToSettings}>
-              <Settings className="h-4 w-4 mr-2" /> Settings
+              <Settings className="mr-2 h-4 w-4" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-white/10" />
-            <DropdownMenuItem onClick={onSignOut} className="text-red-400 focus:text-red-300 focus:bg-red-500/10">
-              <LogOut className="h-4 w-4 mr-2" /> Leave & sign out
+            <DropdownMenuItem
+              onClick={onSignOut}
+              className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Leave & sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+    </>
   );
 };

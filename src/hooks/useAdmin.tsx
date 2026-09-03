@@ -45,11 +45,49 @@ interface CountryStats {
   count: number;
 }
 
+export interface TeamCalendarStat {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+  owner_email: string;
+  owner_name: string | null;
+  member_count: number;
+  event_count: number;
+}
+
+export interface SchedulingLinkStat {
+  id: string;
+  slug: string;
+  title: string;
+  duration_minutes: number;
+  is_active: boolean;
+  create_meeting: boolean;
+  created_at: string;
+  owner_email: string;
+}
+
+export interface CalendarAdminStats {
+  total_team_calendars: number;
+  total_team_members: number;
+  total_calendar_events: number;
+  team_calendar_events: number;
+  total_scheduling_links: number;
+  active_scheduling_links: number;
+  events_this_week: number;
+  reminders_sent_30d: number;
+  public_bookings_30d: number;
+  team_calendars: TeamCalendarStat[];
+  scheduling_links: SchedulingLinkStat[];
+}
+
 export const useAdmin = () => {
   const [users, setUsers] = useState<UserWithProfile[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [logs, setLogs] = useState<PlatformUsageLog[]>([]);
   const [countryStats, setCountryStats] = useState<CountryStats[]>([]);
+  const [calendarStats, setCalendarStats] = useState<CalendarAdminStats | null>(null);
+  const [calendarStatsLoading, setCalendarStatsLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
@@ -86,7 +124,8 @@ export const useAdmin = () => {
           fetchUsers(),
           fetchMeetings(),
           fetchLogs(),
-          fetchCountryStats()
+          fetchCountryStats(),
+          fetchCalendarStats(),
         ]);
       }
     } catch (error) {
@@ -241,6 +280,24 @@ export const useAdmin = () => {
       }
     } catch (error) {
       console.error('Error fetching country stats:', error);
+    }
+  };
+
+  const fetchCalendarStats = async () => {
+    setCalendarStatsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_calendar_admin_stats');
+      if (error) {
+        console.error('Error fetching calendar stats:', error);
+        setCalendarStats(null);
+        return;
+      }
+      setCalendarStats(data as CalendarAdminStats);
+    } catch (error) {
+      console.error('Error fetching calendar stats:', error);
+      setCalendarStats(null);
+    } finally {
+      setCalendarStatsLoading(false);
     }
   };
 
@@ -401,12 +458,20 @@ export const useAdmin = () => {
     meetings,
     logs,
     countryStats,
+    calendarStats,
+    calendarStatsLoading,
     isAdmin,
     loading,
     assignRole,
     logAction,
     createMeeting,
     deleteMeeting,
-    refreshData: () => Promise.all([fetchUsers(), fetchMeetings(), fetchLogs(), fetchCountryStats()])
+    refreshData: () => Promise.all([
+      fetchUsers(),
+      fetchMeetings(),
+      fetchLogs(),
+      fetchCountryStats(),
+      fetchCalendarStats(),
+    ]),
   };
 };

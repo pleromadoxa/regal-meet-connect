@@ -43,6 +43,8 @@ const secrets = {
   R2_PUBLIC_URL: env.VITE_R2_PUBLIC_URL ?? env.R2_PUBLIC_URL,
   REGAL_MAIL_SUPABASE_URL: env.VITE_REGAL_MAIL_SUPABASE_URL ?? 'https://xexnwcmqnelgzuqhkvtx.supabase.co',
   REGAL_MAIL_SERVICE_ROLE_KEY: env.REGAL_MAIL_SERVICE_ROLE_KEY,
+  CRON_SECRET: env.CRON_SECRET,
+  RESEND_API_KEY: env.RESEND_API_KEY,
 };
 
 console.log(`Set these secrets on Supabase (${env.VITE_SUPABASE_PROJECT_ID ?? 'xexnwcmqnelgzuqhkvtx'}) → Edge Functions → Secrets:\n`);
@@ -55,3 +57,6 @@ console.log('\nDeploy functions:\n');
 console.log(`  supabase functions deploy meeting-sfu --project-ref ${projectRef}`);
 console.log(`  supabase functions deploy meeting-r2 --project-ref ${projectRef}`);
 console.log(`  supabase functions deploy cloudflare-health --project-ref ${projectRef} --no-verify-jwt`);
+console.log(`  supabase functions deploy process-calendar-reminders --project-ref ${projectRef} --no-verify-jwt`);
+console.log('\nCalendar reminders cron (every 5 min):\n');
+console.log('  npm run deploy:calendar-reminders-cron');

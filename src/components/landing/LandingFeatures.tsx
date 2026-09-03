@@ -87,10 +87,10 @@ export const LandingFeatures = () => (
       ))}
     </div>
 
-    <div className="mt-10 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/40 sm:flex-row sm:gap-3">
+      <div className="mt-10 flex flex-col items-center justify-center gap-2 px-4 text-center text-sm text-white/40 sm:flex-row sm:gap-3">
       <LayoutGrid className="h-4 w-4 shrink-0" />
       <span className="max-w-xl leading-relaxed">
-        Works with Regal Mail sign-in · Mobile app · Shared meeting links
+        One account for Regal Meeting &amp; Regal Calendar · Regal Mail sign-in · Mobile app
       </span>
     </div>
   </section>

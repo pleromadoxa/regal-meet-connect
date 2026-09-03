@@ -1,18 +1,25 @@
+import { SFU_AUTO_THRESHOLD } from '@/lib/meetingTopology';
+
 /** Large meeting / webinar limits and tuning */
 export const LARGE_MEETING_THRESHOLDS = {
   /** Switch to webinar-style UI */
   webinarUi: 12,
   /** Stagger peer negotiations more aggressively */
   connectionStaggerMs: 12,
-  /** Aggressive audio bitrate reduction */
-  audioCompact: 50,
+  /** Aggressive audio bitrate / sample-rate reduction */
+  audioCompact: 16,
 } as const;
 
 export const MEETING_LIMITS = {
   maxParticipants: 500,
-  maxMeshPeerConnections: 500,
-  peerConnectionDelayMs: 180,
-  maxConcurrentNegotiations: 3,
+  /**
+   * Hard ceiling on simultaneous mesh peer connections for any one client.
+   * Host-hub hosts may still need many legs, but we never allow unbounded P2P fan-out.
+   */
+  maxMeshPeerConnections: Math.max(SFU_AUTO_THRESHOLD + 4, 16),
+  /** Slightly slower negotiation pump under load reduces offer glare */
+  peerConnectionDelayMs: 260,
+  maxConcurrentNegotiations: 2,
 } as const;
 
 export function isScreenShareTrack(track: MediaStreamTrack | null | undefined): boolean {
@@ -37,6 +44,14 @@ export function getAudioConstraintsForParticipantCount(count: number): MediaTrac
   };
 }
 
+/** Extra delay between peer connects as room size grows (host-hub safety). */
+export function peerConnectDelayForCount(participantCount: number): number {
+  if (participantCount > 80) return 450;
+  if (participantCount > 40) return 350;
+  if (participantCount > SFU_AUTO_THRESHOLD) return 300;
+  return MEETING_LIMITS.peerConnectionDelayMs;
+}
+
 export function createPeerConnectionQueue(
   connect: (peerId: string) => void,
   delayMs = MEETING_LIMITS.peerConnectionDelayMs
@@ -44,6 +59,7 @@ export function createPeerConnectionQueue(
   const pending: string[] = [];
   const scheduled = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let currentDelay = delayMs;
 
   const pump = () => {
     if (pending.length === 0) {
@@ -53,7 +69,7 @@ export function createPeerConnectionQueue(
     const peerId = pending.shift()!;
     scheduled.delete(peerId);
     connect(peerId);
-    timer = setTimeout(pump, delayMs);
+    timer = setTimeout(pump, currentDelay);
   };
 
   return {
@@ -62,6 +78,9 @@ export function createPeerConnectionQueue(
       scheduled.add(peerId);
       pending.push(peerId);
       if (!timer) pump();
+    },
+    setDelay(ms: number) {
+      currentDelay = Math.max(120, ms);
     },
     clear() {
       pending.length = 0;

@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthPage } from '@/components/AuthPage';
 import { useRegalMailCallback } from '@/hooks/useRegalMailCallback';
+import { RegalPageLoader } from '@/components/layout/RegalPageLoader';
 import { sanitizeRedirectPath } from '@/constants/site';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
@@ -27,16 +28,12 @@ const Auth = () => {
   const { regalMailLoading } = useRegalMailCallback(handleAuthSuccess);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500/30 border-t-orange-400" />
-      </div>
-    );
+    return <RegalPageLoader message="Checking session…" />;
   }
 
   if (user) return null;
 
-  return <AuthPage onAuthSuccess={handleAuthSuccess} regalMailLoading={regalMailLoading} redirectTo={redirectTo} />;
+  return <AuthPage regalMailLoading={regalMailLoading} redirectTo={redirectTo} />;
 };
 
 export default Auth;

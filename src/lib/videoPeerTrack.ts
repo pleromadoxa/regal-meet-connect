@@ -10,6 +10,19 @@ export function findVideoTransceiver(pc: RTCPeerConnection): RTCRtpTransceiver |
   });
 }
 
+function findKindTransceiver(
+  pc: RTCPeerConnection,
+  kind: 'audio' | 'video'
+): RTCRtpTransceiver | undefined {
+  return pc.getTransceivers().find((t) => {
+    return (
+      t.sender.track?.kind === kind ||
+      t.receiver.track?.kind === kind ||
+      (t as RTCRtpTransceiver & { mediaKind?: string }).mediaKind === kind
+    );
+  });
+}
+
 /** Attach a camera track to a peer, reusing recvonly video transceivers when present. */
 export async function replaceOrAddVideoTrack(
   pc: RTCPeerConnection,
@@ -32,6 +45,44 @@ export async function replaceOrAddVideoTrack(
   }
 
   pc.addTrack(videoTrack, stream);
+}
+
+/** Attach a mic track, upgrading recvonly audio transceivers created before media was ready. */
+export async function replaceOrAddAudioTrack(
+  pc: RTCPeerConnection,
+  audioTrack: MediaStreamTrack,
+  stream: MediaStream
+): Promise<void> {
+  const senderWithTrack = pc.getSenders().find((s) => s.track?.kind === 'audio');
+  if (senderWithTrack) {
+    await senderWithTrack.replaceTrack(audioTrack);
+    return;
+  }
+
+  const audioTransceiver = findKindTransceiver(pc, 'audio');
+  if (audioTransceiver) {
+    await audioTransceiver.sender.replaceTrack(audioTrack);
+    if (audioTransceiver.direction === 'recvonly') {
+      audioTransceiver.direction = 'sendrecv';
+    }
+    return;
+  }
+
+  pc.addTrack(audioTrack, stream);
+}
+
+/** Publish (or refresh) all local A/V tracks onto an existing peer connection. */
+export async function syncLocalTracksToPeer(
+  pc: RTCPeerConnection,
+  stream: MediaStream
+): Promise<void> {
+  if (pc.connectionState === 'closed') return;
+  for (const track of stream.getAudioTracks()) {
+    await replaceOrAddAudioTrack(pc, track, stream);
+  }
+  for (const track of stream.getVideoTracks()) {
+    await replaceOrAddVideoTrack(pc, track, stream);
+  }
 }
 
 /** Remove an outgoing video track while keeping recv capability when possible. */

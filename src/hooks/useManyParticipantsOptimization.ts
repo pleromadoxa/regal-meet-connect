@@ -59,24 +59,26 @@ export const useManyParticipantsOptimization = () => {
     let enableVirtualization = false;
     let enablePagination = false;
 
-    // Prioritize visual quality for typical room sizes; scale down only when necessary
-    if (participantCount > 80) {
+    // Scale video work down earlier — rooms leave mesh around 12 people
+    if (participantCount > 60) {
+      videoQuality = 'potato';
+      maxVideoStreams = 6;
+      enableVirtualization = true;
+      enablePagination = true;
+    } else if (participantCount > 30) {
       videoQuality = 'low';
       maxVideoStreams = 9;
       enableVirtualization = true;
       enablePagination = true;
-    } else if (participantCount > 40) {
+    } else if (participantCount > 16) {
       videoQuality = 'medium';
       maxVideoStreams = 12;
       enableVirtualization = true;
       enablePagination = true;
-    } else if (participantCount > 20) {
+    } else if (participantCount > 8) {
       videoQuality = 'medium';
       maxVideoStreams = 16;
       enableVirtualization = true;
-    } else if (participantCount > 8) {
-      videoQuality = 'high';
-      maxVideoStreams = 20;
     } else {
       videoQuality = 'high';
       maxVideoStreams = 25;

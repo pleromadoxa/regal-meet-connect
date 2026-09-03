@@ -1,14 +1,15 @@
-
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingManagement } from '@/hooks/useMeetingManagement';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { ProfileCard } from '@/components/dashboard/ProfileCard';
 import { CreateMeetingCard } from '@/components/dashboard/CreateMeetingCard';
 import { QuickJoinCard } from '@/components/dashboard/QuickJoinCard';
 import { RecentMeetingsCard } from '@/components/dashboard/RecentMeetingsCard';
 import { MeetingList } from '@/components/MeetingList';
-import { Footer } from '@/components/Footer';
+import { RegalAppShell } from '@/components/layout/RegalAppShell';
+import { RegalPageLoader } from '@/components/layout/RegalPageLoader';
+import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useRecentMeetings } from '@/hooks/useRecentMeetings';
@@ -19,6 +20,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useToast } from '@/hooks/use-toast';
 import { resolveAvatarUrl } from '@/lib/profileAvatar';
 import { parseMeetingCodeFromInput } from '@/lib/meeting';
+import { PRODUCT_NAME } from '@/constants/site';
 
 const Dashboard = () => {
   const { user, profile, loading: authLoading, signOut } = useAuth();
@@ -130,37 +132,38 @@ const Dashboard = () => {
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-xl">Loading dashboard...</div>
-        </div>
-      </div>
-    );
+    return <RegalPageLoader message="Loading dashboard…" />;
   }
 
   if (!user) {
-    console.log('No user found, redirecting to auth');
-    return null;
+    return <RegalPageLoader message="Redirecting to sign in…" />;
   }
 
   const avatarUrl = resolveAvatarUrl(profile, user);
+  const welcomeName = profile?.display_name || user?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="min-h-screen-safe gradient-hero flex flex-col">
-      <div className="flex-1">
-        <div className="container mx-auto px-4 py-5 sm:px-6 md:py-8 safe-area-inset-top safe-area-inset-bottom">
-          <DashboardHeader 
-            displayName={profile?.display_name || ''}
-            userEmail={user?.email || ''}
-            avatarUrl={avatarUrl}
-            isRefreshing={loading}
-            onRefreshMeetings={fetchMeetings}
-            onNavigateToSettings={() => navigate('/settings')}
-            onSignOut={signOut}
-          />
-          
+    <RegalAppShell
+      title={PRODUCT_NAME}
+      subtitle={`Welcome back, ${welcomeName}`}
+      activeProduct="meeting"
+      user={user}
+      profile={profile}
+      onSignOut={signOut}
+      maxWidthClass="max-w-7xl"
+      headerActions={
+        <Button
+          onClick={fetchMeetings}
+          disabled={loading}
+          variant="outline"
+          size="sm"
+          className="border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
+      }
+    >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-6 md:mb-12">
             <div className="animate-fade-in" style={{animationDelay: '0.1s'}}>
               <ProfileCard 
@@ -203,12 +206,7 @@ const Dashboard = () => {
               onDeleteMeeting={handleDeleteMeeting}
             />
           </div>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <Footer />
-    </div>
+    </RegalAppShell>
   );
 };
 

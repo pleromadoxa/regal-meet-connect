@@ -1,230 +1,180 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, ExternalLink, Loader2, Mail, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { usePlatformLogging } from '@/hooks/usePlatformLogging';
-import { RegalMailAuthButton } from '@/components/auth/RegalMailAuthButton';
-import { AuthHeroPanel } from '@/components/auth/AuthHeroPanel';
+import { Footer } from '@/components/Footer';
+import { LandingBackground } from '@/components/landing/LandingBackground';
+import { LandingHeader } from '@/components/landing/LandingHeader';
 import { AuthHeroStrip } from '@/components/auth/AuthHeroStrip';
-import { isRegalMailAuthAvailable } from '@/services/regalMailAuth';
-import { appOrigin, COMPANY_LEGAL_NAME, COMPANY_NAME, PRODUCT_NAME } from '@/constants/site';
-import logo from '@/assets/regal-logo.png';
+import { AuthProductShowcase } from '@/components/auth/AuthProductShowcase';
+import { RegalMailAuthPanel } from '@/components/auth/RegalMailAuthPanel';
+import {
+  CALENDAR_PRODUCT_NAME,
+  COMPANY_LEGAL_NAME,
+  COMPANY_NAME,
+  PRODUCT_NAME,
+  type RegalProduct,
+} from '@/constants/site';
+import { regalMailSignupUrl } from '@/constants/regalMail';
+import {
+  REGAL_MAIL_DOMAIN,
+  REGAL_MAIL_LOGO_ALT,
+  REGAL_MAIL_LOGO_SRC,
+} from '@/constants/regalMailProduct';
+import { cn } from '@/lib/utils';
 
 interface AuthPageProps {
-  onAuthSuccess: () => void;
   regalMailLoading?: boolean;
   redirectTo?: string;
 }
 
-export const AuthPage = ({ onAuthSuccess, regalMailLoading, redirectTo = '/dashboard' }: AuthPageProps) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const { toast } = useToast();
-  const { logActivity } = usePlatformLogging();
+export const AuthPage = ({ regalMailLoading, redirectTo = '/dashboard' }: AuthPageProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
+  const prefillEmail = searchParams.get('email')?.trim() || '';
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const activeProduct: RegalProduct = redirectTo.startsWith('/calendar') ? 'calendar' : 'meeting';
+  const productName = activeProduct === 'calendar' ? CALENDAR_PRODUCT_NAME : PRODUCT_NAME;
+  const signupUrl = regalMailSignupUrl(redirectTo);
 
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast({ title: 'Welcome back!', description: `Successfully signed in to ${PRODUCT_NAME}` });
-        onAuthSuccess();
-      } else {
-        const authReturnUrl = `${window.location.hostname === 'localhost' ? window.location.origin : appOrigin()}/auth?redirect=${encodeURIComponent(redirectTo)}`;
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: authReturnUrl, data: { display_name: displayName } },
-        });
-        if (error) throw error;
-        setTimeout(() => logActivity('user_signup', undefined), 1000);
-        // Fire-and-forget welcome email; don't block UX if not configured
-        supabase.functions
-          .invoke('send-welcome-email', { body: { email, name: displayName } })
-          .catch((err) => console.warn('Welcome email failed:', err));
-        toast({ title: 'Account Created!', description: `Welcome to ${PRODUCT_NAME} — check your inbox.` });
-      }
-    } catch (error: any) {
-      toast({ title: 'Authentication Error', description: error.message, variant: 'destructive' });
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const prefill = searchParams.get('email')?.trim();
+    if (prefill && !prefill.includes('@')) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('email', `${prefill}@${REGAL_MAIL_DOMAIN}`);
+          return next;
+        },
+        { replace: true }
+      );
     }
-  };
+  }, [searchParams, setSearchParams]);
 
-  const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      toast({
-        title: 'Enter your email',
-        description: 'Type the email for your account, then tap Forgot password.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setResettingPassword(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${appOrigin()}/auth`,
-      });
-      if (error) throw error;
-      toast({
-        title: 'Reset link sent',
-        description: 'Check your inbox for password reset instructions.',
-      });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not send reset email';
-      toast({ title: 'Reset failed', description: message, variant: 'destructive' });
-    } finally {
-      setResettingPassword(false);
-    }
+  const setMode = (next: 'signin' | 'signup') => {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        if (next === 'signup') params.set('mode', 'signup');
+        else params.delete('mode');
+        return params;
+      },
+      { replace: true }
+    );
   };
 
   return (
-    <div className="min-h-screen-safe flex flex-col lg:flex-row bg-[#0a0612]">
-      {/* Left panel: form */}
-      <div className="relative flex flex-1 flex-col px-5 py-6 sm:px-8 sm:py-8 lg:px-16 lg:py-8 bg-gradient-to-br from-[#0a0612] via-[#0d0818] to-[#160a26] safe-area-inset-top safe-area-inset-bottom">
-        {/* Logo + back to home */}
-        <div className="flex items-center justify-between gap-4">
-          <Link
-            to="/"
-            className="flex items-center gap-3 rounded-xl outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-orange-500/50"
-            aria-label="Regal Meeting home"
-          >
-            <img src={logo} alt="" className="h-11 w-11 rounded-xl shadow-lg shadow-orange-500/30" />
-            <span className="text-white font-bold text-xl tracking-tight">{PRODUCT_NAME}</span>
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-white/50 transition-colors hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to home
-          </Link>
-        </div>
+    <div className="relative min-h-screen-safe overflow-x-clip bg-[#0a0a0a] text-white">
+      <LandingBackground />
+      <LandingHeader user={null} onSignOut={() => {}} activeProduct={activeProduct} variant="auth" />
 
-        {/* Form */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight mb-3">
-                {isLogin ? 'Welcome Back' : 'Create Account'}
+      <main className="relative z-10 mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 sm:pt-10 lg:pb-16">
+        <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,28rem)_1fr] lg:gap-12 xl:gap-16">
+          <section className="mx-auto w-full max-w-md lg:mx-0 lg:max-w-none lg:pt-4">
+            <div
+              className="landing-fade-up mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/[0.08] px-4 py-1.5 text-xs font-medium text-orange-200/90"
+              style={{ animationDelay: '0.05s' }}
+            >
+              <Sparkles className="h-3.5 w-3.5 text-orange-400" />
+              {COMPANY_NAME} · {productName}
+            </div>
+
+            <div className="landing-fade-up" style={{ animationDelay: '0.1s' }}>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                {mode === 'signin' ? 'Sign in with Regal Mail' : 'Create your Regal Mail'}
               </h1>
-              <p className="text-white/50">
-                {isLogin ? 'Enter your details to sign in' : 'Sign up to start meeting'}
+              <p className="mt-2 text-sm leading-relaxed text-white/50 sm:text-base">
+                {mode === 'signin'
+                  ? `${productName} uses your @${REGAL_MAIL_DOMAIN} account — no separate signup here.`
+                  : `Get a @${REGAL_MAIL_DOMAIN} address first, then return here to open ${productName}.`}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
+            <div
+              className="landing-fade-up mt-6 inline-flex rounded-full border border-white/10 bg-black/30 p-1 backdrop-blur-md"
+              style={{ animationDelay: '0.14s' }}
+            >
+              {([
+                { id: 'signin' as const, label: 'Sign in' },
+                { id: 'signup' as const, label: 'Get Regal Mail' },
+              ]).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setMode(tab.id)}
+                  className={cn(
+                    'rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
+                    mode === tab.id
+                      ? 'bg-orange-500 text-white shadow-[0_0_24px_rgba(255,107,53,0.35)]'
+                      : 'text-white/55 hover:bg-white/5 hover:text-white'
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              className="landing-fade-up mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl shadow-2xl sm:p-8"
+              style={{ animationDelay: '0.18s' }}
+            >
               {regalMailLoading ? (
                 <div className="py-12 text-center text-white/70">
                   <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-orange-400" />
-                  <p className="text-lg font-semibold text-white mb-2">Completing Regal Mail sign-in…</p>
-                  <p className="text-sm text-white/50">Linking your @regalmail.me identity to Regal Meeting</p>
+                  <p className="mb-2 text-lg font-semibold text-white">Completing Regal Mail sign-in…</p>
+                  <p className="text-sm text-white/50">Linking your @{REGAL_MAIL_DOMAIN} identity to {productName}</p>
                 </div>
+              ) : mode === 'signin' ? (
+                <RegalMailAuthPanel initialEmail={prefillEmail} />
               ) : (
-              <form onSubmit={handleAuth} className="space-y-5">
-                {!isLogin && (
-                  <div className="space-y-2">
-                    <label className="text-sm font-semibold text-white/90">Display Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                      <Input
-                        type="text"
-                        placeholder="Your name"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500/40"
-                        required={!isLogin}
-                      />
+                <div className="space-y-5">
+                  <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                    <img
+                      src={REGAL_MAIL_LOGO_SRC}
+                      alt={REGAL_MAIL_LOGO_ALT}
+                      className="h-14 w-14 shrink-0 rounded-xl object-contain"
+                    />
+                    <div>
+                      <p className="text-base font-bold text-white">Your Regal identity</p>
+                      <p className="mt-1 text-sm text-white/55">
+                        Meeting, Calendar, and Mail share one @{REGAL_MAIL_DOMAIN} account.
+                      </p>
                     </div>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-white/90">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                    <Input
-                      type="email"
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500/40"
-                      required
-                    />
-                  </div>
-                </div>
+                  <ul className="space-y-3 text-sm text-white/60">
+                    <li className="flex gap-2">
+                      <Mail className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+                      Choose your professional @regalmail.me address on Regal Mail.
+                    </li>
+                    <li className="flex gap-2">
+                      <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+                      After signup, come back here and sign in with the same credentials.
+                    </li>
+                  </ul>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-semibold text-white/90">Password</label>
-                    {isLogin && (
-                      <button
-                        type="button"
-                        onClick={handleForgotPassword}
-                        disabled={resettingPassword}
-                        className="text-xs font-semibold text-orange-400 hover:text-orange-300 disabled:opacity-50"
-                      >
-                        {resettingPassword ? 'Sending…' : 'Forgot password?'}
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-orange-500/40"
-                      required
-                    />
-                  </div>
-                </div>
+                  <Button
+                    asChild
+                    variant="premium"
+                    className="h-12 w-full rounded-xl shadow-[0_0_32px_rgba(255,107,53,0.3)]"
+                  >
+                    <a href={signupUrl} target="_blank" rel="noopener noreferrer">
+                      Create @{REGAL_MAIL_DOMAIN} account
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
 
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-12 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/20 transition-all"
-                >
-                  {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
-                </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 w-full border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => setMode('signin')}
+                  >
+                    I already have Regal Mail
+                  </Button>
 
-                {isLogin && isRegalMailAuthAvailable() && (
-                  <>
-                    <div className="relative py-1">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-white/10" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-transparent px-3 text-white/40 tracking-wider">or</span>
-                      </div>
-                    </div>
-                    <RegalMailAuthButton disabled={loading} />
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="w-full text-center text-sm text-white/50 hover:text-white transition-colors"
-                >
-                  {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-                </button>
-
-                {!isLogin && (
                   <p className="text-center text-xs leading-relaxed text-white/40">
-                    By creating an account, you agree to our{' '}
+                    By continuing, you agree to our{' '}
                     <Link to="/terms" className="text-orange-400/90 hover:text-orange-300">
                       Terms
                     </Link>{' '}
@@ -234,28 +184,22 @@ export const AuthPage = ({ onAuthSuccess, regalMailLoading, redirectTo = '/dashb
                     </Link>
                     .
                   </p>
-                )}
-              </form>
+                </div>
               )}
             </div>
 
-            <AuthHeroStrip />
-          </div>
-        </div>
+            <AuthHeroStrip product={activeProduct} />
 
-        <div className="mt-6 space-y-2 text-center text-xs text-white/30 sm:mt-8">
-          <p>© {new Date().getFullYear()} {COMPANY_LEGAL_NAME}. All rights reserved.</p>
-          <p>
-            <Link to="/privacy" className="hover:text-white/50">Privacy</Link>
-            {' · '}
-            <Link to="/terms" className="hover:text-white/50">Terms</Link>
-          </p>
-        </div>
-      </div>
+            <p className="mt-8 text-center text-xs text-white/30">
+              © {new Date().getFullYear()} {COMPANY_LEGAL_NAME}
+            </p>
+          </section>
 
-      <AuthHeroPanel />
+          <AuthProductShowcase product={activeProduct} className="hidden lg:block" />
+        </div>
+      </main>
+
+      <Footer className="relative z-10 border-white/10 bg-transparent" />
     </div>
   );
 };
-
-

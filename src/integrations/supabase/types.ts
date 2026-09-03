@@ -529,6 +529,214 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          attendees: string[]
+          color: string
+          created_at: string
+          description: string | null
+          end_time: string
+          id: string
+          is_all_day: boolean
+          location: string | null
+          recurrence_end_date: string | null
+          recurrence_pattern: string | null
+          reminder_minutes: number | null
+          start_time: string
+          team_calendar_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          attendees?: string[]
+          color?: string
+          created_at?: string
+          description?: string | null
+          end_time: string
+          id?: string
+          is_all_day?: boolean
+          location?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          reminder_minutes?: number | null
+          start_time: string
+          team_calendar_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          attendees?: string[]
+          color?: string
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_all_day?: boolean
+          location?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          reminder_minutes?: number | null
+          start_time?: string
+          team_calendar_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_team_calendar_id_fkey"
+            columns: ["team_calendar_id"]
+            isOneToOne: false
+            referencedRelation: "team_calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_scheduling_links: {
+        Row: {
+          buffer_minutes: number
+          create_meeting: boolean
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          slug: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buffer_minutes?: number
+          create_meeting?: boolean
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buffer_minutes?: number
+          create_meeting?: boolean
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      calendar_user_preferences: {
+        Row: {
+          created_at: string
+          default_reminder_minutes: number
+          timezone: string
+          updated_at: string
+          user_id: string
+          work_days: number[]
+          work_end: string
+          work_start: string
+        }
+        Insert: {
+          created_at?: string
+          default_reminder_minutes?: number
+          timezone?: string
+          updated_at?: string
+          user_id: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
+        }
+        Update: {
+          created_at?: string
+          default_reminder_minutes?: number
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
+        }
+        Relationships: []
+      }
+      team_calendar_members: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          role: string
+          team_calendar_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          role?: string
+          team_calendar_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          role?: string
+          team_calendar_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_calendar_members_team_calendar_id_fkey"
+            columns: ["team_calendar_id"]
+            isOneToOne: false
+            referencedRelation: "team_calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_calendars: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scheduled_meetings: {
         Row: {
           created_at: string
@@ -748,6 +956,60 @@ export type Database = {
       cancel_scheduled_meeting: {
         Args: { p_scheduled_id: string }
         Returns: Json
+      }
+      get_calendar_admin_stats: { Args: never; Returns: Json }
+      get_due_calendar_reminders: {
+        Args: { p_window_minutes?: number }
+        Returns: {
+          description: string | null
+          end_time: string
+          host_email: string
+          location: string | null
+          recipient_email: string
+          recipient_name: string
+          reminder_minutes: number
+          source_id: string
+          source_type: string
+          start_time: string
+          title: string
+        }[]
+      }
+      mark_calendar_reminder_sent: {
+        Args: {
+          p_recipient_email: string
+          p_reminder_minutes: number
+          p_source_id: string
+          p_source_type: string
+        }
+        Returns: undefined
+      }
+      book_scheduling_slot: {
+        Args: {
+          p_guest_email: string
+          p_guest_name: string
+          p_slug: string
+          p_start_time: string
+        }
+        Returns: string
+      }
+      get_scheduling_busy_times: {
+        Args: {
+          p_from?: string
+          p_slug: string
+          p_to?: string
+        }
+        Returns: {
+          end_time: string
+          start_time: string
+        }[]
+      }
+      get_scheduling_work_hours: {
+        Args: { p_slug: string }
+        Returns: {
+          work_days: number[]
+          work_end: string
+          work_start: string
+        }[]
       }
       current_user_email: { Args: never; Returns: string }
       generate_unique_phone_number: { Args: never; Returns: string }
