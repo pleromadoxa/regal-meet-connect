@@ -37,6 +37,19 @@ function loadEnvForBuild() {
 
 const buildEnv = loadEnvForBuild();
 
+const missing = [
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_PUBLISHABLE_KEY',
+].filter((key) => !buildEnv[key]?.trim());
+
+if (missing.length) {
+  console.error(
+    `\nDeploy blocked: missing required env vars: ${missing.join(', ')}\n` +
+      'Add them to .env.local (anon key: npx supabase projects api-keys --project-ref xexnwcmqnelgzuqhkvtx)\n'
+  );
+  process.exit(1);
+}
+
 console.log('Ensuring Cloudflare Pages project exists…');
 execSync('node scripts/setup-pages.mjs', { stdio: 'inherit', env: buildEnv });
 
