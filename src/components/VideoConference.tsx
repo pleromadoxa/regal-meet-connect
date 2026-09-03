@@ -22,6 +22,7 @@ import { useMeetingTopology } from '@/hooks/useMeetingTopology';
 import { useMeetingPlanContext } from '@/hooks/useMeetingPlanContext';
 import { useMeetingDurationLimit } from '@/hooks/useMeetingPlanEnforcement';
 import { useCloudflareSfu } from '@/hooks/useCloudflareSfu';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { LargeMeetingBanner } from '@/components/meeting/LargeMeetingBanner';
 import { MeetingConnectingShell } from '@/components/meeting/MeetingConnectingShell';
 import type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
@@ -45,10 +46,12 @@ export const VideoConference = ({
 }: VideoConferenceProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const [selectedVideoId, setSelectedVideoId] = useState('local');
   const [showParticipants, setShowParticipants] = useState(false);
   const [showMediaPermissions, setShowMediaPermissions] = useState(false);
+  const [mediaInitTimedOut, setMediaInitTimedOut] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
@@ -322,7 +325,7 @@ export const VideoConference = ({
     userName: resolveParticipantDisplayName(id, participantsForUi, peerUserNames),
   }));
 
-  // Initialize WebRTC — call getUserMedia directly; the browser shows its own permission prompt
+  // Initialize WebRTC — on mobile, require a user gesture via the permissions dialog
   useEffect(() => {
     if (!user?.id || !meetingId || !userName) return;
     if (localStream) return;
@@ -333,6 +336,11 @@ export const VideoConference = ({
     }
 
     if (permissions.camera === 'denied' && permissions.microphone === 'denied') {
+      setShowMediaPermissions(true);
+      return;
+    }
+
+    if (isMobile) {
       setShowMediaPermissions(true);
       return;
     }
@@ -355,15 +363,24 @@ export const VideoConference = ({
       void startMedia();
     }, delay);
 
+    const timeoutTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        setMediaInitTimedOut(true);
+        setShowMediaPermissions(true);
+      }
+    }, 12_000);
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+      window.clearTimeout(timeoutTimer);
     };
   }, [
     meetingId,
     userName,
     user?.id,
     isSupported,
+    isMobile,
     permissions.camera,
     permissions.microphone,
     localStream,
@@ -403,6 +420,7 @@ export const VideoConference = ({
     const stream = await requestPermissions(video, audio);
     if (stream) {
       setShowMediaPermissions(false);
+      setMediaInitTimedOut(false);
       try {
         await initialize({ stream, video, audio });
         startMeeting();
@@ -411,6 +429,10 @@ export const VideoConference = ({
       }
     }
   };
+
+  const openMediaPermissions = useCallback(() => {
+    setShowMediaPermissions(true);
+  }, []);
 
   const handleToggleMute = (participantId: string, isMuted: boolean) => {
     if (!isHost) {
@@ -604,7 +626,14 @@ export const VideoConference = ({
         {showConnectingShell && (
           <MeetingConnectingShell
             message="Setting up camera and microphone…"
-            subMessage="Allow access when prompted, or use the permissions dialog."
+            subMessage={
+              mediaInitTimedOut
+                ? 'Taking longer than expected. Tap below to allow access.'
+                : 'Allow access when prompted, or use the button below.'
+            }
+            showActions={mediaInitTimedOut || isMobile}
+            onRequestPermissions={openMediaPermissions}
+            onJoinAudioOnly={() => void handleMediaPermissionRequest(false, true)}
           />
         )}
 
@@ -661,7 +690,9 @@ export const VideoConference = ({
           isOpen={showMediaPermissions}
           permissions={permissions}
           onRequestPermissions={handleMediaPermissionRequest}
-          onClose={() => setShowMediaPermissions(false)}
+          onClose={() => {
+            if (localStream) setShowMediaPermissions(false);
+          }}
           onRetry={async () => {
             const stream = await requestPermissions(true, true);
             if (stream) {

@@ -100,6 +100,12 @@
       <p id="boot-splash-title">Regal Meeting</p>
     </div>
     <div id="root"></div>
+    <script>
+      setTimeout(function () {
+        var splash = document.getElementById('boot-splash');
+        if (splash) splash.remove();
+      }, 5000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

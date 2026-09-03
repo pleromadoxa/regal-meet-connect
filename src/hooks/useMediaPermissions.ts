@@ -242,6 +242,13 @@ export const useMediaPermissions = () => {
 
     initialize();
 
+    const permissionSafetyTimer = window.setTimeout(() => {
+      setPermissions((prev) => ({
+        camera: prev.camera === 'checking' ? 'prompt' : prev.camera,
+        microphone: prev.microphone === 'checking' ? 'prompt' : prev.microphone,
+      }));
+    }, 3000);
+
     // Listen for device changes
     const handleDeviceChange = () => {
       console.log('Media devices changed');
@@ -251,6 +258,7 @@ export const useMediaPermissions = () => {
     navigator.mediaDevices?.addEventListener('devicechange', handleDeviceChange);
 
     return () => {
+      window.clearTimeout(permissionSafetyTimer);
       navigator.mediaDevices?.removeEventListener('devicechange', handleDeviceChange);
     };
   }, [checkWebRTCSupport, checkPermissions, enumerateDevices]);

@@ -40,7 +40,7 @@ export const MediaPermissionsModal = ({
   const micStatus = getPermissionStatus(permissions.microphone);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-md bg-slate-900 border-slate-700">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-white">

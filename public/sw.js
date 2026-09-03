@@ -1,5 +1,5 @@
 // Service Worker — network-first HTML, cache static assets only
-const CACHE_NAME = 'regal-meeting-v3';
+const CACHE_NAME = 'regal-meeting-v4';
 const SHELL_URLS = ['/regal-logo.png', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

@@ -1,5 +1,5 @@
 
-import { Suspense, lazy, useCallback, useState } from 'react';
+import { Suspense, lazy, useCallback, useState, useEffect } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -53,6 +53,13 @@ const App = () => {
     sessionStorage.setItem(SPLASH_KEY, '1');
     setSplashDone(true);
   }, []);
+
+  // Never block the app behind splash if timers fail
+  useEffect(() => {
+    if (splashDone) return;
+    const fallback = window.setTimeout(handleSplashComplete, 3500);
+    return () => window.clearTimeout(fallback);
+  }, [splashDone, handleSplashComplete]);
 
   return (
     <ErrorBoundary>

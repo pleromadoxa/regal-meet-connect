@@ -113,7 +113,8 @@ function audioOnlyConstraints(prefs?: MeetingMediaPrefs): MediaStreamConstraints
  */
 export async function acquireUserMedia(
   primary: MediaStreamConstraints,
-  prefs?: MeetingMediaPrefs
+  prefs?: MeetingMediaPrefs,
+  timeoutMs = 20_000
 ): Promise<MediaStream> {
   if (!isMediaDevicesSupported()) {
     throw new DOMException('Media devices require a secure context', 'NotSupportedError');
@@ -145,7 +146,16 @@ export async function acquireUserMedia(
     seen.add(key);
 
     try {
-      return await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia(constraints),
+        new Promise<MediaStream>((_, reject) => {
+          window.setTimeout(
+            () => reject(new DOMException('Media request timed out', 'AbortError')),
+            timeoutMs
+          );
+        }),
+      ]);
+      return stream;
     } catch (error) {
       lastError = error;
       const name = error instanceof DOMException ? error.name : '';

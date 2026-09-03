@@ -15,7 +15,7 @@ const Meeting = () => {
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
   const [isReady, setIsReady] = useState(false);
-  const [isValidating, setIsValidating] = useState(true);
+  const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [admitted, setAdmitted] = useState(false);
   const { validateMeetingId } = useMeetingValidation();
@@ -63,8 +63,8 @@ const Meeting = () => {
 
         if (isValid) {
           sessionStorage.setItem('was-in-meeting', meetingId);
-          logPageView(`meeting/${meetingId}`, user.id);
-          logMeetingJoin(meetingId, user.id);
+          void logPageView(`meeting/${meetingId}`, user.id);
+          void logMeetingJoin(meetingId, user.id);
           setIsReady(true);
         } else {
           setValidationError('Meeting not found or no longer active');
