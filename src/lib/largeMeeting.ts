@@ -54,7 +54,7 @@ export function peerConnectDelayForCount(participantCount: number): number {
 
 export function createPeerConnectionQueue(
   connect: (peerId: string) => void,
-  delayMs = MEETING_LIMITS.peerConnectionDelayMs
+  delayMs: number = MEETING_LIMITS.peerConnectionDelayMs
 ) {
   const pending: string[] = [];
   const scheduled = new Set<string>();

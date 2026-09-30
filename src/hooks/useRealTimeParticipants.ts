@@ -85,7 +85,7 @@ function mapParticipantRow(
   const profileName = displayNames?.get(userId)?.trim();
   const resolvedName = profileName || storedName.trim();
   return {
-    ...(p as Participant),
+    ...(p as unknown as Participant),
     left_at: (p.left_at as string | null) ?? null,
     user_name: resolvedName || `User ${userId.slice(0, 6)}`,
     is_video_enabled: true,
@@ -178,7 +178,7 @@ export const useRealTimeParticipants = (
         return;
       }
 
-      const rows = (data ?? []) as Participant[];
+      const rows = (data ?? []) as unknown as Participant[];
       if (rows.length > 0) {
         leftAtColumnSupported = 'left_at' in rows[0];
         if (lastSeenColumnSupported !== false) {
@@ -239,7 +239,7 @@ export const useRealTimeParticipants = (
       }
 
       setParticipants(
-        rosterRows.map((p) => mapParticipantRow(p as Record<string, unknown>, displayNames))
+        rosterRows.map((p) => mapParticipantRow(p as unknown as Record<string, unknown>, displayNames))
       );
     } catch (error) {
       console.error('Failed to fetch participants:', error);

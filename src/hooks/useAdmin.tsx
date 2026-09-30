@@ -292,7 +292,7 @@ export const useAdmin = () => {
         setCalendarStats(null);
         return;
       }
-      setCalendarStats(data as CalendarAdminStats);
+      setCalendarStats(data as unknown as CalendarAdminStats);
     } catch (error) {
       console.error('Error fetching calendar stats:', error);
       setCalendarStats(null);

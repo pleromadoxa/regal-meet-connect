@@ -29,7 +29,7 @@ import { ensureRemoteStream, routeRemoteTrack } from '@/lib/remoteTracks';
 export type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
 
 interface SignalingMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle' | 'speaking-state';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle' | 'rejoin' | 'speaking-state';
   data: any;
   from: string;
   to?: string;

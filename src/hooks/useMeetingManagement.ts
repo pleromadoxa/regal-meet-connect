@@ -159,7 +159,7 @@ export const useMeetingManagement = () => {
     try {
       const { data, error } = await supabase
         .from('meeting_participants')
-        .select('id, user_id, user_name, is_host, is_muted, joined_at, left_at, country, city')
+        .select('id, meeting_id, user_id, user_name, is_host, is_muted, joined_at, left_at, country, city')
         .eq('meeting_id', meetingUuid)
         .is('left_at', null);
 

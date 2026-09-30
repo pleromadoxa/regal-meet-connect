@@ -255,7 +255,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
     (message: Omit<SignalingMessage, 'from' | 'meetingId'>) => {
       if (!channelRef.current) return;
 
-      const fullMessage: NormalizedSignalingMessage = {
+      const fullMessage: NormalizedSignalingMessage & { meetingId: string } = {
         ...message,
         from: userId,
         meetingId,

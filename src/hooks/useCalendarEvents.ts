@@ -21,6 +21,7 @@ export interface CalendarEvent {
   updated_at: string;
   recurrence_pattern?: string | null;
   recurrence_end_date?: string | null;
+  is_recurrence_instance?: boolean;
   team_calendar_id?: string | null;
   visibility?: string | null;
   reminder_minutes?: number | null;

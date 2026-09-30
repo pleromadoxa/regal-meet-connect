@@ -1085,6 +1085,46 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_meeting_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          meeting_id: string
+          host_id: string
+          title: string
+          is_active: boolean
+          status: string | null
+        }[]
+      }
+      get_hosted_meeting_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          meeting_id: string
+          host_id: string
+          title: string
+          is_active: boolean
+          status: string | null
+        }[]
+      }
+      reactivate_meeting_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          meeting_id: string
+          host_id: string
+          title: string
+          is_active: boolean
+          status: string | null
+        }[]
+      }
+      get_profile_display_names: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          id: string
+          display_name: string | null
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

@@ -51,7 +51,11 @@ export const useTeamCalendars = () => {
       .from('team_calendar_members')
       .select('*')
       .eq('team_calendar_id', calendarId);
-    if (!error) setMembers(data ?? []);
+    if (!error) {
+      setMembers(
+        (data ?? []).map((m) => ({ ...m, role: m.role as TeamCalendarMember['role'] }))
+      );
+    }
   }, []);
 
   const createCalendar = async (name: string, color = 'purple', description?: string) => {
@@ -82,7 +86,10 @@ export const useTeamCalendars = () => {
       .select()
       .single();
     if (error) throw error;
-    setMembers((prev) => [...prev, data]);
+    setMembers((prev) => [
+      ...prev,
+      { ...data, role: data.role as TeamCalendarMember['role'] },
+    ]);
     toast({ title: 'Member added', description: `${email} can now view this team calendar.` });
     return data;
   };

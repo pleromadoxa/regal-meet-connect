@@ -2,9 +2,9 @@ import { useCallback } from 'react';
 import { videoCaptureConstraints, type VideoQualityLevel } from '@/lib/videoQuality';
 
 interface VideoConstraints {
-  width: { min: number; ideal: number; max: number };
-  height: { min: number; ideal: number; max: number };
-  frameRate: { min: number; ideal: number; max: number };
+  width: { ideal?: number; min?: number; max?: number };
+  height: { ideal?: number; min?: number; max?: number };
+  frameRate: { ideal?: number; min?: number; max?: number };
 }
 
 interface NetworkQualityLevel {

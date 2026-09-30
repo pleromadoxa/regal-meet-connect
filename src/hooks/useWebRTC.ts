@@ -33,7 +33,7 @@ import { MAX_PEER_RECONNECT_ATTEMPTS } from '@/lib/webrtcSignaling';
 export type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
 
 interface SignalingMessage {
-  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'user-info' | 'audio-toggle';
+  type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave' | 'rejoin' | 'user-info' | 'audio-toggle';
   data: any;
   from: string;
   to?: string;

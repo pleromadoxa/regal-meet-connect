@@ -20,7 +20,7 @@ export function LobbyReactionAmbience({ active, celebrate = false }: LobbyReacti
   const pushParticles = (next: ReactionParticle[]) => {
     setParticles((prev) => [...prev, ...next]);
     next.forEach((particle) => {
-      const timer = window.setTimeout(() => {
+      const timer = setTimeout(() => {
         setParticles((prev) => prev.filter((p) => p.id !== particle.id));
       }, (particle.duration + particle.delay) * 1000 + 200);
       timersRef.current.push(timer);

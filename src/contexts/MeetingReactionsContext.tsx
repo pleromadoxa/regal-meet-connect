@@ -53,7 +53,7 @@ export function MeetingReactionsProvider({
     setParticles((prev) => [...prev, ...burst]);
 
     burst.forEach((particle) => {
-      const timer = window.setTimeout(() => {
+      const timer = setTimeout(() => {
         setParticles((prev) => prev.filter((p) => p.id !== particle.id));
       }, (particle.duration + particle.delay) * 1000 + 200);
       timersRef.current.push(timer);

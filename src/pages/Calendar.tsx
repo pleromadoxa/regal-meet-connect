@@ -522,7 +522,7 @@ const Calendar = () => {
     return (
       <div className="relative min-h-screen-safe overflow-x-clip bg-[#0a0a0a] text-white">
         <LandingBackground />
-        <CalendarLandingContent user={user} onSignOut={signOut} />
+        <CalendarLandingContent user={user} signOut={signOut} />
       </div>
     );
   }
