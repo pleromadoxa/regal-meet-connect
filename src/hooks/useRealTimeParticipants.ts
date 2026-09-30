@@ -118,6 +118,8 @@ export const useRealTimeParticipants = (
   /** Local mute state mirrored into the DB (refreshed by the caller). */
   const localMutedRef = useRef(false);
   const kickChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  /** When each user was last seen with a live signalling socket. */
+  const lastPresentAtRef = useRef<Map<string, number>>(new Map());
 
   const normalizedCode = parseMeetingCodeFromInput(meetingCode);
 
@@ -244,7 +246,7 @@ export const useRealTimeParticipants = (
     } finally {
       setIsLoading(false);
     }
-  }, [meetingUuid]);
+  }, [meetingUuid, currentUserId]);
 
   const ensureCurrentUserParticipant = useCallback(async () => {
     if (!meetingUuid || !currentUserId || !userName) return;
@@ -756,8 +758,38 @@ export const useRealTimeParticipants = (
     };
   }, [meetingUuid, currentUserId, heartbeat]);
 
+  /**
+   * The roster that actually renders: our own row plus rows whose user has a
+   * live signalling socket. Rows left behind by dead sessions have no socket,
+   * so ghost participants disappear even on deployments whose schema predates
+   * the `last_seen` column. Fresh joiners and brief reconnects get a grace
+   * window so nobody flickers in and out.
+   */
+  const visibleParticipants = useMemo(() => {
+    if (!presenceSynced) return participants;
+
+    const now = Date.now();
+    const nextLastPresent = new Map<string, number>();
+
+    const visible = participants.filter((row) => {
+      if (row.user_id === currentUserId || presencePeerIds.has(row.user_id)) {
+        nextLastPresent.set(row.user_id, now);
+        return true;
+      }
+
+      const remembered = lastPresentAtRef.current.get(row.user_id);
+      const joinedAt = Date.parse(row.joined_at);
+      const baseline = remembered ?? (Number.isNaN(joinedAt) ? now : joinedAt);
+      nextLastPresent.set(row.user_id, baseline);
+      return now - baseline < PRESENCE_ABSENT_GRACE_MS;
+    });
+
+    lastPresentAtRef.current = nextLastPresent;
+    return visible;
+  }, [participants, presencePeerIds, presenceSynced, currentUserId]);
+
   return {
-    participants,
+    participants: visibleParticipants,
     isLoading,
     meetingUuid,
     meetingHostId,

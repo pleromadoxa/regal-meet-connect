@@ -16,7 +16,7 @@ import {
 import { useMeetingState } from '@/hooks/useMeetingState';
 import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 import { useAudioOnlyWebRTC } from '@/hooks/useAudioOnlyWebRTC';
-import { useRealTimeParticipants } from '@/hooks/useRealTimeParticipants';
+import { useRealTimeParticipants, type MeetingPresenceSignal } from '@/hooks/useRealTimeParticipants';
 import { enrichParticipantNames } from '@/lib/participantNames';
 import { buildGuestInviteText } from '@/lib/meeting';
 import { useMeetingPresentation } from '@/hooks/useMeetingPresentation';
@@ -59,6 +59,8 @@ interface AudioOnlyMeetingProps {
   onNavigateToDashboard?: () => void;
 }
 
+const NO_PRESENCE_PEERS = new Set<string>();
+
 export const AudioOnlyMeeting = ({
   meetingId,
   userName,
@@ -99,6 +101,13 @@ export const AudioOnlyMeeting = ({
     },
   });
 
+  // Live signalling presence, bridged into the roster hook below (it is
+  // declared earlier because the meeting topology needs its participant count).
+  const [rosterPresence, setRosterPresence] = useState<MeetingPresenceSignal>({
+    peerIds: NO_PRESENCE_PEERS,
+    synced: false,
+  });
+
   const {
     participants: dbParticipants,
     meetingUuid,
@@ -108,7 +117,7 @@ export const AudioOnlyMeeting = ({
     kickParticipant,
     syncLocalMute,
     removedFromMeeting,
-  } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost);
+  } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost, rosterPresence);
 
   const isCurrentUserHost =
     isHost ||
@@ -159,10 +168,15 @@ export const AudioOnlyMeeting = ({
     cleanup,
     connectedPeers,
     peerUserNames,
+    presenceSynced,
     connectionQuality,
     isOptimizing,
     speakingParticipants,
   } = useAudioOnlyWebRTC(meetingId, userName, user?.id || '', mediaRouting);
+
+  useEffect(() => {
+    setRosterPresence({ peerIds: new Set(connectedPeers), synced: presenceSynced });
+  }, [connectedPeers, presenceSynced]);
 
   const sfu = useCloudflareSfu({
     meetingId,

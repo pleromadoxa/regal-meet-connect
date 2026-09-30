@@ -9,7 +9,7 @@ import { CaptionsDisplay } from './CaptionsDisplay';
 import { useCaptions } from '@/hooks/useCaptions';
 import { BackgroundMeetingIndicator } from './BackgroundMeetingIndicator';
 import { useBackgroundMeeting } from '@/hooks/useBackgroundMeeting';
-import { useRealTimeParticipants } from '@/hooks/useRealTimeParticipants';
+import { useRealTimeParticipants, type MeetingPresenceSignal } from '@/hooks/useRealTimeParticipants';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ParticipantJoinLeaveNotifications } from './meeting/ParticipantJoinLeaveNotifications';
@@ -46,6 +46,8 @@ interface VideoConferenceProps {
   onLeaveMeeting: () => void;
   onNavigateToDashboard?: () => void;
 }
+
+const NO_PRESENCE_PEERS = new Set<string>();
 
 export const VideoConference = ({ 
   meetingId, 
@@ -124,6 +126,13 @@ export const VideoConference = ({
     isSupported
   } = useMediaPermissions();
 
+  // Live signalling presence, bridged into the roster hook below (it is
+  // declared earlier because the meeting topology needs its participant count).
+  const [rosterPresence, setRosterPresence] = useState<MeetingPresenceSignal>({
+    peerIds: NO_PRESENCE_PEERS,
+    synced: false,
+  });
+
   // Real-time participants management
   const {
     participants: dbParticipants,
@@ -134,7 +143,7 @@ export const VideoConference = ({
     kickParticipant,
     syncLocalMute,
     removedFromMeeting,
-  } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost);
+  } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost, rosterPresence);
 
   const dbParticipantCount = Math.max(dbParticipants.length, 1);
 
@@ -186,9 +195,14 @@ export const VideoConference = ({
     connectedPeers,
     peerUserNames,
     peerConnections,
+    presenceSynced,
     handleDeviceChange: switchMediaDevice,
     setPlanLimits,
   } = useWebRTC(meetingId, userName, user?.id || '', mediaRouting);
+
+  useEffect(() => {
+    setRosterPresence({ peerIds: new Set(connectedPeers), synced: presenceSynced });
+  }, [connectedPeers, presenceSynced]);
 
   const {
     speakingParticipants,
