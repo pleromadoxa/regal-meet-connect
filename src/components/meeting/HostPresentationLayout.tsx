@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import {
   Crown,
   Mic,
@@ -8,6 +8,11 @@ import {
   User,
   Users,
   Volume2,
+  ChevronsLeft,
+  ChevronsRight,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -117,6 +122,58 @@ export const HostPresentationLayout = ({
   participantCount,
 }: HostPresentationLayoutProps) => {
   const [search, setSearch] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(z + 0.25, 3));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => {
+      const next = Math.max(z - 0.25, 0.5);
+      if (next <= 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setZoom((z) => {
+        const delta = e.deltaY > 0 ? -0.15 : 0.15;
+        const next = Math.min(Math.max(z + delta, 0.5), 3);
+        if (next <= 1) setPan({ x: 0, y: 0 });
+        return next;
+      });
+    }
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (zoom <= 1) return;
+    isPanningRef.current = true;
+    panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [zoom, pan]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isPanningRef.current) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    setPan({ x: panStartRef.current.panX + dx, y: panStartRef.current.panY + dy });
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    isPanningRef.current = false;
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -135,22 +192,94 @@ export const HostPresentationLayout = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:flex-row sm:gap-4 sm:p-4">
+      {/* Sidebar collapse toggle */}
+      <button
+        type="button"
+        onClick={() => setSidebarCollapsed((c) => !c)}
+        className={cn(
+          'absolute z-30 flex h-8 w-8 items-center justify-center rounded-full',
+          'border border-white/15 bg-black/50 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white',
+          'hidden sm:flex',
+          sidebarCollapsed ? 'right-3 top-16' : 'right-[min(21rem,33.5vw)] top-16'
+        )}
+        aria-label={sidebarCollapsed ? 'Expand participants' : 'Collapse participants'}
+        title={sidebarCollapsed ? 'Show participants' : 'Hide participants'}
+      >
+        {sidebarCollapsed ? (
+          <ChevronsLeft className="h-4 w-4" />
+        ) : (
+          <ChevronsRight className="h-4 w-4" />
+        )}
+      </button>
+
       {/* Main stage — host screen or audio meeting hero */}
       <div
         className={cn(
-          'relative flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212] shadow-2xl',
+          'relative flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212] shadow-2xl transition-all duration-300 ease-in-out',
           isHost && 'lg:min-h-[min(72vh,720px)]'
         )}
       >
         {showScreen ? (
           <>
-            <StableVideoElement
-              stream={stageStream}
-              streamId="presentation-screen"
-              isLocal={Boolean(isHost && localScreenStream)}
-              className="h-full w-full object-contain bg-black"
-              muted={Boolean(isHost && localScreenStream)}
-            />
+            <div
+              className="h-full w-full overflow-hidden"
+              onWheel={handleWheel}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              style={{ cursor: zoom > 1 ? (isPanningRef.current ? 'grabbing' : 'grab') : undefined }}
+            >
+              <div
+                className="h-full w-full origin-center transition-transform duration-150 ease-out"
+                style={{
+                  transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                }}
+              >
+                <StableVideoElement
+                  stream={stageStream}
+                  streamId="presentation-screen"
+                  isLocal={Boolean(isHost && localScreenStream)}
+                  // A projected screen must never be mirrored or cropped.
+                  mirror={false}
+                  className="h-full w-full object-contain bg-black"
+                  muted={Boolean(isHost && localScreenStream)}
+                />
+              </div>
+            </div>
+            {/* Zoom controls overlay */}
+            {showScreen && (
+              <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+                {zoom > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleZoomReset}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white"
+                    aria-label="Reset zoom"
+                    title="Reset zoom"
+                  >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleZoomIn}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white"
+                  aria-label="Zoom in"
+                  title="Zoom in (Ctrl+Scroll)"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleZoomOut}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white"
+                  aria-label="Zoom out"
+                  title="Zoom out (Ctrl+Scroll)"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent p-4">
               <div className="flex items-center gap-2 text-white">
                 <Monitor className="h-4 w-4 text-orange-400" />
@@ -199,8 +328,11 @@ export const HostPresentationLayout = ({
         )}
       </div>
 
-      {/* Participants — always visible, scrollable for hundreds */}
-      <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212]/95 sm:w-[min(100%,320px)] lg:w-80 xl:w-96">
+      {/* Participants — scrollable for hundreds, collapsible */}
+      <aside className={cn(
+        'flex shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212]/95 transition-all duration-300 ease-in-out',
+        sidebarCollapsed ? 'w-0 border-0' : 'w-full sm:w-[min(100%,320px)] lg:w-80 xl:w-96'
+      )}>
         <div className="border-b border-white/10 p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-white">

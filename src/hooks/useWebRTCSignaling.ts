@@ -33,6 +33,12 @@ function mergePeerNames(
 export const useWebRTCSignaling = (meetingId: string, userId: string, userName: string = '') => {
   const [connectedPeers, setConnectedPeers] = useState<Set<string>>(new Set());
   const [peerUserNames, setPeerUserNames] = useState<Map<string, string>>(new Map());
+  /**
+   * True once the presence channel has reported its state at least once.
+   * Consumers use it to tell "nobody else is here" apart from "we do not know
+   * yet", so a roster never blanks out while presence is still connecting.
+   */
+  const [presenceSynced, setPresenceSynced] = useState(false);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const pendingLeaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const channelRetryCountRef = useRef(0);
@@ -130,6 +136,8 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
           const peers = new Set<string>();
           const names: [string, string][] = [];
 
+          setPresenceSynced(true);
+
           for (const key of Object.keys(newState)) {
             if (key === userId) continue;
             peers.add(key);
@@ -187,7 +195,9 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
       channelRef.current = null;
     }
 
-    const channel = supabase.channel(`meeting-${meetingId}`, {
+    // Canonical uppercase — mobile always uses uppercased meeting codes for the channel name.
+    const channelMeetingId = meetingId.trim().toUpperCase();
+    const channel = supabase.channel(`meeting-${channelMeetingId}`, {
       config: { presence: { key: userId } },
     });
 
@@ -197,6 +207,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
       if (status === 'SUBSCRIBED') {
         channelRetryCountRef.current = 0;
         sessionEpochRef.current = String(Date.now());
+        setPresenceSynced(true);
         await channel.track({
           user_id: userId,
           user_name: userName,
@@ -341,6 +352,7 @@ export const useWebRTCSignaling = (meetingId: string, userId: string, userName: 
     sendSignalingMessage,
     connectedPeers,
     peerUserNames,
+    presenceSynced,
     cleanup,
     resubscribe: subscribeChannel,
   };

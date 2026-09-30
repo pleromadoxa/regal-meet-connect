@@ -24,9 +24,12 @@ export interface CalendarEvent {
   team_calendar_id?: string | null;
   visibility?: string | null;
   reminder_minutes?: number | null;
+  brief_agenda?: string | null;
   source?: 'event' | 'meeting';
   meeting_id?: string;
   is_invited?: boolean;
+  follow_up_of_meeting_id?: string | null;
+  wrap_notes?: string | null;
 }
 
 export interface CreateCalendarEventParams {
@@ -43,6 +46,7 @@ export interface CreateCalendarEventParams {
   teamCalendarId?: string | null;
   visibility?: 'private' | 'team' | 'public';
   reminderMinutes?: number | null;
+  briefAgenda?: string | null;
   skipConflictCheck?: boolean;
 }
 
@@ -90,9 +94,11 @@ function meetingToCalendarEvent(meeting: ScheduledMeeting, isInvited = false): C
     attendees: [],
     created_at: meeting.created_at,
     updated_at: meeting.updated_at,
+    brief_agenda: (meeting as ScheduledMeeting & { brief_agenda?: string | null }).brief_agenda ?? null,
     source: 'meeting',
     meeting_id: meeting.meeting_id,
     is_invited: isInvited,
+    follow_up_of_meeting_id: meeting.follow_up_of_meeting_id ?? null,
   };
 }
 
@@ -129,7 +135,26 @@ export const useCalendarEvents = () => {
       return [];
     }
 
-    return (data ?? []).map((m) => meetingToCalendarEvent(m, false));
+    const meetings = data ?? [];
+    if (meetings.length === 0) return [];
+
+    const { data: invitations } = await supabase
+      .from('meeting_invitations')
+      .select('scheduled_meeting_id, invitee_email')
+      .in('scheduled_meeting_id', meetings.map((m) => m.id));
+
+    const inviteesByMeeting = new Map<string, string[]>();
+    for (const inv of invitations ?? []) {
+      const list = inviteesByMeeting.get(inv.scheduled_meeting_id) ?? [];
+      list.push(inv.invitee_email);
+      inviteesByMeeting.set(inv.scheduled_meeting_id, list);
+    }
+
+    return meetings.map((m) => {
+      const ev = meetingToCalendarEvent(m, false);
+      ev.attendees = inviteesByMeeting.get(m.id) ?? [];
+      return ev;
+    });
   }, [user]);
 
   const fetchInvitedMeetings = useCallback(async (): Promise<CalendarEvent[]> => {
@@ -237,6 +262,7 @@ export const useCalendarEvents = () => {
       team_calendar_id: params.teamCalendarId ?? null,
       visibility: params.visibility ?? 'private',
       reminder_minutes: params.reminderMinutes ?? null,
+      brief_agenda: params.briefAgenda ?? null,
     };
 
     if (useLocalFallback) {
@@ -281,6 +307,7 @@ export const useCalendarEvents = () => {
       team_calendar_id: params.teamCalendarId ?? null,
       visibility: params.visibility ?? 'private',
       reminder_minutes: params.reminderMinutes ?? null,
+      brief_agenda: params.briefAgenda ?? null,
     };
 
     if (useLocalFallback) {

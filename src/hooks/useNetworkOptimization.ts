@@ -4,6 +4,7 @@ import {
   qualityLevelFromMetrics,
   type InboundRtpSnapshot,
 } from '@/lib/webrtcStats';
+import { applyVideoEncoding } from '@/lib/videoQuality';
 
 interface NetworkStats {
   bandwidth: number;
@@ -51,39 +52,7 @@ export const useNetworkOptimization = () => {
         return;
       }
 
-      const params = videoSender.getParameters();
-      if (!params.encodings?.length) return;
-
-      let maxBitrate: number;
-      let maxFramerate: number;
-
-      switch (qualityLevel) {
-        case 'potato':
-          maxBitrate = 100_000;
-          maxFramerate = 10;
-          videoSender.track.enabled = false;
-          break;
-        case 'low':
-          maxBitrate = 300_000;
-          maxFramerate = 15;
-          videoSender.track.enabled = true;
-          break;
-        case 'medium':
-          maxBitrate = 800_000;
-          maxFramerate = 24;
-          videoSender.track.enabled = true;
-          break;
-        case 'high':
-        default:
-          maxBitrate = 2_000_000;
-          maxFramerate = 30;
-          videoSender.track.enabled = true;
-          break;
-      }
-
-      params.encodings[0].maxBitrate = maxBitrate;
-      params.encodings[0].maxFramerate = maxFramerate;
-      await videoSender.setParameters(params);
+      await applyVideoEncoding(peerConnection, qualityLevel);
     } catch (error) {
       console.error('Error applying adaptive bitrate:', error);
     } finally {

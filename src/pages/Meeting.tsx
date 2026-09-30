@@ -2,12 +2,15 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { VideoConference } from '@/components/VideoConference';
 import { MeetingLobby } from '@/components/meeting/MeetingLobby';
+import { RegalWrapSheet } from '@/components/meeting/RegalWrapSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
 import { usePlatformLogging } from '@/hooks/usePlatformLogging';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { Button } from '@/components/ui/button';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ensureGuestOrUserSession } from '@/lib/guestAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Meeting = () => {
   const { meetingId } = useParams<{ meetingId: string }>();
@@ -18,8 +21,11 @@ const Meeting = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [admitted, setAdmitted] = useState(false);
+  const [showWrap, setShowWrap] = useState(false);
+  const [wrapMeta, setWrapMeta] = useState<{ title?: string; startedAt: Date } | null>(null);
   const { validateMeetingId } = useMeetingValidation();
   const hasValidatedRef = useRef(false);
+  const guestBootRef = useRef(false);
   const { logPageView, logMeetingJoin } = usePlatformLogging();
 
   const urlUserName = searchParams.get('userName') || searchParams.get('name') || '';
@@ -28,7 +34,7 @@ const Meeting = () => {
   const isHost = searchParams.get('host') === 'true';
 
   const handleAdmit = useCallback(() => setAdmitted(true), []);
-  const handleLobbyCancel = useCallback(() => navigate('/dashboard', { replace: true }), [navigate]);
+  const handleLobbyCancel = useCallback(() => navigate('/', { replace: true }), [navigate]);
 
   useDocumentTitle(meetingId ? `Join ${meetingId}` : 'Meeting');
 
@@ -44,28 +50,36 @@ const Meeting = () => {
       return;
     }
 
-    if (!user) {
-      const returnPath = `/meeting/${meetingId}?userName=${encodeURIComponent(userName)}${
-        isHost ? '&host=true' : ''
-      }`;
-      navigate(`/auth?redirect=${encodeURIComponent(returnPath)}`, { replace: true });
-      return;
-    }
-
-    hasValidatedRef.current = true;
-
     const validateAndProceed = async () => {
       setIsValidating(true);
       setValidationError(null);
 
       try {
+        let activeUser = user;
+        if (!activeUser) {
+          const { data } = await supabase.auth.getSession();
+          activeUser = data.session?.user ?? null;
+        }
+        if (!activeUser && !guestBootRef.current) {
+          guestBootRef.current = true;
+          await ensureGuestOrUserSession(userName);
+          const { data } = await supabase.auth.getSession();
+          activeUser = data.session?.user ?? null;
+        }
+        if (!activeUser) {
+          navigate(`/join/${encodeURIComponent(meetingId)}`, { replace: true });
+          return;
+        }
+
         const isValid = await validateMeetingId(meetingId, true);
 
         if (isValid) {
+          hasValidatedRef.current = true;
           sessionStorage.setItem('was-in-meeting', meetingId);
-          void logPageView(`meeting/${meetingId}`, user.id);
-          void logMeetingJoin(meetingId, user.id);
+          void logPageView(`meeting/${meetingId}`, activeUser.id);
+          void logMeetingJoin(meetingId, activeUser.id);
           setIsReady(true);
+          setWrapMeta({ startedAt: new Date() });
         } else {
           setValidationError('Meeting not found or no longer active');
         }
@@ -78,28 +92,32 @@ const Meeting = () => {
 
     void validateAndProceed();
   }, [
-    user,
-    loading,
-    navigate,
     meetingId,
+    user,
     userName,
+    loading,
     isHost,
+    navigate,
     validateMeetingId,
     logPageView,
     logMeetingJoin,
   ]);
 
-  const handleLeaveMeeting = useCallback(() => {
+  const goDashboard = useCallback(() => {
     sessionStorage.removeItem('was-in-meeting');
     localStorage.removeItem('currentMeeting');
     navigate('/dashboard');
   }, [navigate]);
 
-  const handleNavigateToDashboard = useCallback(() => {
+  const handleLeaveMeeting = useCallback(() => {
     sessionStorage.removeItem('was-in-meeting');
     localStorage.removeItem('currentMeeting');
-    navigate('/dashboard');
-  }, [navigate]);
+    setShowWrap(true);
+  }, []);
+
+  const handleNavigateToDashboard = useCallback(() => {
+    goDashboard();
+  }, [goDashboard]);
 
   const handleRetry = useCallback(() => {
     hasValidatedRef.current = false;
@@ -108,6 +126,17 @@ const Meeting = () => {
     setIsValidating(true);
     window.location.reload();
   }, []);
+
+  if (showWrap && meetingId) {
+    return (
+      <RegalWrapSheet
+        meetingCode={meetingId}
+        meetingTitle={wrapMeta?.title}
+        startedAt={wrapMeta?.startedAt}
+        onDone={goDashboard}
+      />
+    );
+  }
 
   if (loading || isValidating) {
     return (
@@ -130,7 +159,7 @@ const Meeting = () => {
       <div className="min-h-screen-safe flex items-center justify-center bg-gradient-to-br from-[#0a0612] via-[#160a26] to-[#1a0d2e] px-4">
         <div className="text-center text-white">
           <div className="animate-spin w-10 h-10 border-4 border-orange-500/30 border-t-orange-400 rounded-full mx-auto mb-4" />
-          <p className="text-white/70">Redirecting to sign in…</p>
+          <p className="text-white/70">Preparing guest session…</p>
         </div>
       </div>
     );
@@ -142,7 +171,7 @@ const Meeting = () => {
         <div className="text-center text-white max-w-md glass-morphism rounded-2xl p-8 border border-white/10">
           <h1 className="text-2xl font-bold mb-2">Couldn&apos;t join meeting</h1>
           <p className="text-white/60 mb-6">{validationError}</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button onClick={handleRetry} className="bg-orange-500 hover:bg-orange-600">
               Try again
             </Button>

@@ -19,6 +19,15 @@ interface InMeetingChatProps {
   messages?: MeetingChatMessage[];
 }
 
+/**
+ * Module-level caches so the local-only conversation and the half-typed draft
+ * survive the panel being minimised (the component unmounts when it closes).
+ * Keys are meeting-scoped; state is dropped on a full page reload.
+ */
+const localOnlyCache = new Map<string, MeetingChatMessage[]>();
+const draftCache = new Map<string, string>();
+const cacheKey = (meetingId?: string) => meetingId ?? '__local__';
+
 export const InMeetingChat = ({
   userName,
   onClose,
@@ -27,8 +36,16 @@ export const InMeetingChat = ({
   messages: externalMessages = [],
 }: InMeetingChatProps) => {
   const isMobile = useIsMobile();
-  const [currentMessage, setCurrentMessage] = useState('');
-  const [localOnlyMessages, setLocalOnlyMessages] = useState<MeetingChatMessage[]>(externalMessages);
+  const key = cacheKey(meetingId);
+  const [currentMessage, setCurrentMessage] = useState(() => draftCache.get(key) ?? '');
+  const [localOnlyMessages, setLocalOnlyMessages] = useState<MeetingChatMessage[]>(
+    () => localOnlyCache.get(key) ?? externalMessages
+  );
+
+  const updateDraft = (value: string) => {
+    draftCache.set(key, value);
+    setCurrentMessage(value);
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { messages: syncedMessages, sendMessage, isConnected } = useMeetingChatChannel(meetingId, userName);
@@ -61,11 +78,13 @@ export const InMeetingChat = ({
         message: currentMessage.trim(),
         timestamp: new Date(),
       };
-      setLocalOnlyMessages((prev) => [...prev, newMessage]);
+      const next = [...(localOnlyCache.get(key) ?? []), newMessage];
+      localOnlyCache.set(key, next);
+      setLocalOnlyMessages(next);
       onSendMessage?.(currentMessage.trim());
     }
 
-    setCurrentMessage('');
+    updateDraft('');
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -78,12 +97,17 @@ export const InMeetingChat = ({
   return (
     <Card
       className={cn(
-        'fixed z-50 flex flex-col border-white/20 bg-black/90 shadow-2xl backdrop-blur-xl',
+        'fixed z-[60] flex flex-col border-white/20 bg-black/90 shadow-2xl backdrop-blur-xl',
         isMobile
-          ? 'inset-x-0 bottom-0 top-auto h-[min(70dvh,520px)] w-full max-w-none rounded-t-2xl rounded-b-none safe-area-inset-bottom'
+          ? 'inset-x-0 bottom-[var(--meeting-dock-height)] top-auto h-[min(58dvh,440px)] w-full max-w-none rounded-t-3xl rounded-b-none border-b-0'
           : 'bottom-[calc(var(--meeting-stack-height)+0.5rem)] right-4 h-96 w-80 max-w-[calc(100vw-2rem)] sm:right-6'
       )}
     >
+      {isMobile && (
+        <div className="flex justify-center pt-2" aria-hidden>
+          <span className="h-1 w-10 rounded-full bg-white/25" />
+        </div>
+      )}
       <div className="flex items-center justify-between p-3 border-b border-white/20">
         <h3 className="text-white font-semibold">Meeting Chat</h3>
         <Button
@@ -126,7 +150,7 @@ export const InMeetingChat = ({
       <div className="p-3 border-t border-white/20 flex gap-2">
         <Input
           value={currentMessage}
-          onChange={(e) => setCurrentMessage(e.target.value)}
+          onChange={(e) => updateDraft(e.target.value)}
           onKeyDown={handleKeyPress}
           placeholder="Type a message…"
           className="bg-white/10 border-white/20 text-white placeholder:text-white/40"

@@ -1,2 +1,13 @@
-# Netlify redirects file
+# Static assets first — do not SPA-fallback email/logo/sound files
+/email/*  /email/:splat  200
+/sounds/*  /sounds/:splat  200
+/regal-logo.png  /regal-logo.png  200
+/logo.png  /logo.png  200
+/favicon.png  /favicon.png  200
+/apple-touch-icon.png  /apple-touch-icon.png  200
+/manifest.json  /manifest.json  200
+/sw.js  /sw.js  200
+/docs/*  /docs/:splat  200
+
+# SPA fallback
 /*    /index.html   200

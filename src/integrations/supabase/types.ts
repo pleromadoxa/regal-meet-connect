@@ -387,6 +387,8 @@ export type Database = {
           status: string | null
           title: string
           updated_at: string
+          wrap_notes: string | null
+          wrap_completed_at: string | null
         }
         Insert: {
           created_at?: string
@@ -398,6 +400,8 @@ export type Database = {
           status?: string | null
           title: string
           updated_at?: string
+          wrap_notes?: string | null
+          wrap_completed_at?: string | null
         }
         Update: {
           created_at?: string
@@ -409,6 +413,8 @@ export type Database = {
           status?: string | null
           title?: string
           updated_at?: string
+          wrap_notes?: string | null
+          wrap_completed_at?: string | null
         }
         Relationships: []
       }
@@ -532,6 +538,7 @@ export type Database = {
       calendar_events: {
         Row: {
           attendees: string[]
+          brief_agenda: string | null
           color: string
           created_at: string
           description: string | null
@@ -551,6 +558,7 @@ export type Database = {
         }
         Insert: {
           attendees?: string[]
+          brief_agenda?: string | null
           color?: string
           created_at?: string
           description?: string | null
@@ -570,6 +578,7 @@ export type Database = {
         }
         Update: {
           attendees?: string[]
+          brief_agenda?: string | null
           color?: string
           created_at?: string
           description?: string | null
@@ -739,9 +748,11 @@ export type Database = {
       }
       scheduled_meetings: {
         Row: {
+          brief_agenda: string | null
           created_at: string
           description: string | null
           duration_minutes: number
+          follow_up_of_meeting_id: string | null
           host_id: string
           id: string
           is_recurring: boolean
@@ -756,9 +767,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brief_agenda?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
+          follow_up_of_meeting_id?: string | null
           host_id: string
           id?: string
           is_recurring?: boolean
@@ -773,9 +786,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brief_agenda?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
+          follow_up_of_meeting_id?: string | null
           host_id?: string
           id?: string
           is_recurring?: boolean
@@ -958,6 +973,21 @@ export type Database = {
         Returns: Json
       }
       get_calendar_admin_stats: { Args: never; Returns: Json }
+      get_team_live_presence: {
+        Args: never
+        Returns: {
+          is_host: boolean
+          meeting_code: string
+          meeting_title: string
+          member_email: string
+          member_name: string
+          participant_count: number
+        }[]
+      }
+      save_meeting_wrap: {
+        Args: { p_meeting_code: string; p_notes: string }
+        Returns: undefined
+      }
       get_due_calendar_reminders: {
         Args: { p_window_minutes?: number }
         Returns: {

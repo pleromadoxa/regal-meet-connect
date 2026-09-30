@@ -4,6 +4,7 @@ DROP POLICY IF EXISTS "Hosts can manage invitations for their meetings" ON meeti
 
 -- Simplified policy for scheduled_meetings - only hosts can see their meetings
 -- Invitees will need to access via a different method or public link
+DROP POLICY IF EXISTS "Users can view scheduled meetings they're invited to" ON scheduled_meetings;
 CREATE POLICY "Users can view scheduled meetings they're invited to"
 ON scheduled_meetings
 FOR SELECT
@@ -16,6 +17,7 @@ USING (
 );
 
 -- Simplified policy for meeting_invitations - hosts can manage based on direct host_id check
+DROP POLICY IF EXISTS "Hosts can manage invitations for their meetings" ON meeting_invitations;
 CREATE POLICY "Hosts can manage invitations for their meetings"
 ON meeting_invitations
 FOR ALL

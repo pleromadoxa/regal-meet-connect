@@ -106,8 +106,8 @@ export function qualityLevelFromMetrics(
   rttMs: number,
   packetLossPct: number
 ): 'high' | 'medium' | 'low' | 'potato' {
-  if (rttMs > 300 || packetLossPct > 5) return 'potato';
-  if (rttMs > 200 || packetLossPct > 3) return 'low';
-  if (rttMs > 100 || packetLossPct > 1) return 'medium';
+  if (rttMs > 400 || packetLossPct > 8) return 'potato';
+  if (rttMs > 280 || packetLossPct > 4) return 'low';
+  if (rttMs > 180 || packetLossPct > 2) return 'medium';
   return 'high';
 }

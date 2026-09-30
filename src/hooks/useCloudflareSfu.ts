@@ -9,6 +9,7 @@ import {
   type SfuTrackLocator,
 } from '@/services/cloudflareSfu';
 import { isScreenShareTrack } from '@/lib/largeMeeting';
+import { videoSendEncodings } from '@/lib/videoQuality';
 
 export interface PublishedSfuTrack {
   userId: string;
@@ -140,9 +141,15 @@ export function useCloudflareSfu({
       const screenTrack = screenShareStream?.getVideoTracks()[0];
       const cameraTrack = !screenTrack ? localStream?.getVideoTracks()[0] : undefined;
       if (screenTrack) {
-        transceivers.push(pc.addTransceiver(screenTrack, { direction: 'sendonly' }));
+        transceivers.push(pc.addTransceiver(screenTrack, {
+          direction: 'sendonly',
+          sendEncodings: videoSendEncodings('high'),
+        }));
       } else if (cameraTrack) {
-        transceivers.push(pc.addTransceiver(cameraTrack, { direction: 'sendonly' }));
+        transceivers.push(pc.addTransceiver(cameraTrack, {
+          direction: 'sendonly',
+          sendEncodings: videoSendEncodings('high'),
+        }));
       }
 
       if (transceivers.length === 0) return;

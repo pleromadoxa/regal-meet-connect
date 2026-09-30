@@ -11,8 +11,10 @@ import { TeamCalendarsPanel } from '@/components/calendar/TeamCalendarsPanel';
 import { SchedulingLinksPanel } from '@/components/calendar/SchedulingLinksPanel';
 import { CalendarPreferencesPanel } from '@/components/calendar/CalendarPreferencesPanel';
 import { AvailabilityPanel } from '@/components/calendar/AvailabilityPanel';
+import { TeamLivePresencePanel } from '@/components/calendar/TeamLivePresencePanel';
 import type { CalendarEvent } from '@/hooks/useCalendarEvents';
 import type { WorkHours } from '@/lib/calendarAvailability';
+import type { TeamLiveMember } from '@/hooks/useTeamLivePresence';
 
 interface EnterpriseCalendarSheetProps {
   open: boolean;
@@ -21,6 +23,14 @@ interface EnterpriseCalendarSheetProps {
   workHours: WorkHours;
   selectedDate: Date;
   onSelectSlot: (start: Date, end: Date) => void;
+  liveMeetings?: {
+    title: string;
+    code: string;
+    count: number;
+    members: TeamLiveMember[];
+  }[];
+  livePresenceLoading?: boolean;
+  onJoinLiveMeeting?: (code: string) => void;
 }
 
 export const EnterpriseCalendarSheet = ({
@@ -30,6 +40,9 @@ export const EnterpriseCalendarSheet = ({
   workHours,
   selectedDate,
   onSelectSlot,
+  liveMeetings = [],
+  livePresenceLoading,
+  onJoinLiveMeeting,
 }: EnterpriseCalendarSheetProps) => (
   <Sheet open={open} onOpenChange={onOpenChange}>
     <SheetContent className="w-full overflow-y-auto border-white/10 bg-[#0d0d0d] text-white sm:max-w-lg">
@@ -57,7 +70,12 @@ export const EnterpriseCalendarSheet = ({
             onSelectSlot={onSelectSlot}
           />
         </TabsContent>
-        <TabsContent value="team" className="mt-4">
+        <TabsContent value="team" className="mt-4 space-y-6">
+          <TeamLivePresencePanel
+            liveMeetings={liveMeetings}
+            loading={livePresenceLoading}
+            onJoinMeeting={onJoinLiveMeeting}
+          />
           <TeamCalendarsPanel />
         </TabsContent>
         <TabsContent value="links" className="mt-4">

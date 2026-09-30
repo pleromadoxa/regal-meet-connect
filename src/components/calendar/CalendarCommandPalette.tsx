@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { CalendarDays, CalendarPlus, LayoutGrid, Video } from 'lucide-react';
+import { CalendarDays, CalendarPlus, LayoutGrid, LogIn, Video, Zap } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,6 +16,8 @@ interface CalendarCommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   onNewEvent: () => void;
   onScheduleMeet: () => void;
+  onInstantMeet?: () => void;
+  onQuickJoin?: () => void;
   onGoToday: () => void;
   onChangeView: (view: CalendarView) => void;
 }
@@ -25,6 +27,8 @@ export const CalendarCommandPalette = ({
   onOpenChange,
   onNewEvent,
   onScheduleMeet,
+  onInstantMeet,
+  onQuickJoin,
   onGoToday,
   onChangeView,
 }: CalendarCommandPaletteProps) => {
@@ -50,6 +54,12 @@ export const CalendarCommandPalette = ({
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
         <CommandGroup heading="Create">
+          {onInstantMeet && (
+            <CommandItem onSelect={() => run(onInstantMeet)}>
+              <Zap className="mr-2 h-4 w-4 text-orange-400" />
+              Meet now (instant)
+            </CommandItem>
+          )}
           <CommandItem onSelect={() => run(onScheduleMeet)}>
             <Video className="mr-2 h-4 w-4 text-orange-400" />
             Schedule Regal Meeting
@@ -59,6 +69,17 @@ export const CalendarCommandPalette = ({
             New calendar event
           </CommandItem>
         </CommandGroup>
+        {onQuickJoin && (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Regal Meeting">
+              <CommandItem onSelect={() => run(onQuickJoin)}>
+                <LogIn className="mr-2 h-4 w-4 text-orange-400" />
+                Join meeting by code
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
         <CommandSeparator />
         <CommandGroup heading="Navigate">
           <CommandItem onSelect={() => run(onGoToday)}>

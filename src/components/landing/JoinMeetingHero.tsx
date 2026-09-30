@@ -27,7 +27,8 @@ interface JoinMeetingHeroProps {
   user: { email?: string | null } | null;
   meetingCode?: string;
   defaultUserName?: string;
-  onJoinMeeting: (name: string, roomId: string) => void;
+  onJoinMeeting: (name: string, roomId: string) => void | Promise<void>;
+  joining?: boolean;
 }
 
 export const JoinMeetingHero = ({
@@ -35,6 +36,7 @@ export const JoinMeetingHero = ({
   meetingCode = '',
   defaultUserName = '',
   onJoinMeeting,
+  joining = false,
 }: JoinMeetingHeroProps) => {
   const isInvite = Boolean(meetingCode);
 
@@ -98,6 +100,7 @@ export const JoinMeetingHero = ({
               defaultUserName={defaultUserName}
               highlight={isInvite}
               variant="landing"
+              externalJoining={joining}
             />
           </div>
 
@@ -106,13 +109,14 @@ export const JoinMeetingHero = ({
               className="landing-fade-up mt-5 text-center text-xs text-white/40 lg:text-left"
               style={{ animationDelay: '0.3s' }}
             >
-              Have a Regal Mail account?{' '}
+              Joining as a guest — no account needed.{' '}
               <Link
                 to={`/auth${meetingCode ? `?redirect=${encodeURIComponent(`/meeting/${meetingCode}`)}` : ''}`}
                 className="font-medium text-orange-300/90 underline-offset-2 hover:text-orange-200 hover:underline"
               >
-                Sign in first
+                Sign in with Regal Mail
               </Link>
+              {' '}instead.
             </p>
           ) : (
             <div

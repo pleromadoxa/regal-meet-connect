@@ -6,6 +6,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 import { RemoteAudioMix } from './RemoteAudioMix';
 import { RegalGlassMeetingLayout } from './RegalGlassMeetingLayout';
 import { RegalGlassAudioLayout } from './RegalGlassAudioLayout';
@@ -30,6 +32,7 @@ interface MeetingLayoutProps {
   onCloseParticipants: () => void;
   currentUserId: string;
   onToggleMute: (participantId: string, isMuted: boolean) => void;
+  onRemoveParticipant?: (userId: string) => void;
   presentationActive?: boolean;
   presenterName?: string | null;
   localScreenStream?: MediaStream | null;
@@ -37,6 +40,7 @@ interface MeetingLayoutProps {
   participantCount?: number;
   meetingTitle?: string;
   raisedHands?: Set<string>;
+  speakingParticipants?: Set<string>;
 }
 
 export const MeetingLayout = ({
@@ -52,6 +56,7 @@ export const MeetingLayout = ({
   onCloseParticipants,
   currentUserId,
   onToggleMute,
+  onRemoveParticipant,
   presentationActive = false,
   presenterName,
   localScreenStream,
@@ -59,19 +64,21 @@ export const MeetingLayout = ({
   participantCount,
   meetingTitle,
   raisedHands = new Set(),
+  speakingParticipants = new Set(),
 }: MeetingLayoutProps) => {
+  const isMobile = useIsMobile();
   const remoteStreamMap = React.useMemo(() => {
     const map = new Map<string, MediaStream>();
     remoteStreams.forEach((r) => map.set(r.id, r.stream));
     return map;
   }, [remoteStreams]);
 
-  const hasAnyVideo =
-    !presentationActive &&
-    (isVideoEnabled ||
-      remoteStreams.some((stream) =>
-        stream.stream?.getVideoTracks()?.some((track) => track.enabled)
-      ));
+  const remotesHaveVideo = remoteStreams.some((stream) =>
+    stream.stream?.getVideoTracks()?.some(
+      (track) => track.readyState === 'live' && track.enabled !== false && !track.muted
+    )
+  );
+  const hasAnyVideo = !presentationActive && (isVideoEnabled || remotesHaveVideo);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -104,6 +111,7 @@ export const MeetingLayout = ({
           participants={participants}
           currentUserId={currentUserId}
           raisedHands={raisedHands}
+          speakingParticipants={speakingParticipants}
         />
       ) : (
         <RegalGlassAudioLayout
@@ -116,13 +124,17 @@ export const MeetingLayout = ({
           participants={participants}
           currentUserId={currentUserId}
           raisedHands={raisedHands}
+          speakingParticipants={speakingParticipants}
         />
       )}
 
       <Sheet open={showParticipants} onOpenChange={(open) => !open && onCloseParticipants()}>
         <SheetContent
-          side="right"
-          className="w-full border-white/10 bg-[#0b0b0f]/95 p-0 text-white backdrop-blur-xl sm:max-w-sm"
+          side={isMobile ? 'bottom' : 'right'}
+          className={cn(
+            'border-white/10 bg-[#0b0b0f]/95 p-0 text-white backdrop-blur-xl',
+            isMobile ? 'z-[70] h-[min(72dvh,560px)] rounded-t-3xl' : 'w-full sm:max-w-sm'
+          )}
         >
           <SheetHeader className="border-b border-white/10 px-4 py-4">
             <SheetTitle className="text-left text-white">
@@ -137,6 +149,7 @@ export const MeetingLayout = ({
               currentUserId={currentUserId}
               isHost={isCurrentUserHost}
               onToggleMute={onToggleMute}
+              onRemoveParticipant={onRemoveParticipant}
               onSelectVideo={(id) => {
                 onVideoSelect(id === currentUserId ? 'local' : id);
                 onCloseParticipants();

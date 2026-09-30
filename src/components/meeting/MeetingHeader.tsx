@@ -7,8 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PRODUCT_NAME, MEET_DOMAIN } from '@/constants/site';
+import { PRODUCT_NAME } from '@/constants/site';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MeetingHeaderProps {
   meetingId: string;
@@ -26,6 +27,7 @@ interface MeetingHeaderProps {
   onNavigateToSettings: () => void;
   onSignOut: () => void;
   onNavigateBack?: () => void;
+  statusAddon?: React.ReactNode;
 }
 
 const formatElapsed = (sec: number) => {
@@ -54,8 +56,10 @@ export const MeetingHeader = ({
   onNavigateToSettings,
   onSignOut,
   onNavigateBack,
+  statusAddon,
 }: MeetingHeaderProps) => {
   const [elapsed, setElapsed] = useState(0);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const id = setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -63,7 +67,64 @@ export const MeetingHeader = ({
   }, []);
 
   const title = (meetingTitle && meetingTitle.trim()) || PRODUCT_NAME;
-  const shareHint = `${MEET_DOMAIN}/${meetingId}`;
+  const codeLabel = meetingId.toUpperCase();
+  const shareHint = `Code ${codeLabel}`;
+
+  if (isMobile) {
+    return (
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 px-3 pt-[max(0.65rem,env(safe-area-inset-top))]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="pointer-events-none inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-2.5 py-1.5 text-xs text-white/90 backdrop-blur-xl">
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500" />
+              <span className="font-mono tabular-nums">{formatElapsed(elapsed)}</span>
+              {isCurrentUserHost && (
+                <span className="inline-flex items-center gap-1 text-amber-300">
+                  <Shield className="h-3 w-3" /> Host
+                </span>
+              )}
+              {statusAddon}
+            </div>
+            <p className="mt-1.5 max-w-[70vw] truncate text-sm font-semibold text-white drop-shadow-md">
+              {title}
+            </p>
+            <p className="mt-0.5 max-w-[70vw] truncate font-mono text-xs tracking-wider text-white/70 drop-shadow-sm">
+              {codeLabel}
+            </p>
+          </div>
+
+          <div className="pointer-events-auto flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onCopyMeetingId}
+              className={cn(
+                'flex h-11 w-11 items-center justify-center rounded-full touch-target',
+                'border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl',
+                'active:scale-95'
+              )}
+              aria-label="Copy meeting link"
+            >
+              <Send className="h-4 w-4 -translate-x-px translate-y-px" />
+            </button>
+            <button
+              type="button"
+              onClick={onToggleParticipants}
+              className={cn(
+                'flex h-11 min-w-11 items-center justify-center gap-1 rounded-full px-2.5 touch-target',
+                'border border-white/20 bg-black/45 text-white shadow-lg backdrop-blur-xl',
+                'active:scale-95',
+                showParticipants && 'bg-primary text-primary-foreground'
+              )}
+              aria-label="Participants"
+            >
+              <Users className="h-4 w-4" />
+              <span className="text-xs font-semibold">{totalParticipantCount}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -84,7 +145,7 @@ export const MeetingHeader = ({
           </button>
         )}
 
-        <div className="pointer-events-none flex min-w-0 items-center gap-2 rounded-full border border-white/15 bg-black/35 px-2.5 py-1.5 text-xs text-white/80 backdrop-blur-xl sm:px-3">
+        <div className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-full border border-white/15 bg-black/35 px-2.5 py-1.5 text-xs text-white/80 backdrop-blur-xl sm:px-3">
           <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-red-500" />
           <span className="font-mono tabular-nums">{formatElapsed(elapsed)}</span>
           {isCurrentUserHost && (
@@ -92,24 +153,29 @@ export const MeetingHeader = ({
               <Shield className="h-3 w-3" /> Host
             </span>
           )}
+          {statusAddon}
         </div>
       </div>
 
       {/* Top right — title + share + menu */}
-      <div className="pointer-events-none absolute right-3 top-3 z-40 flex max-w-[min(24rem,70vw)] items-start gap-1.5 safe-area-inset-top sm:gap-2">
+      <div className="pointer-events-none absolute right-3 top-3 z-40 flex max-w-[min(28rem,calc(100vw-7rem))] items-center gap-1.5 safe-area-inset-top sm:gap-2">
         <div className="pointer-events-none min-w-0 text-right">
           <p className="truncate text-sm font-semibold tracking-tight text-white drop-shadow-md sm:text-lg">
             {title}
           </p>
-          <p className="hidden truncate text-xs text-white/65 drop-shadow-sm sm:block sm:text-sm">{shareHint}</p>
+          <p className="truncate font-mono text-xs tracking-wider text-white/70 drop-shadow-sm sm:text-sm">
+            {codeLabel}
+          </p>
+          <p className="hidden truncate text-[11px] text-white/45 drop-shadow-sm sm:block">{shareHint}</p>
         </div>
 
         <button
           type="button"
           onClick={onToggleParticipants}
           className={cn(
-            'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target lg:hidden',
+            'pointer-events-auto flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full touch-target',
             'border border-white/20 shadow-lg backdrop-blur-xl transition active:scale-95',
+            'px-3 sm:min-w-0',
             showParticipants
               ? 'bg-primary text-primary-foreground'
               : 'bg-white/15 text-white hover:bg-white/25'
@@ -117,14 +183,17 @@ export const MeetingHeader = ({
           aria-label="Participants"
           title={`${totalParticipantCount} participants`}
         >
-          <Users className="h-4 w-4" />
+          <Users className="h-4 w-4 shrink-0" />
+          <span className="hidden text-xs font-medium sm:inline">
+            {totalParticipantCount} {totalParticipantCount === 1 ? 'participant' : 'participants'}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={onCopyMeetingId}
           className={cn(
-            'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
+            'pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
             'border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-xl',
             'transition hover:bg-white/25 active:scale-95'
           )}
@@ -139,7 +208,7 @@ export const MeetingHeader = ({
             <button
               type="button"
               className={cn(
-                'pointer-events-auto mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
+                'pointer-events-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full touch-target',
                 'border border-white/20 bg-white/15 text-white shadow-lg backdrop-blur-xl',
                 'transition hover:bg-white/25'
               )}
@@ -152,7 +221,7 @@ export const MeetingHeader = ({
             align="end"
             className="min-w-[200px] border-white/10 bg-black/90 text-white backdrop-blur-xl"
           >
-            <DropdownMenuItem onClick={onToggleParticipants} className="lg:hidden">
+            <DropdownMenuItem onClick={onToggleParticipants}>
               <Users className="mr-2 h-4 w-4" />
               Participants ({totalParticipantCount})
             </DropdownMenuItem>

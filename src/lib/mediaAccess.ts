@@ -130,6 +130,14 @@ export async function acquireUserMedia(
 
   const wantsVideo = primary.video !== false && primary.video != null;
   if (wantsVideo) {
+    attempts.push({
+      audio: primary.audio ?? true,
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+    });
+    attempts.push({
+      audio: primary.audio ?? true,
+      video: true,
+    });
     const audioOnly = audioOnlyConstraints(safePrefs);
     attempts.push(audioOnly);
     attempts.push({ audio: true, video: false });

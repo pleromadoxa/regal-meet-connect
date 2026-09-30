@@ -33,11 +33,13 @@ ALTER TABLE public.scheduled_meetings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.meeting_invitations ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for scheduled_meetings
+DROP POLICY IF EXISTS "Hosts can manage their scheduled meetings" ON public.scheduled_meetings;
 CREATE POLICY "Hosts can manage their scheduled meetings"
 ON public.scheduled_meetings
 FOR ALL
 USING (host_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can view scheduled meetings they're invited to" ON public.scheduled_meetings;
 CREATE POLICY "Users can view scheduled meetings they're invited to"
 ON public.scheduled_meetings
 FOR SELECT
@@ -50,6 +52,7 @@ USING (
 );
 
 -- RLS Policies for meeting_invitations
+DROP POLICY IF EXISTS "Hosts can manage invitations for their meetings" ON public.meeting_invitations;
 CREATE POLICY "Hosts can manage invitations for their meetings"
 ON public.meeting_invitations
 FOR ALL
@@ -61,6 +64,7 @@ USING (
   )
 );
 
+DROP POLICY IF EXISTS "Users can view their own invitations" ON public.meeting_invitations;
 CREATE POLICY "Users can view their own invitations"
 ON public.meeting_invitations
 FOR SELECT
@@ -68,6 +72,7 @@ USING (
   invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid())
 );
 
+DROP POLICY IF EXISTS "Users can update their own invitations" ON public.meeting_invitations;
 CREATE POLICY "Users can update their own invitations"
 ON public.meeting_invitations
 FOR UPDATE
@@ -76,17 +81,19 @@ USING (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_scheduled_meetings_host_id ON public.scheduled_meetings(host_id);
-CREATE INDEX idx_scheduled_meetings_scheduled_time ON public.scheduled_meetings(scheduled_time);
-CREATE INDEX idx_meeting_invitations_scheduled_meeting_id ON public.meeting_invitations(scheduled_meeting_id);
-CREATE INDEX idx_meeting_invitations_invitee_email ON public.meeting_invitations(invitee_email);
+CREATE INDEX IF NOT EXISTS idx_scheduled_meetings_host_id ON public.scheduled_meetings(host_id);
+CREATE INDEX IF NOT EXISTS idx_scheduled_meetings_scheduled_time ON public.scheduled_meetings(scheduled_time);
+CREATE INDEX IF NOT EXISTS idx_meeting_invitations_scheduled_meeting_id ON public.meeting_invitations(scheduled_meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_invitations_invitee_email ON public.meeting_invitations(invitee_email);
 
 -- Create trigger for updated_at
+DROP TRIGGER IF EXISTS update_scheduled_meetings_updated_at ON public.scheduled_meetings;
 CREATE TRIGGER update_scheduled_meetings_updated_at
 BEFORE UPDATE ON public.scheduled_meetings
 FOR EACH ROW
 EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_meeting_invitations_updated_at ON public.meeting_invitations;
 CREATE TRIGGER update_meeting_invitations_updated_at
 BEFORE UPDATE ON public.meeting_invitations
 FOR EACH ROW

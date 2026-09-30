@@ -159,7 +159,7 @@ export const MediaPermissionsModal = ({
 
             {allGranted && (
               <Button
-                onClick={onClose}
+                onClick={onRetry}
                 className="w-full bg-green-600 hover:bg-green-700 text-white"
               >
                 Continue to Meeting

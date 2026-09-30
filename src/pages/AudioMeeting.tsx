@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { AudioOnlyMeeting } from '@/components/AudioOnlyMeeting';
+import { RegalWrapSheet } from '@/components/meeting/RegalWrapSheet';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeetingValidation } from '@/hooks/useMeetingValidation';
 import { Loader2, Phone, PhoneOff } from 'lucide-react';
@@ -18,6 +19,8 @@ export const AudioMeeting = () => {
   const isHost = searchParams.get('host') === 'true';
   const [isReady, setIsReady] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showWrap, setShowWrap] = useState(false);
+  const [wrapStartedAt] = useState(() => new Date());
   const hasValidatedRef = useRef(false);
 
   const { validateMeetingId } = useMeetingValidation();
@@ -55,22 +58,37 @@ export const AudioMeeting = () => {
       });
   }, [meetingId, userName, user, authLoading, validateMeetingId, navigate, isHost]);
 
-  const handleLeaveMeeting = () => {
+  const goDashboard = useCallback(() => {
     sessionStorage.removeItem('was-in-meeting');
     localStorage.removeItem(`meeting-${meetingId}`);
     localStorage.removeItem('currentMeeting');
     navigate('/dashboard');
+  }, [meetingId, navigate]);
+
+  const handleLeaveMeeting = () => {
+    sessionStorage.removeItem('was-in-meeting');
+    localStorage.removeItem(`meeting-${meetingId}`);
+    localStorage.removeItem('currentMeeting');
+    setShowWrap(true);
   };
 
   const handleNavigateToDashboard = () => {
-    sessionStorage.removeItem('was-in-meeting');
-    localStorage.removeItem(`meeting-${meetingId}`);
-    navigate('/dashboard');
+    goDashboard();
   };
+
+  if (showWrap && meetingId) {
+    return (
+      <RegalWrapSheet
+        meetingCode={meetingId}
+        startedAt={wrapStartedAt}
+        onDone={goDashboard}
+      />
+    );
+  }
 
   if (authLoading) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center gradient-hero">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     );
@@ -78,9 +96,9 @@ export const AudioMeeting = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center gradient-hero">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-white" />
           <p className="text-white">Redirecting to sign in…</p>
         </div>
       </div>
@@ -89,12 +107,12 @@ export const AudioMeeting = () => {
 
   if (!isReady && !validationError) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center gradient-hero">
         <div className="text-center">
-          <Phone className="h-12 w-12 mx-auto mb-4 text-primary animate-pulse" />
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
-          <p className="text-white text-lg font-medium">Connecting to audio meeting...</p>
-          <p className="text-white/70 text-sm">Meeting ID: {meetingId}</p>
+          <Phone className="mx-auto mb-4 h-12 w-12 animate-pulse text-primary" />
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-white" />
+          <p className="text-lg font-medium text-white">Connecting to audio meeting...</p>
+          <p className="text-sm text-white/70">Meeting ID: {meetingId}</p>
         </div>
       </div>
     );
@@ -102,15 +120,15 @@ export const AudioMeeting = () => {
 
   if (validationError) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <PhoneOff className="h-12 w-12 mx-auto mb-4 text-red-400" />
-          <h2 className="text-2xl font-bold text-white mb-4">Invalid Audio Meeting</h2>
-          <p className="text-white/80 mb-6">{validationError}</p>
+      <div className="flex min-h-screen items-center justify-center gradient-hero">
+        <div className="max-w-md text-center">
+          <PhoneOff className="mx-auto mb-4 h-12 w-12 text-red-400" />
+          <h2 className="mb-4 text-2xl font-bold text-white">Invalid Audio Meeting</h2>
+          <p className="mb-6 text-white/80">{validationError}</p>
           <Button
             onClick={handleNavigateToDashboard}
             variant="outline"
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="border-white/20 bg-white/10 text-white hover:bg-white/20"
           >
             Return to Dashboard
           </Button>

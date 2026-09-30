@@ -16,6 +16,7 @@
     "setup:domain": "node scripts/setup-domain.mjs",
     "setup:r2-cors": "node scripts/configure-r2-cors.mjs",
     "setup:edge-secrets": "node scripts/print-edge-secrets.mjs",
+    "test:email": "node scripts/send-test-email.mjs",
     "deploy:pages": "node scripts/deploy-cloudflare-pages.mjs",
     "deploy:calendar-reminders-cron": "node scripts/deploy-calendar-reminders-cron.mjs",
     "deploy": "npm run deploy:pages && npm run setup:domain",

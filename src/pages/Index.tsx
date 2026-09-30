@@ -27,16 +27,15 @@ const Index = () => {
   }, [joinCode, navigate, authLoading]);
 
   const handleJoinMeeting = useCallback(
-    (name: string, roomId: string) => {
+    async (name: string, roomId: string) => {
       const code = parseMeetingCodeFromInput(roomId);
-      const params = new URLSearchParams({ userName: name });
-      const meetingPath = `/meeting/${code}?${params.toString()}`;
-
       if (user) {
-        navigate(meetingPath);
+        const params = new URLSearchParams({ userName: name });
+        navigate(`/meeting/${code}?${params.toString()}`);
         return;
       }
-      navigate(`/auth?redirect=${encodeURIComponent(meetingPath)}`);
+      // Guests: join page creates an anonymous session (no account required)
+      navigate(`/join/${encodeURIComponent(code)}?prefillName=${encodeURIComponent(name)}`);
     },
     [navigate, user]
   );

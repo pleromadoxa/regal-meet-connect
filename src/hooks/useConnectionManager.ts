@@ -114,23 +114,23 @@ export const useConnectionManager = (options: ConnectionManagerOptions = {}) => 
     switch (quality) {
       case 'high':
         constraints.video = {
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 30, max: 30 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
         };
         break;
       case 'medium':
         constraints.video = {
-          width: { ideal: 854, max: 1280 },
-          height: { ideal: 480, max: 720 },
-          frameRate: { ideal: 24, max: 30 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
         };
         break;
       case 'low':
         constraints.video = {
-          width: { ideal: 640, max: 854 },
-          height: { ideal: 360, max: 480 },
-          frameRate: { ideal: 15, max: 24 },
+          width: { ideal: 854 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 20 },
         };
         break;
     }

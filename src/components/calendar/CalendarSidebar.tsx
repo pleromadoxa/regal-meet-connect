@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { CALENDAR_COLORS, formatEventTime, type CalendarFilters } from '@/lib/calendarUtils';
 import type { CalendarEvent } from '@/hooks/useCalendarEvents';
+import { TeamLivePresencePanel } from '@/components/calendar/TeamLivePresencePanel';
 
 interface CalendarSidebarProps {
   selectedDate: Date;
@@ -12,6 +13,16 @@ interface CalendarSidebarProps {
   filters: CalendarFilters;
   onFiltersChange: (filters: CalendarFilters) => void;
   onEventClick?: (event: CalendarEvent) => void;
+  liveMeetings?: {
+    title: string;
+    code: string;
+    count: number;
+    members: import('@/hooks/useTeamLivePresence').TeamLiveMember[];
+  }[];
+  livePresenceLoading?: boolean;
+  onJoinLiveMeeting?: (code: string) => void;
+  /** Drop outer card chrome when rendered inside a sheet. */
+  embedded?: boolean;
   className?: string;
 }
 
@@ -22,6 +33,10 @@ export const CalendarSidebar = ({
   filters,
   onFiltersChange,
   onEventClick,
+  liveMeetings = [],
+  livePresenceLoading,
+  onJoinLiveMeeting,
+  embedded = false,
   className,
 }: CalendarSidebarProps) => {
   const todayEvents = events.filter((ev) => isSameDay(new Date(ev.start_time), selectedDate));
@@ -37,7 +52,9 @@ export const CalendarSidebar = ({
   return (
     <aside
       className={cn(
-        'flex w-full shrink-0 flex-col gap-4 rounded-2xl border border-white/10 bg-[#0d0d0d]/80 p-4 backdrop-blur-sm lg:w-56 xl:w-64',
+        'flex w-full shrink-0 flex-col gap-4',
+        !embedded &&
+          'rounded-2xl border border-white/10 bg-[#0d0d0d]/80 p-4 backdrop-blur-sm lg:w-56 xl:w-64',
         className
       )}
     >
@@ -50,15 +67,17 @@ export const CalendarSidebar = ({
           hasEvent:
             'relative after:absolute after:bottom-0.5 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-orange-500',
         }}
-        className="rounded-xl border border-white/[0.06] bg-black/20 p-0 text-white [--cell-size:2rem]"
+        className="w-full min-w-0 overflow-hidden rounded-xl border border-white/[0.06] bg-black/20 p-2 text-white"
         classNames={{
-          day_selected: 'bg-orange-500 text-white hover:bg-orange-500',
+          day_selected:
+            'bg-orange-500/25 text-white ring-1 ring-orange-500 hover:bg-orange-500/30 focus:bg-orange-500/25',
           day_today: 'bg-white/10 text-white',
           head_cell: 'text-white/40',
           caption_label: 'text-white/80',
-          nav_button: 'border-white/10 text-white/60 hover:bg-white/10',
-          day: 'text-white/70 hover:bg-white/10',
-          day_outside: 'text-white/20',
+          nav_button: 'border-white/10 text-white/60 hover:bg-white/10 hover:text-white',
+          day: 'rounded-md text-white/70 hover:bg-white/10 hover:text-white',
+          day_outside: 'text-white/25 opacity-100',
+          cell: '[&:has([aria-selected])]:bg-transparent',
         }}
       />
 
@@ -81,6 +100,12 @@ export const CalendarSidebar = ({
           </li>
         </ul>
       </div>
+
+      <TeamLivePresencePanel
+        liveMeetings={liveMeetings}
+        loading={livePresenceLoading}
+        onJoinMeeting={onJoinLiveMeeting}
+      />
 
       <div>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/35">Calendars</p>

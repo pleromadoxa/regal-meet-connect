@@ -45,6 +45,12 @@ const secrets = {
   REGAL_MAIL_SERVICE_ROLE_KEY: env.REGAL_MAIL_SERVICE_ROLE_KEY,
   CRON_SECRET: env.CRON_SECRET,
   RESEND_API_KEY: env.RESEND_API_KEY,
+  ZIPPER_EMAIL_API_URL: env.ZIPPER_EMAIL_API_URL ?? 'https://tinyzipper.com/api/v1/email/send',
+  ZIPPER_EMAIL_SEND_KEY: env.ZIPPER_EMAIL_SEND_KEY,
+  ZIPPER_EMAIL_FROM_ADDRESS: env.ZIPPER_EMAIL_FROM_ADDRESS ?? 'regalmeetings@mail.tinyzipper.com',
+  ZIPPER_EMAIL_FROM_NAME: env.ZIPPER_EMAIL_FROM_NAME ?? 'Regal Meetings',
+  ZIPPER_EMAIL_REPLY_TO: env.ZIPPER_EMAIL_REPLY_TO ?? 'support@madebyregal.com',
+  MEET_APP_URL: env.VITE_SITE_URL ?? env.MEET_APP_URL ?? 'https://meet.regalmesh.com',
 };
 
 console.log(`Set these secrets on Supabase (${env.VITE_SUPABASE_PROJECT_ID ?? 'xexnwcmqnelgzuqhkvtx'}) → Edge Functions → Secrets:\n`);

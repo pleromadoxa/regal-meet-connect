@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { MeetingHeader } from './meeting/MeetingHeader';
+import { LargeMeetingBanner } from './meeting/LargeMeetingBanner';
 import { MeetingLayout } from './meeting/MeetingLayout';
 import { VideoControls } from './VideoControls';
 import { CaptionsDisplay } from './CaptionsDisplay';
@@ -23,11 +24,20 @@ import { useMeetingPlanContext } from '@/hooks/useMeetingPlanContext';
 import { useMeetingDurationLimit } from '@/hooks/useMeetingPlanEnforcement';
 import { useCloudflareSfu } from '@/hooks/useCloudflareSfu';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { LargeMeetingBanner } from '@/components/meeting/LargeMeetingBanner';
+import { MeetingReactionsShell } from '@/components/meeting/MeetingReactionsShell';
 import { MeetingConnectingShell } from '@/components/meeting/MeetingConnectingShell';
+import { RegalBriefPanel } from '@/components/meeting/RegalBriefPanel';
+import { LivePulseBanner } from '@/components/meeting/LivePulseBanner';
+import { useMultiParticipantSpeakingDetection } from '@/hooks/useSpeakingDetection';
 import type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
+import { buildGuestInviteText } from '@/lib/meeting';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveParticipantDisplayName, enrichParticipantNames } from '@/lib/participantNames';
+import {
+  playBrandAnnouncement,
+  preloadBrandAnnouncement,
+  unlockBrandAnnouncement,
+} from '@/lib/brandAnnouncement';
 
 interface VideoConferenceProps {
   meetingId: string;
@@ -56,6 +66,7 @@ export const VideoConference = ({
   const [isVideoMode, setIsVideoMode] = useState(true);
   const [handRaised, setHandRaised] = useState(false);
   const [meetingTitle, setMeetingTitle] = useState<string | null>(null);
+  const [showBrief, setShowBrief] = useState(false);
 
   const { broadcastHandRaise, handNotifications, raisedHands } = useMeetingHandsChannel(meetingId, {
     userName,
@@ -101,7 +112,10 @@ export const VideoConference = ({
   }, [handRaised, meetingId, broadcastHandRaise, userName, toast]);
 
   // Listen for guest "knock" requests when this user is the host
-  useLobbyHost(meetingId, isHost);
+  const { pending: lobbyPending, admit: admitLobbyGuest, deny: denyLobbyGuest } = useLobbyHost(
+    meetingId,
+    isHost,
+  );
 
   // Media permissions management
   const {
@@ -111,11 +125,15 @@ export const VideoConference = ({
   } = useMediaPermissions();
 
   // Real-time participants management
-  const { 
+  const {
     participants: dbParticipants,
     meetingHostId: meetingHostIdFromLookup,
     updateParticipantStatus,
-    removeParticipant: removeDbParticipant 
+    removeParticipant: removeDbParticipant,
+    setParticipantMuted,
+    kickParticipant,
+    syncLocalMute,
+    removedFromMeeting,
   } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost);
 
   const dbParticipantCount = Math.max(dbParticipants.length, 1);
@@ -172,6 +190,13 @@ export const VideoConference = ({
     setPlanLimits,
   } = useWebRTC(meetingId, userName, user?.id || '', mediaRouting);
 
+  const {
+    speakingParticipants,
+    addParticipant,
+    removeParticipant,
+  } = useMultiParticipantSpeakingDetection();
+  const speakingIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     setPlanLimits(planLimits);
   }, [planLimits, setPlanLimits]);
@@ -222,7 +247,11 @@ export const VideoConference = ({
     user?.id || ''
   );
 
-  const effectivePresentation = presentationActive || isScreenSharing;
+  // Also fall back to the actual remote screen track: if a viewer misses the
+  // "presentation" broadcast they would otherwise render the shared screen in a
+  // normal (cover-cropped) tile instead of the full projection layout.
+  const effectivePresentation =
+    presentationActive || isScreenSharing || Boolean(meshOrSfuHostScreen);
 
   const [presentationStreamTick, setPresentationStreamTick] = useState(0);
   useEffect(() => {
@@ -318,17 +347,59 @@ export const VideoConference = ({
     toggleCaptions 
   } = useCaptions(meetingId, user?.id || '');
 
-  // Convert Map to RemoteStream array for components
-  const remoteStreamsArray = Array.from(remoteStreams?.entries() || []).map(([id, stream]) => ({
-    id,
-    stream,
-    userName: resolveParticipantDisplayName(id, participantsForUi, peerUserNames),
-  }));
+  const remoteStreamsArray = useMemo(
+    () =>
+      Array.from(remoteStreams?.entries() || []).map(([id, stream]) => ({
+        id,
+        stream,
+        userName: resolveParticipantDisplayName(id, participantsForUi, peerUserNames),
+      })),
+    [remoteStreams, participantsForUi, peerUserNames]
+  );
+
+  useEffect(() => {
+    const next = new Set<string>();
+    if (user?.id && localStream) {
+      addParticipant(user.id, localStream);
+      next.add(user.id);
+    }
+    for (const remote of remoteStreamsArray) {
+      addParticipant(remote.id, remote.stream);
+      next.add(remote.id);
+    }
+    for (const id of speakingIdsRef.current) {
+      if (!next.has(id)) removeParticipant(id);
+    }
+    speakingIdsRef.current = next;
+  }, [user?.id, localStream, remoteStreamsArray, addParticipant, removeParticipant]);
+
+  const mediaStartedRef = useRef(false);
+  const brandAnnouncedRef = useRef(false);
+
+  const announceSpatialRegal = useCallback(() => {
+    if (brandAnnouncedRef.current) return;
+    brandAnnouncedRef.current = true;
+    unlockBrandAnnouncement();
+    window.setTimeout(() => {
+      void playBrandAnnouncement({ meetingId });
+    }, 450);
+  }, [meetingId]);
+
+  useEffect(() => {
+    void preloadBrandAnnouncement();
+    const unlock = () => unlockBrandAnnouncement();
+    window.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    window.addEventListener('keydown', unlock, { once: true, capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+  }, []);
 
   // Initialize WebRTC — on mobile, require a user gesture via the permissions dialog
   useEffect(() => {
     if (!user?.id || !meetingId || !userName) return;
-    if (localStream) return;
+    if (localStream || mediaStartedRef.current) return;
 
     if (!isSupported) {
       setShowMediaPermissions(true);
@@ -348,11 +419,16 @@ export const VideoConference = ({
     let cancelled = false;
 
     const startMedia = async () => {
-      if (cancelled) return;
+      if (cancelled || mediaStartedRef.current) return;
+      mediaStartedRef.current = true;
       try {
         await initialize();
-        if (!cancelled) startMeeting();
+        if (!cancelled) {
+          startMeeting();
+          announceSpatialRegal();
+        }
       } catch {
+        mediaStartedRef.current = false;
         if (!cancelled) setShowMediaPermissions(true);
       }
     };
@@ -386,6 +462,7 @@ export const VideoConference = ({
     localStream,
     initialize,
     startMeeting,
+    announceSpatialRegal,
   ]);
 
   const cleanupRef = useRef(cleanup);
@@ -417,14 +494,18 @@ export const VideoConference = ({
   }, [cleanup, removeDbParticipant, endMeeting, onLeaveMeeting]);
 
   const handleMediaPermissionRequest = async (video: boolean, audio: boolean) => {
+    unlockBrandAnnouncement();
     const stream = await requestPermissions(video, audio);
     if (stream) {
       setShowMediaPermissions(false);
       setMediaInitTimedOut(false);
+      mediaStartedRef.current = true;
       try {
         await initialize({ stream, video, audio });
         startMeeting();
+        announceSpatialRegal();
       } catch {
+        mediaStartedRef.current = false;
         setShowMediaPermissions(true);
       }
     }
@@ -444,30 +525,81 @@ export const VideoConference = ({
       return;
     }
 
-    // Broadcast mute command through Supabase channel
-    const channel = supabase.channel(`meeting-mute-${participantId}`);
-    
-    channel.send({
-      type: 'broadcast',
-      event: 'mute-toggle',
-      payload: {
-        participantId,
-        isMuted,
-        fromHost: true
+    void (async () => {
+      const ok = await setParticipantMuted(participantId, isMuted);
+      if (!ok) {
+        toast({
+          title: 'Could not update mute',
+          description: 'That participant could not be reached. Try again.',
+          variant: 'destructive',
+        });
+        return;
       }
-    });
-
-    toast({
-      title: isMuted ? "Participant Muted" : "Participant Unmuted",
-      description: "Host action applied successfully"
-    });
+      toast({
+        title: isMuted ? "Participant Muted" : "Participant Unmuted",
+        description: "Host action applied successfully"
+      });
+    })();
   };
 
-  const copyMeetingId = () => {
-    navigator.clipboard.writeText(meetingId);
+  const handleRemoveParticipant = (userId: string) => {
+    if (!isHost) {
+      toast({
+        title: 'Permission Denied',
+        description: 'Only the host can remove participants',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    void (async () => {
+      const target = participantsForUi.find((p) => p.user_id === userId);
+      const ok = await kickParticipant(userId);
+      if (!ok) {
+        toast({
+          title: 'Could not remove participant',
+          description: 'That participant could not be removed. Try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: 'Participant removed',
+        description: `${target?.user_name ?? 'They'} ${target ? 'were' : 'was'} removed from the meeting.`,
+      });
+    })();
+  };
+
+  // The host removed this user from the meeting — leave immediately.
+  useEffect(() => {
+    if (!removedFromMeeting) return;
     toast({
-      title: "Meeting ID Copied",
-      description: "Share this ID with others to join the meeting"
+      title: 'Removed from the meeting',
+      description: 'The host removed you from this meeting.',
+      variant: 'destructive',
+      duration: 6000,
+    });
+    cleanup();
+    if (onNavigateToDashboard) {
+      onNavigateToDashboard();
+    } else {
+      handleLeaveMeeting();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [removedFromMeeting]);
+
+  // Mirror the local mic state into the roster so the mute flags everyone else
+  // sees stay truthful (host-driven mutes are written by setParticipantMuted).
+  useEffect(() => {
+    void syncLocalMute(!isAudioEnabled);
+  }, [isAudioEnabled, syncLocalMute]);
+
+  const copyMeetingId = () => {
+    const text = buildGuestInviteText(meetingId);
+    void navigator.clipboard.writeText(text);
+    toast({
+      title: 'Guest invite copied',
+      description: 'Share the link so guests can join with just their name.',
     });
   };
 
@@ -536,9 +668,13 @@ export const VideoConference = ({
     await toggleScreenShare();
     if (wasSharing) {
       setPresentation(false);
-    } else if (isVideoEnabled) {
-      await toggleVideo();
     }
+    // NOTE: we deliberately do NOT switch the camera off while presenting.
+    // The video sender is already carrying the screen track, so nothing extra
+    // is transmitted — and leaving the camera enabled means that when the
+    // presentation ends (including via the browser's own "Stop sharing" button)
+    // `replaceTrack(camera)` resumes live video immediately instead of
+    // restoring a disabled track and showing everyone a black frame.
   };
 
   useEffect(() => {
@@ -560,7 +696,8 @@ export const VideoConference = ({
   }, [meetingId]);
 
   return (
-    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden bg-[#0b0b0f]">
+    <MeetingReactionsShell meetingId={meetingId} userId={user?.id} userName={userName}>
+    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden overscroll-none bg-[#0b0b0f] [touch-action:manipulation]">
       <div className="relative z-10 flex h-full min-h-0 flex-col">
         <LargeMeetingBanner
           mediaMode={topology.mediaMode}
@@ -570,6 +707,10 @@ export const VideoConference = ({
           connectionError={topology.useSfu ? sfu.connectionError : null}
           onRetryConnection={topology.useSfu ? () => void sfu.retryConnection() : undefined}
         />
+
+        <div className="pointer-events-none absolute left-3 top-14 z-30 safe-area-inset-top sm:left-4 sm:top-16">
+          <LivePulseBanner meetingCode={meetingId} compact />
+        </div>
 
         <MeetingHeader
           meetingId={meetingId}
@@ -587,6 +728,7 @@ export const VideoConference = ({
           onNavigateToSettings={handleNavigateToSettings}
           onSignOut={handleSignOut}
           onNavigateBack={onNavigateToDashboard}
+          statusAddon={<ConnectionQualityIndicator compact peerConnections={peerConnections} />}
         />
 
         <MeetingLayout
@@ -602,6 +744,7 @@ export const VideoConference = ({
           onCloseParticipants={() => setShowParticipants(false)}
           currentUserId={user?.id || ''}
           onToggleMute={handleToggleMute}
+          onRemoveParticipant={handleRemoveParticipant}
           presentationActive={effectivePresentation}
           presenterName={
             isHost && isScreenSharing
@@ -621,6 +764,7 @@ export const VideoConference = ({
           participantCount={totalParticipantCount}
           meetingTitle={meetingTitle ?? undefined}
           raisedHands={raisedHands}
+          speakingParticipants={speakingParticipants}
         />
 
         {showConnectingShell && (
@@ -636,10 +780,6 @@ export const VideoConference = ({
             onJoinAudioOnly={() => void handleMediaPermissionRequest(false, true)}
           />
         )}
-
-        <div className="fixed left-14 top-3 z-40 sm:left-16 sm:top-4 safe-area-inset-top">
-          <ConnectionQualityIndicator peerConnections={peerConnections} />
-        </div>
 
         {/* Join/Leave Notifications */}
         <ParticipantJoinLeaveNotifications
@@ -671,6 +811,16 @@ export const VideoConference = ({
           onToggleHand={handleToggleHand}
           onToggleParticipants={() => setShowParticipants(!showParticipants)}
           onNavigateToDashboard={onNavigateToDashboard}
+          onToggleBrief={() => setShowBrief((v) => !v)}
+          showBrief={showBrief}
+        />
+
+        <RegalBriefPanel
+          meetingCode={meetingId}
+          open={showBrief}
+          onOpenChange={setShowBrief}
+          isLive
+          isMeetingHost={isHost}
         />
 
         {/* Captions Display */}
@@ -685,21 +835,76 @@ export const VideoConference = ({
           <BackgroundMeetingIndicator />
         )}
 
+        {/* Host lobby admit panel — scrollable when many guests knock */}
+        {isHost && lobbyPending.length > 0 ? (
+          <div className="pointer-events-auto absolute bottom-24 left-1/2 z-40 w-[min(92vw,26rem)] -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-md sm:bottom-28">
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <p className="text-xs font-bold uppercase tracking-wide text-orange-300">
+                Waiting to join · {lobbyPending.length}
+              </p>
+              <p className="text-[11px] text-white/45">Scroll for more</p>
+            </div>
+            <div className="max-h-[min(40vh,18rem)] space-y-2 overflow-y-auto overscroll-contain pr-1">
+              {lobbyPending.map((guest) => (
+                <div
+                  key={guest.userId}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">{guest.userName}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-bold text-white/90 hover:bg-white/10"
+                    onClick={() => denyLobbyGuest(guest.userId)}
+                  >
+                    Deny
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500"
+                    onClick={() => admitLobbyGuest(guest.userId)}
+                  >
+                    Admit
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {/* Media Permissions Modal */}
         <MediaPermissionsModal
           isOpen={showMediaPermissions}
           permissions={permissions}
           onRequestPermissions={handleMediaPermissionRequest}
           onClose={() => {
+            // Dialog dismiss / backdrop: only close once media is actually ready.
+            // "Continue to Meeting" uses onRetry so granted-but-no-stream can't soft-lock.
             if (localStream) setShowMediaPermissions(false);
+            else void (async () => {
+              unlockBrandAnnouncement();
+              const stream = await requestPermissions(true, true);
+              if (!stream) return;
+              setShowMediaPermissions(false);
+              try {
+                await initialize({ stream, video: true, audio: true });
+                startMeeting();
+                announceSpatialRegal();
+              } catch {
+                setShowMediaPermissions(true);
+              }
+            })();
           }}
           onRetry={async () => {
+            unlockBrandAnnouncement();
             const stream = await requestPermissions(true, true);
             if (stream) {
               setShowMediaPermissions(false);
               try {
                 await initialize({ stream, video: true, audio: true });
                 startMeeting();
+                announceSpatialRegal();
               } catch {
                 setShowMediaPermissions(true);
               }
@@ -708,5 +913,6 @@ export const VideoConference = ({
         />
       </div>
     </div>
+    </MeetingReactionsShell>
   );
 };

@@ -1,7 +1,17 @@
 import { useMeetingLobbyGuest } from '@/hooks/useMeetingLobbyGuest';
+import { LobbyReactionAmbience } from '@/components/meeting/LobbyReactionAmbience';
+import { RegalBriefLobbyStrip } from '@/components/meeting/RegalBriefPanel';
+import { LivePulseBanner } from '@/components/meeting/LivePulseBanner';
 import { Button } from '@/components/ui/button';
 import { Loader2, Crown, Video, ShieldCheck } from 'lucide-react';
 import lobbyImage from '@/assets/lobby-wait.jpg';
+import { useEffect, useRef } from 'react';
+import {
+  playLobbyAdmittedAnnouncement,
+  playLobbyAnnouncement,
+  preloadBrandAnnouncement,
+  unlockBrandAnnouncement,
+} from '@/lib/brandAnnouncement';
 
 interface MeetingLobbyProps {
   meetingId: string;
@@ -20,16 +30,51 @@ export const MeetingLobby = ({ meetingId, userId, userName, onAdmit, onCancel }:
     onDeny: onCancel,
   });
 
+  const lobbyVoicePlayed = useRef(false);
+  const admittedVoicePlayed = useRef(false);
+
+  useEffect(() => {
+    void preloadBrandAnnouncement();
+    const unlock = () => unlockBrandAnnouncement();
+    window.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    window.addEventListener('keydown', unlock, { once: true, capture: true });
+    // Soft unlock attempt — join flow usually already had a gesture.
+    unlockBrandAnnouncement();
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status !== 'knocking' || lobbyVoicePlayed.current) return;
+    lobbyVoicePlayed.current = true;
+    const t = window.setTimeout(() => {
+      void playLobbyAnnouncement({ meetingId });
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [status, meetingId]);
+
+  useEffect(() => {
+    if (status !== 'admitted' || admittedVoicePlayed.current) return;
+    admittedVoicePlayed.current = true;
+    void playLobbyAdmittedAnnouncement({ meetingId });
+  }, [status, meetingId]);
+
   return (
-    <div className="min-h-screen-safe flex flex-col lg:flex-row bg-[#0a0612]">
+    <div className="relative min-h-screen-safe flex flex-col lg:flex-row bg-[#0a0612]">
+      <LobbyReactionAmbience
+        active={status === 'knocking'}
+        celebrate={status === 'admitted'}
+      />
       <div className="flex flex-1 items-center justify-center p-5 sm:p-8 md:p-10 lg:p-12 safe-area-inset-top safe-area-inset-bottom">
-        <div className="w-full max-w-md text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/70">
             <Video className="h-3.5 w-3.5 text-orange-400" />
             Regal Meeting Lobby
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             {status === 'admitted'
               ? "You're in! Joining now…"
               : status === 'denied'
@@ -45,7 +90,14 @@ export const MeetingLobby = ({ meetingId, userId, userName, onAdmit, onCancel }:
                 : `We've let the host know you're here, ${userName}. They'll admit you shortly.`}
           </p>
 
-          <div className="flex items-center justify-center gap-3 text-white/50 text-sm">
+          {status === 'knocking' && (
+            <div className="space-y-3">
+              <LivePulseBanner meetingCode={meetingId} />
+              <RegalBriefLobbyStrip meetingCode={meetingId} />
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-3 text-sm text-white/50">
             {status === 'knocking' && (
               <>
                 <Loader2 className="h-4 w-4 animate-spin text-orange-400" />
@@ -56,12 +108,12 @@ export const MeetingLobby = ({ meetingId, userId, userName, onAdmit, onCancel }:
           </div>
 
           <div className="flex items-center justify-center gap-3 pt-2">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center text-white text-sm font-semibold">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-red-600 text-sm font-semibold text-white">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="text-left">
-              <div className="text-white text-sm font-medium">{userName}</div>
-              <div className="text-white/40 text-xs">Meeting · {meetingId}</div>
+              <div className="text-sm font-medium text-white">{userName}</div>
+              <div className="text-xs text-white/40">Meeting · {meetingId}</div>
             </div>
           </div>
 
@@ -79,7 +131,7 @@ export const MeetingLobby = ({ meetingId, userId, userName, onAdmit, onCancel }:
         <img src={lobbyImage} alt="Waiting for host" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
         <div className="relative z-10 p-8 md:p-10 xl:p-16">
-          <div className="inline-flex items-center gap-2 text-orange-300 mb-3">
+          <div className="mb-3 inline-flex items-center gap-2 text-orange-300">
             <Crown className="h-4 w-4" />
             <span className="text-xs font-semibold uppercase tracking-wider">Host approval required</span>
           </div>

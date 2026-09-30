@@ -1,9 +1,16 @@
 import React, { useRef, useEffect, useCallback, memo } from 'react';
+import { isScreenShareTrack } from '@/lib/largeMeeting';
 
 interface StableVideoElementProps {
   stream: MediaStream | null;
   streamId: string;
   isLocal?: boolean;
+  /**
+   * Force mirroring on/off. Screens and presentations must NEVER be mirrored
+   * (a mirrored screen looks like reversed/"Arabic" text), so screen-share
+   * streams ignore `isLocal` unless `mirror` is passed explicitly.
+   */
+  mirror?: boolean;
   className?: string;
   muted?: boolean;
   autoPlay?: boolean;
@@ -16,6 +23,7 @@ export const StableVideoElement = memo(({
   stream,
   streamId,
   isLocal = false,
+  mirror,
   className = "w-full h-full object-cover",
   muted: _mutedProp = true,
   autoPlay = true,
@@ -28,6 +36,20 @@ export const StableVideoElement = memo(({
   const currentStreamRef = useRef<MediaStream | null>(null);
   const streamIdRef = useRef<string>('');
   const isPlayingRef = useRef<boolean>(false);
+
+  const videoTrack = stream?.getVideoTracks()[0];
+  const isScreenShare = isScreenShareTrack(videoTrack);
+
+  // Never mirror a screen/presentation: `scaleX(-1)` makes slides and text read
+  // backwards ("Arabic style"). Only a local selfie camera is mirrored.
+  const shouldMirror = mirror ?? (isLocal && !isScreenShare);
+
+  // Screen shares must keep their aspect ratio — `object-cover` crops them.
+  const resolvedClassName = isScreenShare
+    ? /\bobject-/.test(className)
+      ? className.replace(/\bobject-cover\b/g, 'object-contain')
+      : `${className} object-contain`
+    : className;
 
   const handleError = useCallback((error: Event) => {
     onError?.(error);
@@ -59,8 +81,13 @@ export const StableVideoElement = memo(({
       return;
     }
 
-    // Don't update if it's the same stream and stream ID
-    if (currentStreamRef.current === stream && streamIdRef.current === streamId && stream) {
+    const sameStream = currentStreamRef.current === stream;
+    const sameVideoTrack =
+      !!stream &&
+      !!currentStreamRef.current &&
+      stream.getVideoTracks()[0]?.id === currentStreamRef.current.getVideoTracks()[0]?.id;
+    if ((sameStream || sameVideoTrack) && streamIdRef.current === streamId && stream) {
+      currentStreamRef.current = stream;
       return;
     }
 
@@ -128,7 +155,7 @@ export const StableVideoElement = memo(({
   return (
     <video
       ref={videoRef}
-      className={className}
+      className={resolvedClassName}
       // Remote audio is owned by RemoteAudioMix — never play it from <video>
       muted
       autoPlay={autoPlay}
@@ -145,7 +172,7 @@ export const StableVideoElement = memo(({
       style={{
         display: 'block',
         background: 'linear-gradient(45deg, #1e293b, #334155)',
-        transform: isLocal ? 'scaleX(-1)' : undefined,
+        transform: shouldMirror ? 'scaleX(-1)' : undefined,
       }}
     />
   );

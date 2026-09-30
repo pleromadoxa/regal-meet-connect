@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { Menu, Mic, MicOff, Crown } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { Menu, Mic, MicOff, Crown, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { AudioIndicator } from '@/components/AudioIndicator';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,6 +58,8 @@ export const RegalGlassAudioLayout = ({
   const { user, profile } = useAuth();
   const localAvatar = resolveAvatarUrl(profile, user);
   const email = user?.email || '';
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const tiles = useMemo<Tile[]>(() => {
     const localMuted = !(localStream?.getAudioTracks()?.[0]?.enabled ?? true);
@@ -146,7 +148,10 @@ export const RegalGlassAudioLayout = ({
       </div>
 
       {/* Center spotlight participant */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center px-4 pb-[calc(var(--meeting-stack-height)+1rem)] pt-20 md:pl-[min(22rem,34vw)]">
+      <div className={cn(
+        'absolute inset-0 z-10 flex items-center justify-center px-4 pb-[calc(var(--meeting-stack-height)+1rem)] pt-[5.5rem] md:pt-20 transition-all duration-300 ease-in-out',
+        !sidebarCollapsed && 'md:pl-[min(22rem,34vw)]'
+      )}>
         {mainTile && (
           <div className="flex flex-col items-center text-center">
             <div className="relative mb-6">
@@ -204,12 +209,33 @@ export const RegalGlassAudioLayout = ({
         )}
       </div>
 
+      {/* Sidebar collapse toggle */}
+      <button
+        type="button"
+        onClick={() => setSidebarCollapsed((c) => !c)}
+        className={cn(
+          'absolute z-30 flex h-8 w-8 items-center justify-center rounded-full',
+          'border border-white/15 bg-black/50 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white',
+          'hidden md:flex',
+          sidebarCollapsed ? 'left-3 top-16' : 'left-[min(20.25rem,32.5vw)] top-16'
+        )}
+        aria-label={sidebarCollapsed ? 'Expand participants' : 'Collapse participants'}
+        title={sidebarCollapsed ? 'Show participants' : 'Hide participants'}
+      >
+        {sidebarCollapsed ? (
+          <ChevronsRight className="h-4 w-4" />
+        ) : (
+          <ChevronsLeft className="h-4 w-4" />
+        )}
+      </button>
+
       {/* Left glass participant rail — desktop & tablets */}
       <aside
         className={cn(
-          'absolute left-3 top-16 z-20 hidden w-[min(20rem,32vw)] flex-col overflow-hidden rounded-[1.75rem]',
+          'absolute left-3 top-16 z-20 hidden flex-col overflow-hidden rounded-[1.75rem] transition-all duration-300 ease-in-out',
           'border border-white/15 bg-black/35 shadow-2xl backdrop-blur-2xl md:flex',
-          'bottom-[calc(var(--meeting-stack-height)+0.5rem)]'
+          'bottom-[calc(var(--meeting-stack-height)+0.5rem)]',
+          sidebarCollapsed ? 'w-0 border-0 p-0 opacity-0' : 'w-[min(20rem,32vw)]'
         )}
       >
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
@@ -258,6 +284,7 @@ export const RegalGlassAudioLayout = ({
       </aside>
 
       {/* Mobile filmstrip — phones only */}
+      {filmstripTiles.length > 0 && (
       <div className="absolute bottom-[calc(var(--meeting-dock-height)+0.25rem)] left-0 right-0 z-20 px-3 md:hidden">
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {filmstripTiles.map((tile) => {
@@ -293,6 +320,7 @@ export const RegalGlassAudioLayout = ({
           })}
         </div>
       </div>
+      )}
     </div>
   );
 };

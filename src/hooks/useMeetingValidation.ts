@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { parseMeetingCodeFromInput } from '@/lib/meeting';
-import { fetchMeetingByCode } from '@/lib/meetingLookup';
+import { openMeetingByCode } from '@/lib/meetingLookup';
 
 // Cache for meeting validations to avoid duplicate requests
 const validationCache = new Map<string, { result: boolean; timestamp: number }>();
@@ -61,7 +61,8 @@ export const useMeetingValidation = () => {
       
       while (attempts < maxAttempts) {
         try {
-          const meeting = await fetchMeetingByCode(normalizedMeetingId);
+          // Active rooms, or host reopening an ended room
+          const meeting = await openMeetingByCode(normalizedMeetingId, { reactivateIfHost: true });
 
           if (!meeting) {
             console.error('Meeting not found:', normalizedMeetingId);
@@ -70,36 +71,8 @@ export const useMeetingValidation = () => {
             
             if (!skipToast) {
               toast({
-                title: "Invalid Meeting ID",
-                description: "The meeting ID you entered does not exist or is no longer active. Please check the ID and try again.",
-                variant: "destructive"
-              });
-            }
-            return result;
-          }
-
-          if (!meeting.is_active) {
-            const result = false;
-            validationCache.set(cacheKey, { result, timestamp: Date.now() });
-            
-            if (!skipToast) {
-              toast({
-                title: "Meeting Unavailable",
-                description: "This meeting is no longer active.",
-                variant: "destructive"
-              });
-            }
-            return result;
-          }
-
-          if (meeting.status === 'ended' || meeting.status === 'cancelled') {
-            const result = false;
-            validationCache.set(cacheKey, { result, timestamp: Date.now() });
-            
-            if (!skipToast) {
-              toast({
-                title: "Meeting Unavailable",
-                description: "This meeting has ended or been cancelled.",
+                title: "Meeting unavailable",
+                description: "This room may have ended. If you are the host, try again to reopen it — or create a new meeting.",
                 variant: "destructive"
               });
             }

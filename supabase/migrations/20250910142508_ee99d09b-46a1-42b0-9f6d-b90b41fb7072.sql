@@ -1,8 +1,8 @@
 -- Create enum for application roles
-CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+DO $$ BEGIN EXECUTE $t$CREATE TYPE public.app_role AS ENUM ('admin', 'user')$t$; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Create user_roles table
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     role app_role NOT NULL,
@@ -30,7 +30,7 @@ AS $$
 $$;
 
 -- Add meeting-level admin roles for meeting-specific permissions
-CREATE TABLE public.meeting_admins (
+CREATE TABLE IF NOT EXISTS public.meeting_admins (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id TEXT NOT NULL,
     user_id UUID NOT NULL,
@@ -42,17 +42,20 @@ CREATE TABLE public.meeting_admins (
 ALTER TABLE public.meeting_admins ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for user_roles
+DROP POLICY IF EXISTS "Admins can manage user roles" ON public.user_roles;
 CREATE POLICY "Admins can manage user roles" 
 ON public.user_roles 
 FOR ALL
 USING (has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Admins can view all user roles" ON public.user_roles;
 CREATE POLICY "Admins can view all user roles" 
 ON public.user_roles 
 FOR SELECT 
 USING (has_role(auth.uid(), 'admin'));
 
 -- RLS Policies for meeting_admins
+DROP POLICY IF EXISTS "Meeting hosts and admins can manage meeting admins" ON public.meeting_admins;
 CREATE POLICY "Meeting hosts and admins can manage meeting admins" 
 ON public.meeting_admins 
 FOR INSERT 
@@ -69,17 +72,21 @@ WITH CHECK (
     )
 );
 
+DROP POLICY IF EXISTS "Users can view meeting admins in their meetings" ON public.meeting_admins;
 CREATE POLICY "Users can view meeting admins in their meetings" 
 ON public.meeting_admins 
 FOR SELECT 
 USING (
     EXISTS (
-        SELECT 1 FROM meeting_participants 
-        WHERE meeting_participants.meeting_id = meeting_admins.meeting_id 
+        SELECT 1 FROM meeting_participants
+        JOIN meetings ON meetings.id = meeting_participants.meeting_id
+        WHERE (meetings.meeting_id = meeting_admins.meeting_id
+            OR meeting_participants.meeting_id::text = meeting_admins.meeting_id)
         AND meeting_participants.user_id = auth.uid()
     )
 );
 
+DROP POLICY IF EXISTS "Meeting hosts and admins can remove meeting admins" ON public.meeting_admins;
 CREATE POLICY "Meeting hosts and admins can remove meeting admins" 
 ON public.meeting_admins 
 FOR DELETE 
@@ -97,7 +104,7 @@ USING (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);
-CREATE INDEX idx_user_roles_role ON public.user_roles(role);
-CREATE INDEX idx_meeting_admins_meeting_id ON public.meeting_admins(meeting_id);
-CREATE INDEX idx_meeting_admins_user_id ON public.meeting_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON public.user_roles(role);
+CREATE INDEX IF NOT EXISTS idx_meeting_admins_meeting_id ON public.meeting_admins(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_admins_user_id ON public.meeting_admins(user_id);

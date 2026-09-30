@@ -1,5 +1,5 @@
 -- Create table to track recent meetings for users
-CREATE TABLE public.user_recent_meetings (
+CREATE TABLE IF NOT EXISTS public.user_recent_meetings (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL,
   meeting_id text NOT NULL,
@@ -13,6 +13,7 @@ CREATE TABLE public.user_recent_meetings (
 ALTER TABLE public.user_recent_meetings ENABLE ROW LEVEL SECURITY;
 
 -- Create policies
+DROP POLICY IF EXISTS "Users can manage their own recent meetings" ON public.user_recent_meetings;
 CREATE POLICY "Users can manage their own recent meetings"
 ON public.user_recent_meetings
 FOR ALL
@@ -20,8 +21,8 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
 -- Add index for performance
-CREATE INDEX idx_user_recent_meetings_user_id ON public.user_recent_meetings(user_id);
-CREATE INDEX idx_user_recent_meetings_last_accessed ON public.user_recent_meetings(last_accessed DESC);
+CREATE INDEX IF NOT EXISTS idx_user_recent_meetings_user_id ON public.user_recent_meetings(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_recent_meetings_last_accessed ON public.user_recent_meetings(last_accessed DESC);
 
 -- Create trigger for updating last_accessed timestamp
 CREATE OR REPLACE FUNCTION public.update_last_accessed_column()
@@ -32,6 +33,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_recent_meetings_last_accessed ON public.user_recent_meetings;
 CREATE TRIGGER update_recent_meetings_last_accessed
 BEFORE UPDATE ON public.user_recent_meetings
 FOR EACH ROW

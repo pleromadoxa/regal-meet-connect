@@ -19,7 +19,7 @@ export const CalendarLandingHero = ({ user }: CalendarLandingHeroProps) => {
   const navigate = useNavigate();
 
   return (
-    <section className="relative mx-auto max-w-5xl px-4 pt-10 text-center sm:px-6 sm:pt-14 md:pt-20 lg:px-8">
+    <section className="relative mx-auto max-w-7xl px-4 pt-10 text-center sm:px-6 sm:pt-14 md:pt-20 lg:px-8">
       <div
         className="landing-fade-up mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/[0.08] px-4 py-1.5 text-xs font-medium text-orange-200/90"
         style={{ animationDelay: '0.05s' }}

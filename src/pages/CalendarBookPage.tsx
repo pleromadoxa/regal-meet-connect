@@ -85,20 +85,42 @@ const CalendarBookPage = () => {
     if (!link || !slug || !selectedSlot || !email.trim() || !name.trim()) return;
     setBooking(true);
     try {
-      await bookSchedulingSlot(slug, name, email, selectedSlot.start);
+      const eventId = await bookSchedulingSlot(slug, name, email, selectedSlot.start);
 
       if (link.create_meeting) {
-        await supabase.functions.invoke('send-meeting-invitation', {
-          body: {
-            meeting: {
-              title: link.title,
-              scheduledTime: selectedSlot.start.toISOString(),
-              duration: link.duration_minutes,
+        let meetingId = 'BOOKED';
+        let meetingLink: string | undefined;
+        try {
+          const { data: ev } = await supabase
+            .from('calendar_events')
+            .select('location, title')
+            .eq('id', eventId)
+            .maybeSingle();
+          meetingLink = ev?.location ?? undefined;
+          const match = meetingLink?.match(/\/meeting\/([A-Za-z0-9-]+)/i);
+          if (match?.[1]) meetingId = match[1].toUpperCase();
+        } catch {
+          /* best-effort */
+        }
+
+        await supabase.functions
+          .invoke('send-meeting-invitation', {
+            body: {
+              kind: 'booking',
+              meeting: {
+                id: meetingId,
+                title: link.title,
+                scheduledTime: selectedSlot.start.toISOString(),
+                duration: link.duration_minutes,
+                link: meetingLink,
+              },
+              invitees: [{ email: email.trim(), name: name.trim() }],
+              hostName: 'Host',
             },
-            invitees: [email.trim()],
-            hostEmail: null,
-          },
-        }).catch(() => {/* optional */});
+          })
+          .catch(() => {
+            /* optional */
+          });
       }
 
       toast({ title: 'Booked!', description: 'Your meeting has been scheduled.' });

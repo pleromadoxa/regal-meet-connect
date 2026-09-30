@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, UserMinus, Users } from 'lucide-react';
+import { UserPlus, UserMinus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface JoinLeaveEvent {
@@ -22,7 +22,6 @@ interface ParticipantJoinLeaveNotificationsProps {
 export const ParticipantJoinLeaveNotifications = ({
   participants,
   currentUserId,
-  participantCount,
 }: ParticipantJoinLeaveNotificationsProps) => {
   const [previousParticipants, setPreviousParticipants] = useState(participants);
   const [recentEvents, setRecentEvents] = useState<JoinLeaveEvent[]>([]);
@@ -90,10 +89,10 @@ export const ParticipantJoinLeaveNotifications = ({
     setPreviousParticipants(participants);
   }, [participants, previousParticipants, currentUserId, toast]);
 
-  const displayCount = participantCount ?? Math.max(participants.length, 1);
+  if (recentEvents.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="pointer-events-none fixed right-3 top-20 z-40 space-y-2 safe-area-inset-top sm:right-4">
       {recentEvents.map(event => (
         <div
           key={event.id}
@@ -126,14 +125,6 @@ export const ParticipantJoinLeaveNotifications = ({
           </div>
         </div>
       ))}
-      
-      {/* Participant count indicator */}
-      <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-slate-800/80 backdrop-blur-sm border border-slate-600/30 text-slate-200">
-        <Users className="w-4 h-4 text-blue-400" />
-        <span className="text-sm font-medium">
-          {displayCount} participant{displayCount !== 1 ? 's' : ''}
-        </span>
-      </div>
     </div>
   );
 };

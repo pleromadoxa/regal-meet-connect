@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CaptionsDisplay } from '@/components/CaptionsDisplay';
 import { MeetingHeader } from '@/components/meeting/MeetingHeader';
+import { LargeMeetingBanner } from '@/components/meeting/LargeMeetingBanner';
 import { HostPresentationLayout } from '@/components/meeting/HostPresentationLayout';
 import { RegalGlassAudioLayout } from '@/components/meeting/RegalGlassAudioLayout';
 import { RemoteAudioMix } from '@/components/meeting/RemoteAudioMix';
@@ -15,9 +16,9 @@ import {
 import { useMeetingState } from '@/hooks/useMeetingState';
 import { useMeetingHandsChannel } from '@/hooks/useMeetingHandsChannel';
 import { useAudioOnlyWebRTC } from '@/hooks/useAudioOnlyWebRTC';
-import { useMeetingManagement } from '@/hooks/useMeetingManagement';
 import { useRealTimeParticipants } from '@/hooks/useRealTimeParticipants';
 import { enrichParticipantNames } from '@/lib/participantNames';
+import { buildGuestInviteText } from '@/lib/meeting';
 import { useMeetingPresentation } from '@/hooks/useMeetingPresentation';
 import { useCaptions } from '@/hooks/useCaptions';
 import { useToast } from '@/hooks/use-toast';
@@ -32,8 +33,23 @@ import { useMeetingPlanContext } from '@/hooks/useMeetingPlanContext';
 import { useMeetingDurationLimit } from '@/hooks/useMeetingPlanEnforcement';
 import type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
 import { useCloudflareSfu } from '@/hooks/useCloudflareSfu';
-import { LargeMeetingBanner } from '@/components/meeting/LargeMeetingBanner';
+import { MeetingReactionsShell } from '@/components/meeting/MeetingReactionsShell';
+import { ParticipantsList } from '@/components/ParticipantsList';
+import { RegalBriefPanel } from '@/components/meeting/RegalBriefPanel';
+import { LivePulseBanner } from '@/components/meeting/LivePulseBanner';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import {
+  playBrandAnnouncement,
+  preloadBrandAnnouncement,
+  unlockBrandAnnouncement,
+} from '@/lib/brandAnnouncement';
 
 interface AudioOnlyMeetingProps {
   meetingId: string;
@@ -53,8 +69,10 @@ export const AudioOnlyMeeting = ({
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [showParticipantsList, setShowParticipantsList] = useState(true);
+  const isMobile = useIsMobile();
+  const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showBrief, setShowBrief] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState('local');
   const { addRecentMeeting } = useRecentMeetings();
   const { logMeetingLeave, logFeatureUsage } = usePlatformLogging();
@@ -86,9 +104,11 @@ export const AudioOnlyMeeting = ({
     meetingUuid,
     meetingHostId: meetingHostIdFromLookup,
     removeParticipant: removeDbParticipant,
+    setParticipantMuted,
+    kickParticipant,
+    syncLocalMute,
+    removedFromMeeting,
   } = useRealTimeParticipants(meetingId, user?.id || '', userName, isHost);
-
-  const { toggleMuteParticipant } = useMeetingManagement();
 
   const isCurrentUserHost =
     isHost ||
@@ -301,8 +321,23 @@ export const AudioOnlyMeeting = ({
   }, [meetingId, userName, isHost, user?.id]);
 
   useEffect(() => {
+    void preloadBrandAnnouncement();
+    const unlock = () => unlockBrandAnnouncement();
+    window.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    window.addEventListener('keydown', unlock, { once: true, capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user?.id) return;
+    unlockBrandAnnouncement();
     initialize();
+    window.setTimeout(() => {
+      void playBrandAnnouncement({ meetingId });
+    }, 500);
     return () => {
       if (sessionStorage.getItem('meeting-mode-switch') === meetingId) {
         sessionStorage.removeItem('meeting-mode-switch');
@@ -376,8 +411,12 @@ export const AudioOnlyMeeting = ({
   };
 
   const copyMeetingId = () => {
-    navigator.clipboard.writeText(meetingId);
-    toast({ title: 'Meeting ID copied' });
+    const text = buildGuestInviteText(meetingId);
+    void navigator.clipboard.writeText(text);
+    toast({
+      title: 'Guest invite copied',
+      description: 'Share the link so guests can join with just their name.',
+    });
   };
 
   const handleLeaveMeeting = () => {
@@ -391,8 +430,73 @@ export const AudioOnlyMeeting = ({
 
   const handleToggleMute = (participantId: string, muted: boolean) => {
     if (!isCurrentUserHost) return;
-    toggleMuteParticipant(participantId, muted);
+    void (async () => {
+      const ok = await setParticipantMuted(participantId, muted);
+      if (!ok) {
+        toast({
+          title: 'Could not update mute',
+          description: 'That participant could not be reached. Try again.',
+          variant: 'destructive',
+        });
+      }
+    })();
   };
+
+  const handleRemoveParticipant = (userId: string) => {
+    if (!isCurrentUserHost) return;
+    void (async () => {
+      const target = presentationParticipants.find((p) => p.user_id === userId);
+      const ok = await kickParticipant(userId);
+      if (!ok) {
+        toast({
+          title: 'Could not remove participant',
+          description: 'That participant could not be removed. Try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: 'Participant removed',
+        description: `${target?.user_name ?? 'They'} ${
+          target ? 'were' : 'was'
+        } removed from the meeting.`,
+      });
+    })();
+  };
+
+  // The host removed this user from the meeting — leave immediately.
+  useEffect(() => {
+    if (!removedFromMeeting) return;
+    toast({
+      title: 'Removed from the meeting',
+      description: 'The host removed you from this meeting.',
+      variant: 'destructive',
+      duration: 6000,
+    });
+    cleanup();
+    handleNavigateBack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [removedFromMeeting]);
+
+  // Mirror the local mic state into the roster.
+  useEffect(() => {
+    void syncLocalMute(!isAudioEnabled);
+  }, [isAudioEnabled, syncLocalMute]);
+
+  // Best-effort "goodbye" when the tab closes or refreshes, so a session that
+  // never reaches the Leave button does not leave a ghost row behind (the
+  // roster's presence heartbeat still expires it if this write is dropped).
+  useEffect(() => {
+    const onPageExit = () => {
+      void removeDbParticipant();
+    };
+    window.addEventListener('pagehide', onPageExit);
+    window.addEventListener('beforeunload', onPageExit);
+    return () => {
+      window.removeEventListener('pagehide', onPageExit);
+      window.removeEventListener('beforeunload', onPageExit);
+    };
+  }, [removeDbParticipant]);
 
   const handleNavigateBack = () => {
     if (onNavigateToDashboard) {
@@ -403,7 +507,8 @@ export const AudioOnlyMeeting = ({
   };
 
   return (
-    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden bg-[#0b0b0f] text-white">
+    <MeetingReactionsShell meetingId={meetingId} userId={user?.id} userName={userName}>
+    <div className="relative min-h-screen-safe h-screen-safe overflow-hidden overscroll-none bg-[#0b0b0f] text-white [touch-action:manipulation]">
       <RemoteAudioMix streams={remoteStreams} />
 
       <div className="relative z-10 flex h-full min-h-0 flex-col">
@@ -436,6 +541,10 @@ export const AudioOnlyMeeting = ({
             await signOut();
           }}
         />
+
+        <div className="pointer-events-none absolute left-3 top-16 z-30 sm:left-4 sm:top-[4.5rem]">
+          <LivePulseBanner meetingCode={meetingId} compact className="pointer-events-none" />
+        </div>
 
         {effectivePresentation ? (
           <HostPresentationLayout
@@ -498,12 +607,25 @@ export const AudioOnlyMeeting = ({
           onNavigateToDashboard={handleNavigateBack}
           onLeaveMeeting={handleLeaveMeeting}
           onToggleParticipants={() => setShowParticipantsList((v) => !v)}
+          onToggleBrief={() => setShowBrief((v) => !v)}
+          showBrief={showBrief}
         />
 
-        <div className="fixed right-3 top-[42%] z-[60] -translate-y-1/2 sm:right-4 sm:top-1/2">
-          <VideoReactions meetingId={meetingId} userId={user?.id} userName={userName} />
-        </div>
+        <RegalBriefPanel
+          meetingCode={meetingId}
+          open={showBrief}
+          onOpenChange={setShowBrief}
+          isLive
+          isMeetingHost={isCurrentUserHost}
+        />
 
+        {!isMobile && (
+          <div className="fixed right-3 top-[42%] z-[60] -translate-y-1/2 sm:right-4 sm:top-1/2">
+            <VideoReactions />
+          </div>
+        )}
+
+        {!isMobile && (
         <button
           type="button"
           onClick={() => setShowChat((v) => !v)}
@@ -518,6 +640,7 @@ export const AudioOnlyMeeting = ({
         >
           <MessageSquare className="h-6 w-6" />
         </button>
+        )}
 
         {showChat && (
           <InMeetingChat
@@ -526,6 +649,38 @@ export const AudioOnlyMeeting = ({
             onClose={() => setShowChat(false)}
           />
         )}
+
+        <Sheet open={showParticipantsList} onOpenChange={(open) => !open && setShowParticipantsList(false)}>
+          <SheetContent
+            side={isMobile ? 'bottom' : 'right'}
+            className={cn(
+              'border-white/10 bg-[#0b0b0f]/95 p-0 text-white backdrop-blur-xl',
+              isMobile ? 'z-[70] h-[min(72dvh,560px)] rounded-t-3xl' : 'w-full sm:max-w-sm'
+            )}
+          >
+            <SheetHeader className="border-b border-white/10 px-4 py-4">
+              <SheetTitle className="text-left text-white">
+                Participants ({displayParticipantCount})
+              </SheetTitle>
+            </SheetHeader>
+            <div className="overflow-y-auto p-4">
+              <ParticipantsList
+                participants={presentationParticipants}
+                remoteStreams={remoteStreamsArray}
+                localStream={localStream}
+                currentUserId={user?.id || ''}
+                isHost={isCurrentUserHost}
+                onToggleMute={handleToggleMute}
+                onRemoveParticipant={handleRemoveParticipant}
+                onSelectVideo={(id) => {
+                  setSelectedParticipantId(id === user?.id ? 'local' : id);
+                  setShowParticipantsList(false);
+                }}
+                selectedVideoId={selectedParticipantId === 'local' ? user?.id : selectedParticipantId}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {displayParticipantCount > 50 && (
           <p className="pointer-events-none absolute bottom-24 left-1/2 z-30 -translate-x-1/2 text-center text-xs text-white/40">
@@ -537,5 +692,6 @@ export const AudioOnlyMeeting = ({
         )}
       </div>
     </div>
+    </MeetingReactionsShell>
   );
 };

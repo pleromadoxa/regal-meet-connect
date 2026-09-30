@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { MeetingPlanLimits } from '@/lib/meetingPlanLimits';
+import { VIDEO_BITRATE_BPS, VIDEO_FRAMERATE, videoCaptureConstraints } from '@/lib/videoQuality';
 
 interface ParticipantLimits {
   maxVideoStreams: number;
@@ -59,26 +60,22 @@ export const useManyParticipantsOptimization = () => {
     let enableVirtualization = false;
     let enablePagination = false;
 
-    // Scale video work down earlier — rooms leave mesh around 12 people
+    // Keep 1080p for typical rooms; step down only when the grid gets large
     if (participantCount > 60) {
       videoQuality = 'potato';
       maxVideoStreams = 6;
       enableVirtualization = true;
       enablePagination = true;
-    } else if (participantCount > 30) {
+    } else if (participantCount > 36) {
       videoQuality = 'low';
       maxVideoStreams = 9;
       enableVirtualization = true;
       enablePagination = true;
-    } else if (participantCount > 16) {
-      videoQuality = 'medium';
-      maxVideoStreams = 12;
-      enableVirtualization = true;
-      enablePagination = true;
-    } else if (participantCount > 8) {
+    } else if (participantCount > 20) {
       videoQuality = 'medium';
       maxVideoStreams = 16;
       enableVirtualization = true;
+      enablePagination = true;
     } else {
       videoQuality = 'high';
       maxVideoStreams = 25;
@@ -151,8 +148,7 @@ export const useManyParticipantsOptimization = () => {
   // Get media constraints optimized for participant count
   const getOptimizedMediaConstraints = useCallback((isVideo = true) => {
     const { videoQuality, participantCount } = optimizationSettings;
-    const maxHeight = planLimitsRef.current?.maxVideoHeight ?? 720;
-    const maxWidth = Math.round((maxHeight * 16) / 9);
+    const maxHeight = planLimitsRef.current?.maxVideoHeight ?? 1080;
 
     if (!isVideo) {
       return {
@@ -166,39 +162,7 @@ export const useManyParticipantsOptimization = () => {
       };
     }
 
-    let videoConstraints: MediaTrackConstraints = {};
-
-    switch (videoQuality) {
-      case 'potato':
-        videoConstraints = {
-          width: { ideal: 320, max: 480 },
-          height: { ideal: 240, max: 360 },
-          frameRate: { ideal: 12, max: 15 },
-        };
-        break;
-      case 'low':
-        videoConstraints = {
-          width: { ideal: Math.min(640, maxWidth), max: maxWidth },
-          height: { ideal: Math.min(360, maxHeight), max: maxHeight },
-          frameRate: { ideal: 15, max: 24 },
-        };
-        break;
-      case 'medium':
-        videoConstraints = {
-          width: { ideal: Math.min(960, maxWidth), max: maxWidth },
-          height: { ideal: Math.min(540, maxHeight), max: maxHeight },
-          frameRate: { ideal: 24, max: 30 },
-        };
-        break;
-      case 'high':
-      default:
-        videoConstraints = {
-          width: { ideal: Math.min(1280, maxWidth), max: maxWidth },
-          height: { ideal: Math.min(720, maxHeight), max: maxHeight },
-          frameRate: { ideal: 30, max: 30 },
-        };
-        break;
-    }
+    const videoConstraints = videoCaptureConstraints(videoQuality, maxHeight);
 
     return {
       video: videoConstraints,
@@ -220,28 +184,26 @@ export const useManyParticipantsOptimization = () => {
     
     switch (videoQuality) {
       case 'potato':
-        baseBitrate = 120000;
+        baseBitrate = VIDEO_BITRATE_BPS.potato;
         break;
       case 'low':
-        baseBitrate = 350000;
+        baseBitrate = VIDEO_BITRATE_BPS.low;
         break;
       case 'medium':
-        baseBitrate = 750000;
+        baseBitrate = VIDEO_BITRATE_BPS.medium;
         break;
       case 'high':
-        baseBitrate = 1500000;
+        baseBitrate = VIDEO_BITRATE_BPS.high;
         break;
     }
 
     if (participantCount > 50) {
-      baseBitrate *= 0.55;
-    } else if (participantCount > 25) {
-      baseBitrate *= 0.7;
-    } else if (participantCount > 12) {
-      baseBitrate *= 0.85;
+      baseBitrate *= 0.6;
+    } else if (participantCount > 30) {
+      baseBitrate *= 0.8;
     }
 
-    return Math.max(baseBitrate, 200000);
+    return Math.max(baseBitrate, 350000);
   }, [optimizationSettings]);
 
   // Apply bitrate optimization to all peer connections
@@ -260,7 +222,7 @@ export const useManyParticipantsOptimization = () => {
           
           if (params.encodings && params.encodings.length > 0) {
             params.encodings[0].maxBitrate = targetBitrate;
-            params.encodings[0].maxFramerate = optimizationSettings.videoQuality === 'low' ? 20 : 30;
+            params.encodings[0].maxFramerate = VIDEO_FRAMERATE[optimizationSettings.videoQuality];
             
             await videoSender.setParameters(params);
             console.log(`Applied optimized bitrate ${Math.round(targetBitrate / 1000)}Kbps to peer ${peerId}`);

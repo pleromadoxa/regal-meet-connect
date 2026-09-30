@@ -143,6 +143,14 @@
   --meeting-stack-height: calc(var(--meeting-dock-height) + var(--meeting-filmstrip-height));
 }
 
+@media (max-width: 767px) {
+  :root {
+    --meeting-dock-height: 10.75rem;
+    --meeting-filmstrip-height: 5.25rem;
+    --meeting-stack-height: calc(var(--meeting-dock-height) + var(--meeting-filmstrip-height));
+  }
+}
+
 @media (min-width: 768px) {
   :root {
     --meeting-filmstrip-height: 0rem;
@@ -647,6 +655,49 @@
   }
 }
 
+/* Calendar landing — larger preview, less peek below fold */
+.landing-app-preview--calendar {
+  margin-top: 2.5rem;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+}
+
+@media (min-width: 640px) {
+  .landing-app-preview--calendar {
+    margin-top: 3rem;
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .landing-app-preview--calendar {
+    margin-top: 3.5rem;
+    margin-left: -2.5rem;
+    margin-right: -2.5rem;
+  }
+}
+
+.landing-app-window--calendar {
+  max-width: min(72rem, 100%);
+  border-radius: 14px 14px 0 0;
+  transform: rotateX(3deg) translateY(2%);
+}
+
+@media (min-width: 768px) {
+  .landing-app-window--calendar {
+    max-width: min(80rem, 100%);
+    transform: rotateX(4deg) translateY(4%);
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-app-window--calendar {
+    max-width: 84rem;
+    transform: rotateX(4deg) translateY(3%);
+  }
+}
+
 @keyframes meeting-preview-avatar-speak {
   0%,
   100% {
@@ -659,4 +710,29 @@
 
 .meeting-preview-avatar-speaking {
   animation: meeting-preview-avatar-speak 2.4s ease-in-out infinite;
+}
+
+@keyframes meeting-reaction-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.4) rotate(-8deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translate3d(calc(var(--reaction-drift-x) * 0.08), calc(var(--reaction-drift-y) * 0.08), 0)
+      scale(1.15)
+      rotate(0deg);
+  }
+  100% {
+    transform: translate3d(var(--reaction-drift-x), var(--reaction-drift-y), 0) scale(1.35)
+      rotate(14deg);
+    opacity: 0;
+  }
+}
+
+.meeting-reaction-particle {
+  animation-name: meeting-reaction-drift;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: forwards;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
 }

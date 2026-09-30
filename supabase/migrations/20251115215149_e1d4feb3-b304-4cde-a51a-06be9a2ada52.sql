@@ -8,17 +8,20 @@ DROP POLICY IF EXISTS "Users can update their own invitations" ON meeting_invita
 -- Create simple policies without ANY cross-table references
 
 -- Policy 1: Hosts can manage their OWN scheduled meetings (no invitation check)
+DROP POLICY IF EXISTS "Hosts can manage their scheduled meetings" ON scheduled_meetings;
 CREATE POLICY "Hosts can manage their scheduled meetings"
 ON scheduled_meetings
 FOR ALL
 USING (host_id = auth.uid());
 
 -- Policy 2: Users can view/update their invitations based on email only (no scheduled_meetings check)
+DROP POLICY IF EXISTS "Users can view their own invitations" ON meeting_invitations;
 CREATE POLICY "Users can view their own invitations"
 ON meeting_invitations
 FOR SELECT
 USING (invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users can update their own invitations" ON meeting_invitations;
 CREATE POLICY "Users can update their own invitations"
 ON meeting_invitations
 FOR UPDATE
@@ -26,6 +29,7 @@ USING (invitee_email = (SELECT email FROM auth.users WHERE id = auth.uid()));
 
 -- Policy 3: Hosts can insert/delete invitations for meetings where they are the creator
 -- We check this WITHOUT referencing scheduled_meetings in the policy
+DROP POLICY IF EXISTS "Hosts can create invitations" ON meeting_invitations;
 CREATE POLICY "Hosts can create invitations"
 ON meeting_invitations
 FOR INSERT
@@ -35,6 +39,7 @@ WITH CHECK (
   auth.uid() IS NOT NULL
 );
 
+DROP POLICY IF EXISTS "Hosts can delete invitations" ON meeting_invitations;
 CREATE POLICY "Hosts can delete invitations"  
 ON meeting_invitations
 FOR DELETE

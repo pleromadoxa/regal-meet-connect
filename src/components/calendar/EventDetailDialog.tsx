@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { ExternalLink, Link2, Loader2, Pencil, Repeat, Trash2, Video } from 'lucide-react';
+import { Copy, ExternalLink, Film, Loader2, Pencil, Repeat, Save, Trash2, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,14 @@ import {
 } from '@/components/ui/select';
 import type { CalendarEvent, UpdateCalendarEventParams } from '@/hooks/useCalendarEvents';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  fetchRecordingsForMeetingCode,
+  formatRecordingDuration,
+  getRecordingSignedUrl,
+  meetingCodeFromEvent,
+  type MeetingRecordingRow,
+} from '@/lib/calendarRecordings';
 
 interface EventDetailDialogProps {
   event: CalendarEvent | null;
@@ -44,8 +53,12 @@ export const EventDetailDialog = ({
   const [color, setColor] = useState('orange');
   const [location, setLocation] = useState('');
   const [attendees, setAttendees] = useState('');
+  const [briefAgenda, setBriefAgenda] = useState('');
+  const [recordings, setRecordings] = useState<MeetingRecordingRow[]>([]);
+  const [loadingRecordings, setLoadingRecordings] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!event) {
@@ -59,8 +72,22 @@ export const EventDetailDialog = ({
     setColor(event.color);
     setLocation(event.location ?? '');
     setAttendees(event.attendees.join(', '));
+    setBriefAgenda(event.brief_agenda ?? '');
     setEditing(false);
   }, [event]);
+
+  useEffect(() => {
+    const code = meetingCodeFromEvent(event?.location, event?.meeting_id);
+    if (!code) {
+      setRecordings([]);
+      return;
+    }
+    setLoadingRecordings(true);
+    fetchRecordingsForMeetingCode(code)
+      .then(setRecordings)
+      .catch(() => setRecordings([]))
+      .finally(() => setLoadingRecordings(false));
+  }, [event?.location, event?.meeting_id]);
 
   if (!event) return null;
 
@@ -95,11 +122,39 @@ export const EventDetailDialog = ({
         color,
         location: location.trim() || undefined,
         attendees: attendees.split(',').map((a) => a.trim()).filter(Boolean),
+        briefAgenda: briefAgenda.trim() || null,
       });
       toast({ title: 'Event updated' });
       setEditing(false);
     } catch {
       toast({ title: 'Update failed', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canEditAgenda = canEdit && user?.id === event.user_id;
+
+  const openRecording = async (filePath: string) => {
+    const url = await getRecordingSignedUrl(filePath);
+    if (url) window.open(url, '_blank');
+    else toast({ title: 'Recording unavailable', variant: 'destructive' });
+  };
+
+  const saveAgendaOnly = async () => {
+    if (!canEditAgenda) return;
+    setSaving(true);
+    try {
+      await onUpdate({
+        id: event.id,
+        title: event.title,
+        startTime: new Date(event.start_time),
+        endTime: new Date(event.end_time),
+        briefAgenda: briefAgenda.trim() || null,
+      });
+      toast({ title: 'Agenda saved' });
+    } catch {
+      toast({ title: 'Save failed', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -178,12 +233,55 @@ export const EventDetailDialog = ({
                 </p>
               )}
             </DialogHeader>
+            {canEditAgenda && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-white/35">Agenda notes</p>
+                <Textarea
+                  value={briefAgenda}
+                  onChange={(e) => setBriefAgenda(e.target.value)}
+                  placeholder="Talking points, prep notes…"
+                  rows={3}
+                  className="border-white/10 bg-black/30 text-sm text-white"
+                />
+                <Button variant="outline" size="sm" className="border-white/15" onClick={saveAgendaOnly} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-1.5 h-4 w-4" />Save agenda</>}
+                </Button>
+              </div>
+            )}
+            {!canEditAgenda && briefAgenda && (
+              <p className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-sm text-white/60 whitespace-pre-wrap">{briefAgenda}</p>
+            )}
             {event.description && <p className="text-sm text-white/60">{event.description}</p>}
             {event.location && (
               <p className="flex items-center gap-2 text-sm text-white/50">
-                <Link2 className="h-4 w-4 shrink-0 text-orange-400" />
+                <ExternalLink className="h-4 w-4 shrink-0 text-orange-400" />
                 <span className="truncate">{event.location}</span>
               </p>
+            )}
+            {recordings.length > 0 && (
+              <div className="space-y-2">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-white/35">
+                  <Film className="h-3.5 w-3.5" />
+                  Recordings
+                </p>
+                {loadingRecordings ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-orange-400" />
+                ) : (
+                  <ul className="space-y-1">
+                    {recordings.map((rec) => (
+                      <li key={rec.id}>
+                        <button
+                          type="button"
+                          onClick={() => openRecording(rec.file_path)}
+                          className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-sm text-white/70 hover:bg-white/[0.06]"
+                        >
+                          {format(new Date(rec.started_at), 'MMM d · h:mm a')} · {formatRecordingDuration(rec.duration_seconds)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
             {event.attendees.length > 0 && (
               <p className="text-xs text-white/40">{event.attendees.length} invitee(s): {event.attendees.join(', ')}</p>

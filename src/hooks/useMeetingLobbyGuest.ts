@@ -12,6 +12,9 @@ interface UseMeetingLobbyGuestOptions {
   onDeny: () => void;
 }
 
+const KNOCK_BASE_MS = 4000;
+const KNOCK_MAX_MS = 12000;
+
 /** Guest lobby channel with resilient knock + admit/deny handling. */
 export function useMeetingLobbyGuest({
   meetingId,
@@ -24,104 +27,143 @@ export function useMeetingLobbyGuest({
   const statusRef = useRef<LobbyGuestStatus>('knocking');
   statusRef.current = status;
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const subscribedRef = useRef(false);
   const knockTimerRef = useRef<number | null>(null);
   const knockAttemptRef = useRef(0);
   const retrySubscribeRef = useRef(0);
+  const aliveRef = useRef(true);
+  const subscribeLobbyRef = useRef<() => void>(() => undefined);
   const onAdmitRef = useRef(onAdmit);
   const onDenyRef = useRef(onDeny);
   onAdmitRef.current = onAdmit;
   onDenyRef.current = onDeny;
+  const sendKnockRef = useRef<() => void>(() => undefined);
 
   const clearKnockTimer = useCallback(() => {
     if (knockTimerRef.current !== null) {
-      window.clearInterval(knockTimerRef.current);
+      window.clearTimeout(knockTimerRef.current);
       knockTimerRef.current = null;
     }
   }, []);
 
   const sendKnock = useCallback(() => {
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'knock',
-      payload: { userId, userName, ts: Date.now() },
-    });
-  }, [userId, userName]);
+    if (statusRef.current !== 'knocking') return;
+    const channel = channelRef.current;
+    if (!channel) return;
 
-  const scheduleKnocks = useCallback(() => {
+    // Self-schedule the next knock so the backoff actually escalates instead
+    // of the interval keeping its initial (short) delay forever.
     clearKnockTimer();
-    sendKnock();
-    knockTimerRef.current = window.setInterval(() => {
+    const delay = Math.min(KNOCK_BASE_MS + knockAttemptRef.current * 1000, KNOCK_MAX_MS);
+    knockTimerRef.current = window.setTimeout(() => {
       knockAttemptRef.current += 1;
-      sendKnock();
-    }, Math.min(4000 + knockAttemptRef.current * 1000, 12000));
-  }, [clearKnockTimer, sendKnock]);
+      sendKnockRef.current();
+    }, delay);
+
+    channel
+      .send({
+        type: 'broadcast',
+        event: 'knock',
+        payload: { userId, userName, ts: Date.now() },
+      })
+      .then((res) => {
+        // A knock that failed to leave this tab should not slow the retry down.
+        if (res !== 'ok') knockAttemptRef.current = 0;
+      })
+      .catch(() => {
+        knockAttemptRef.current = 0;
+      });
+  }, [clearKnockTimer, userId, userName]);
+
+  sendKnockRef.current = sendKnock;
+
+  const startKnocking = useCallback(() => {
+    if (statusRef.current !== 'knocking') return;
+    knockAttemptRef.current = 0;
+    sendKnock();
+  }, [sendKnock]);
 
   const subscribeLobby = useCallback(() => {
+    if (!aliveRef.current) return;
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
+    subscribedRef.current = false;
     const channel = supabase.channel(`lobby-${meetingId}`, {
       config: { broadcast: { self: false } },
     });
 
     channel
       .on('broadcast', { event: 'admit' }, ({ payload }) => {
-        if (payload?.userId === userId) {
-          clearKnockTimer();
-          setStatus('admitted');
-          window.setTimeout(() => onAdmitRef.current(), 600);
-        }
+        if (payload?.userId !== userId) return;
+        if (statusRef.current === 'admitted') return;
+        clearKnockTimer();
+        setStatus('admitted');
+        window.setTimeout(() => onAdmitRef.current(), 600);
       })
       .on('broadcast', { event: 'deny' }, ({ payload }) => {
-        if (payload?.userId === userId) {
-          clearKnockTimer();
-          setStatus('denied');
-          window.setTimeout(() => onDenyRef.current(), 1500);
-        }
+        if (payload?.userId !== userId) return;
+        if (statusRef.current === 'denied') return;
+        clearKnockTimer();
+        setStatus('denied');
+        window.setTimeout(() => onDenyRef.current(), 1500);
       })
       .subscribe((subStatus) => {
+        subscribedRef.current = subStatus === 'SUBSCRIBED';
+
         if (subStatus === 'SUBSCRIBED') {
           retrySubscribeRef.current = 0;
-          knockAttemptRef.current = 0;
-          scheduleKnocks();
+          startKnocking();
           return;
         }
 
-        if (subStatus === 'CHANNEL_ERROR' || subStatus === 'TIMED_OUT') {
+        if (
+          subStatus === 'CHANNEL_ERROR' ||
+          subStatus === 'TIMED_OUT' ||
+          subStatus === 'CLOSED'
+        ) {
           clearKnockTimer();
+          // Never give up: the guest keeps waiting in the lobby otherwise.
+          if (!aliveRef.current) return;
           const attempt = retrySubscribeRef.current;
-          if (attempt >= 8) return;
           retrySubscribeRef.current = attempt + 1;
-          const delay = channelRetryDelay(attempt);
-          window.setTimeout(() => subscribeLobby(), delay);
+          window.setTimeout(() => subscribeLobbyRef.current(), channelRetryDelay(attempt));
         }
       });
 
     channelRef.current = channel;
-  }, [meetingId, userId, clearKnockTimer, scheduleKnocks]);
+  }, [clearKnockTimer, meetingId, startKnocking, userId]);
+
+  subscribeLobbyRef.current = subscribeLobby;
 
   useEffect(() => {
+    aliveRef.current = true;
     subscribeLobby();
 
-    const onOnline = () => {
-      if (statusRef.current === 'knocking') {
+    const reconnect = () => {
+      if (statusRef.current !== 'knocking') return;
+      if (subscribedRef.current) {
         knockAttemptRef.current = 0;
         sendKnock();
+        return;
       }
+      subscribeLobbyRef.current();
     };
 
+    const onOnline = () => reconnect();
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && statusRef.current === 'knocking') {
-        sendKnock();
-      }
+      if (document.visibilityState === 'visible') reconnect();
     };
 
     window.addEventListener('online', onOnline);
     document.addEventListener('visibilitychange', onVisible);
 
     return () => {
+      // Flip first: removing the channel fires CLOSED which would otherwise
+      // schedule a resurrect after unmount.
+      aliveRef.current = false;
       clearKnockTimer();
       window.removeEventListener('online', onOnline);
       document.removeEventListener('visibilitychange', onVisible);

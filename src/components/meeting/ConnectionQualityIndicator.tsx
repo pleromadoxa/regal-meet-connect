@@ -17,11 +17,14 @@ interface ConnectionStats {
 interface ConnectionQualityIndicatorProps {
   peerConnections: Map<string, RTCPeerConnection>;
   className?: string;
+  /** Icon-only chip for the meeting header pill. Hidden while still connecting. */
+  compact?: boolean;
 }
 
 export const ConnectionQualityIndicator = ({ 
   peerConnections, 
-  className = "" 
+  className = "",
+  compact = false,
 }: ConnectionQualityIndicatorProps) => {
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'offline' | 'connecting'>('connecting');
   const [stats, setStats] = useState<ConnectionStats>({
@@ -158,11 +161,23 @@ export const ConnectionQualityIndicator = ({
   const qualityInfo = getQualityInfo();
   const IconComponent = qualityInfo.icon;
 
+  if (compact && (connectionQuality === 'connecting' || connectionQuality === 'offline')) {
+    return null;
+  }
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <div className={`${className}`}>
+            {compact ? (
+              <span
+                className={`inline-flex items-center ${qualityInfo.color} cursor-help`}
+                aria-label={qualityInfo.label}
+              >
+                <IconComponent className="h-3.5 w-3.5" />
+              </span>
+            ) : (
             <Badge 
               variant="outline" 
               className={`
@@ -173,6 +188,7 @@ export const ConnectionQualityIndicator = ({
               <IconComponent className={`w-3 h-3 mr-1 ${connectionQuality === 'connecting' ? 'animate-spin' : ''}`} />
               <span className="text-xs">{qualityInfo.label}</span>
             </Badge>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="bg-slate-800 border-slate-600">

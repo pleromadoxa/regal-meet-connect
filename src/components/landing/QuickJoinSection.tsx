@@ -10,11 +10,12 @@ import { isPlausibleMeetingCode, normalizeMeetingCodeInput } from '@/lib/quickJo
 import { cn } from '@/lib/utils';
 
 interface QuickJoinSectionProps {
-  onJoinMeeting: (name: string, roomId: string, hostStatus?: boolean) => void;
+  onJoinMeeting: (name: string, roomId: string, hostStatus?: boolean) => void | Promise<void>;
   initialMeetingId?: string;
   defaultUserName?: string;
   highlight?: boolean;
   variant?: 'default' | 'landing';
+  externalJoining?: boolean;
 }
 
 export const QuickJoinSection = ({
@@ -23,6 +24,7 @@ export const QuickJoinSection = ({
   defaultUserName = '',
   highlight = false,
   variant = 'default',
+  externalJoining = false,
 }: QuickJoinSectionProps) => {
   const [meetingId, setMeetingId] = useState(initialMeetingId);
   const [userName, setUserName] = useState(defaultUserName);
@@ -31,6 +33,7 @@ export const QuickJoinSection = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const isLanding = variant === 'landing';
+  const busy = isJoining || externalJoining;
 
   useEffect(() => {
     if (initialMeetingId) setMeetingId(initialMeetingId);
@@ -41,7 +44,7 @@ export const QuickJoinSection = ({
   }, [defaultUserName]);
 
   const handleJoinMeeting = async () => {
-    if (!meetingId.trim() || !userName.trim()) return;
+    if (!meetingId.trim() || !userName.trim() || busy) return;
 
     const code = normalizeMeetingCodeInput(meetingId);
     if (!isPlausibleMeetingCode(code)) {
@@ -59,7 +62,7 @@ export const QuickJoinSection = ({
         const isValid = await validateMeetingId(code);
         if (!isValid) return;
       }
-      onJoinMeeting(userName.trim(), code);
+      await onJoinMeeting(userName.trim(), code);
     } catch (error) {
       console.error('Error joining meeting:', error);
     } finally {
@@ -149,7 +152,7 @@ export const QuickJoinSection = ({
 
             <Button
               onClick={handleJoinMeeting}
-              disabled={!meetingId.trim() || !userName.trim() || isJoining}
+              disabled={!meetingId.trim() || !userName.trim() || busy}
               variant={isLanding ? 'premium' : 'hero'}
               size="lg"
               className={cn(
@@ -157,7 +160,7 @@ export const QuickJoinSection = ({
                 isLanding && 'h-12 lg:min-w-[148px] shadow-[0_0_32px_rgba(255,107,53,0.25)]'
               )}
             >
-              {isJoining ? (
+              {busy ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Joining…

@@ -29,6 +29,8 @@ interface VideoControlsProps {
   onToggleHand?: () => void;
   onToggleParticipants?: () => void;
   onNavigateToDashboard?: () => void;
+  onToggleBrief?: () => void;
+  showBrief?: boolean;
 }
 
 export const VideoControls = ({
@@ -52,6 +54,8 @@ export const VideoControls = ({
   onToggleHand,
   onToggleParticipants,
   onNavigateToDashboard,
+  onToggleBrief,
+  showBrief = false,
 }: VideoControlsProps) => {
   const isMobile = useIsMobile();
   const [showSettings, setShowSettings] = useState(false);
@@ -92,21 +96,18 @@ export const VideoControls = ({
         onToggleParticipants={onToggleParticipants}
         onNavigateToDashboard={onNavigateToDashboard}
         onLeaveMeeting={onLeaveMeeting}
+        onToggleBrief={onToggleBrief}
+        showBrief={showBrief}
       />
 
-      {/* Reactions — left side on phones to avoid dock overlap */}
-      <div
-        className={
-          isMobile
-            ? 'fixed left-3 z-[55] safe-area-inset-bottom bottom-[calc(var(--meeting-dock-height)+0.75rem)]'
-            : 'fixed right-3 top-[42%] z-[55] -translate-y-1/2 sm:right-4 sm:top-1/2'
-        }
-      >
-        <VideoReactions meetingId={meetingId} userId={userId} userName={userName} />
-      </div>
+      {!isMobile && (
+        <div className="fixed right-3 top-[42%] z-[55] -translate-y-1/2 sm:right-4 sm:top-1/2">
+          <VideoReactions />
+        </div>
+      )}
 
       {showSettings && (
-        <div className="fixed bottom-[calc(var(--meeting-stack-height)+0.5rem)] left-1/2 z-40 w-80 max-w-[calc(100vw-2rem)] -translate-x-1/2 safe-area-inset-bottom">
+        <div className="fixed bottom-[calc(var(--meeting-dock-height)+0.5rem)] left-1/2 z-40 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2">
           <Card className="animate-fade-in border-white/20 bg-black/90 p-4 backdrop-blur-xl">
             <div className="space-y-4">
               <h3 className="mb-4 font-semibold text-white">Device Settings</h3>

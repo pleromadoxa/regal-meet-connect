@@ -93,8 +93,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
       }
 
-      if (event === 'SIGNED_IN') {
-        setTimeout(() => logUserSignIn(nextSession?.user?.id), 500);
+      if (event === 'SIGNED_IN' && nextSession?.user) {
+        setTimeout(() => logUserSignIn(nextSession.user?.id), 500);
+        const createdAt = nextSession.user.created_at
+          ? new Date(nextSession.user.created_at).getTime()
+          : 0;
+        const isNewAccount = createdAt > 0 && Date.now() - createdAt < 15 * 60_000;
+        const welcomeKey = `regal-welcome-sent:${nextSession.user.id}`;
+        if (
+          isNewAccount &&
+          nextSession.user.email &&
+          !nextSession.user.is_anonymous &&
+          !localStorage.getItem(welcomeKey)
+        ) {
+          localStorage.setItem(welcomeKey, '1');
+          void supabase.functions
+            .invoke('send-welcome-email', {
+              body: {
+                email: nextSession.user.email,
+                name:
+                  nextSession.user.user_metadata?.display_name ||
+                  nextSession.user.user_metadata?.full_name ||
+                  nextSession.user.email.split('@')[0],
+              },
+            })
+            .catch(() => {
+              /* welcome is best-effort */
+            });
+        }
       }
     };
 

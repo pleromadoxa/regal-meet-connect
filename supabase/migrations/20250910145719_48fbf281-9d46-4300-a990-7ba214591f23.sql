@@ -1,5 +1,5 @@
 -- Create table for meeting recordings
-CREATE TABLE public.meeting_recordings (
+CREATE TABLE IF NOT EXISTS public.meeting_recordings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     meeting_id TEXT NOT NULL,
     host_id UUID NOT NULL,
@@ -17,6 +17,7 @@ CREATE TABLE public.meeting_recordings (
 ALTER TABLE public.meeting_recordings ENABLE ROW LEVEL SECURITY;
 
 -- Simple RLS Policy - hosts can manage their recordings
+DROP POLICY IF EXISTS "Hosts can manage their meeting recordings" ON public.meeting_recordings;
 CREATE POLICY "Hosts can manage their meeting recordings" 
 ON public.meeting_recordings 
 FOR ALL 
@@ -25,9 +26,10 @@ WITH CHECK (host_id = auth.uid());
 
 -- Create storage bucket for recordings
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('meeting-recordings', 'meeting-recordings', false);
+VALUES ('meeting-recordings', 'meeting-recordings', false) ON CONFLICT (id) DO NOTHING;
 
 -- Simple storage policies
+DROP POLICY IF EXISTS "Authenticated users can upload recordings" ON storage.objects;
 CREATE POLICY "Authenticated users can upload recordings" 
 ON storage.objects 
 FOR INSERT 
@@ -36,6 +38,7 @@ WITH CHECK (
     auth.role() = 'authenticated'
 );
 
+DROP POLICY IF EXISTS "Authenticated users can view recordings" ON storage.objects;
 CREATE POLICY "Authenticated users can view recordings" 
 ON storage.objects 
 FOR SELECT 
@@ -45,5 +48,5 @@ USING (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_meeting_recordings_meeting_id ON public.meeting_recordings(meeting_id);
-CREATE INDEX idx_meeting_recordings_host_id ON public.meeting_recordings(host_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_recordings_meeting_id ON public.meeting_recordings(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_recordings_host_id ON public.meeting_recordings(host_id);

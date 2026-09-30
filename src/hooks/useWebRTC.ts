@@ -9,6 +9,7 @@ import { useConnectionManager } from './useConnectionManager';
 import { useManyParticipantsOptimization } from './useManyParticipantsOptimization';
 import { loadMeetingMediaPrefs } from '@/lib/meetingMediaPrefs';
 import { acquireUserMedia, getMediaAccessErrorInfo } from '@/lib/mediaAccess';
+import { applyVideoEncoding } from '@/lib/videoQuality';
 import {
   createPeerConnectionQueue,
   isScreenShareTrack,
@@ -26,6 +27,7 @@ import {
   schedulePeerDisconnectCleanup,
 } from '@/lib/peerReconnection';
 import { replaceOrAddVideoTrack, syncLocalTracksToPeer } from '@/lib/videoPeerTrack';
+import { ensureRemoteStream, routeRemoteTrack } from '@/lib/remoteTracks';
 import { MAX_PEER_RECONNECT_ATTEMPTS } from '@/lib/webrtcSignaling';
 
 export type { MeetingMediaRoutingOptions } from '@/lib/meetingTopology';
@@ -72,9 +74,14 @@ export const useWebRTC = (
     }
   }, []);
   const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
+  /** Shared-screen videos that arrived on a foreign msid, keyed by peer. */
+  const remoteScreenStreamsRef = useRef<Map<string, MediaStream>>(new Map());
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
+  const initializePromiseRef = useRef<Promise<void> | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  /** The display stream backing `screenTrackRef` (its msid for new peers). */
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const syncHostScreenRef = useRef<() => void>(() => undefined);
   const peerQueueRef = useRef<ReturnType<typeof createPeerConnectionQueue> | null>(null);
   const createOfferRef = useRef<((remoteUserId: string) => Promise<void>) | null>(null);
@@ -117,6 +124,8 @@ export const useWebRTC = (
     shouldRenderVideo,
     setPlanLimits,
   } = useManyParticipantsOptimization();
+  const getOptimizedMediaConstraintsRef = useRef(getOptimizedMediaConstraints);
+  getOptimizedMediaConstraintsRef.current = getOptimizedMediaConstraints;
 
   // Use the signaling hook
   const { 
@@ -124,8 +133,11 @@ export const useWebRTC = (
     sendSignalingMessage, 
     connectedPeers: signalingPeers,
     peerUserNames,
+    presenceSynced: signalingPresenceSynced,
     cleanup: cleanupSignaling 
   } = useWebRTCSignaling(meetingId, userId, userName);
+  const signalingPeersLiveRef = useRef(signalingPeers);
+  signalingPeersLiveRef.current = signalingPeers;
 
   const sendSignalingMessageRef = useRef(sendSignalingMessage);
   sendSignalingMessageRef.current = sendSignalingMessage;
@@ -133,6 +145,18 @@ export const useWebRTC = (
   initializeSignalingRef.current = initializeSignaling;
 
   const syncHostScreenFromRemotes = useCallback(() => {
+    // A screen share that arrived on its own msid lives in its own stream.
+    // `muted` is false only while RTP is actually flowing, so a stopped or
+    // renegotiated share drops out of the projection layout automatically.
+    for (const stream of remoteScreenStreamsRef.current.values()) {
+      const videoTrack = stream
+        .getVideoTracks()
+        .find((t) => t.readyState === 'live' && !t.muted);
+      if (videoTrack) {
+        setHostScreenStream(stream);
+        return;
+      }
+    }
     for (const stream of remoteStreamsRef.current.values()) {
       const videoTrack = stream.getVideoTracks().find((t) => t.readyState === 'live');
       if (videoTrack && isScreenShareTrack(videoTrack)) {
@@ -266,19 +290,37 @@ export const useWebRTC = (
       };
 
       pc.ontrack = (event) => {
-        console.log('Received remote stream track:', event);
-        const stream = event.streams[0] ?? new MediaStream([event.track]);
-        if (!stream.getTracks().includes(event.track)) {
-          stream.addTrack(event.track);
-        }
-        remoteStreamsRef.current.set(remoteUserId, stream);
+        console.log('Received remote track:', event.track.kind, event.track.label, 'streams:', event.streams.length);
+        const incoming = event.streams[0];
+        // Keep ONE stable stream per peer: a later foreign msid (screen video,
+        // tab audio, msid-less transceiver) must never evict the mic/camera
+        // stream, otherwise that peer goes silent for everyone.
+        const stream = ensureRemoteStream(remoteStreamsRef.current, remoteUserId, incoming);
+        routeRemoteTrack(
+          stream,
+          remoteScreenStreamsRef.current,
+          remoteUserId,
+          incoming,
+          event.track
+        );
+
+        // Always publish a fresh map: a track can arrive inside a stream we
+        // already exposed (e.g. audio negotiated after video created the
+        // stream), and listeners must re-run when audio *becomes* available.
         setRemoteStreams(new Map(remoteStreamsRef.current));
 
         const watchTrack = (track: MediaStreamTrack) => {
-          track.onended = () => syncHostScreenRef.current();
+          // addEventListener, not `track.onX = …`: StableVideoElement assigns
+          // the same properties and would otherwise clobber these handlers.
+          track.addEventListener('ended', () => {
+            setRemoteStreams(new Map(remoteStreamsRef.current));
+            syncHostScreenRef.current();
+          });
           if (track.kind === 'video') {
-            track.onmute = () => syncHostScreenRef.current();
-            track.onunmute = () => syncHostScreenRef.current();
+            // mute/unmute only affect which screen is projected; sync bails out
+            // when nothing changed, so this stays cheap under packet loss.
+            track.addEventListener('mute', () => syncHostScreenRef.current());
+            track.addEventListener('unmute', () => syncHostScreenRef.current());
           }
         };
         watchTrack(event.track);
@@ -314,11 +356,13 @@ export const useWebRTC = (
         const cleanupPeer = () => {
           cancelPeerDisconnectCleanup(remoteUserId);
           remoteStreamsRef.current.delete(remoteUserId);
+          remoteScreenStreamsRef.current.delete(remoteUserId);
           setRemoteStreams(new Map(remoteStreamsRef.current));
           peerConnectionsRef.current.delete(remoteUserId);
           pendingCandidatesRef.delete(remoteUserId);
           makingOfferRef.delete(remoteUserId);
           syncPeerConnections();
+          syncHostScreenRef.current();
         };
 
         if (pc.connectionState === 'disconnected') {
@@ -356,9 +400,26 @@ export const useWebRTC = (
       };
 
       if (localStreamRef.current && mediaRoutingRef.current.publishToMesh !== false) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          pc.addTrack(track, localStreamRef.current!);
+        const local = localStreamRef.current;
+        const liveScreen = screenTrackRef.current;
+        const presenting = Boolean(liveScreen && liveScreen.readyState === 'live');
+        local.getTracks().forEach((track) => {
+          // Someone joining mid-presentation must receive the shared screen,
+          // not the camera that is currently idle behind it.
+          if (track.kind === 'video' && presenting && liveScreen) {
+            pc.addTrack(liveScreen, screenStreamRef.current ?? local);
+            return;
+          }
+          pc.addTrack(track, local);
         });
+        // …including the shared tab audio when the presenter opted into it.
+        const tabAudio = screenStreamRef.current
+          ?.getAudioTracks()
+          .find((t) => t.readyState === 'live');
+        if (presenting && tabAudio && screenStreamRef.current) {
+          pc.addTrack(tabAudio, screenStreamRef.current);
+        }
+        void applyVideoEncoding(pc, 'high');
       } else {
         pc.addTransceiver('audio', { direction: 'recvonly' });
         pc.addTransceiver('video', { direction: 'recvonly' });
@@ -459,15 +520,23 @@ export const useWebRTC = (
         if (pc) {
           pc.close();
           peerConnectionsRef.current.delete(remoteUserId);
-          remoteStreamsRef.current.delete(remoteUserId);
-          setRemoteStreams(new Map(remoteStreamsRef.current));
           pendingCandidatesRef.delete(remoteUserId);
           makingOfferRef.delete(remoteUserId);
           syncPeerConnections();
         }
+        remoteStreamsRef.current.delete(remoteUserId);
+        remoteScreenStreamsRef.current.delete(remoteUserId);
+        setRemoteStreams(new Map(remoteStreamsRef.current));
+        syncHostScreenRef.current();
       } else if (message.type === 'rejoin') {
         cancelPeerDisconnectCleanup(remoteUserId);
         const existing = peerConnectionsRef.current.get(remoteUserId);
+        const state = existing?.connectionState;
+        // Do NOT tear down a healthy mesh PC on every mobile resync rejoin —
+        // that caused "2 participants, no A/V" when the other peer is the offer initiator.
+        if (existing && (state === 'connected' || state === 'connecting')) {
+          return;
+        }
         if (existing) {
           existing.close();
           peerConnectionsRef.current.delete(remoteUserId);
@@ -559,7 +628,9 @@ export const useWebRTC = (
         stream.getTracks().forEach(track => track.stop());
       });
       remoteStreamsRef.current.clear();
+      remoteScreenStreamsRef.current.clear();
       setRemoteStreams(new Map());
+      setHostScreenStream(null);
     };
 
     return cleanupListeners;
@@ -572,7 +643,9 @@ export const useWebRTC = (
       peerConnectionsRef.current.clear();
       peerQueueRef.current?.clear();
       remoteStreamsRef.current.clear();
+      remoteScreenStreamsRef.current.clear();
       setRemoteStreams(new Map());
+      setHostScreenStream(null);
       syncPeerConnections();
       return;
     }
@@ -625,28 +698,29 @@ export const useWebRTC = (
     };
   }, [signalingPeers, syncPeerConnections]);
 
-  // Drop to audio-only locally when network quality is critical
-  useEffect(() => {
-    if (connectionQuality.metrics.qualityLevel !== 'potato') return;
-    localStreamRef.current?.getVideoTracks().forEach((track) => {
-      track.enabled = false;
-    });
-    if (isVideoEnabled) setIsVideoEnabled(false);
-  }, [connectionQuality.metrics.qualityLevel, isVideoEnabled]);
-
   useEffect(() => {
     syncHostScreenFromRemotes();
   }, [remoteStreams, syncHostScreenFromRemotes]);
 
   const initialize = useCallback(async (options?: InitializeMediaOptions) => {
+    if (initializePromiseRef.current && !options?.stream) {
+      return initializePromiseRef.current;
+    }
+
+    const run = async () => {
     try {
+      if (localStreamRef.current && !options?.stream) return;
+
       console.log('🎥 Initializing WebRTC media...');
 
       const prefs = await loadMeetingMediaPrefs(userId);
       const wantVideo = options?.video ?? prefs.camera_default_on;
       const wantAudio = options?.audio ?? prefs.microphone_default_on;
 
-      let constraints = getOptimizedMediaConstraints(wantVideo) as MediaStreamConstraints;
+      // Always capture a video track in video meetings so remote peers (esp. mobile)
+      // receive a video m-line even when the camera starts muted/off.
+      const captureVideo = options?.video !== false;
+      let constraints = getOptimizedMediaConstraintsRef.current(captureVideo) as MediaStreamConstraints;
       console.log('📋 Using media constraints:', constraints);
 
       const stream =
@@ -665,6 +739,23 @@ export const useWebRTC = (
       stream.getAudioTracks().forEach((track) => {
         track.enabled = wantAudio;
       });
+
+      // If capture fell back to audio-only, try once more for a muted video track.
+      if (captureVideo && stream.getVideoTracks().length === 0) {
+        try {
+          const videoOnly = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+          const vt = videoOnly.getVideoTracks()[0];
+          if (vt) {
+            vt.enabled = wantVideo;
+            stream.addTrack(vt);
+          }
+        } catch {
+          /* keep audio-only if device truly has no camera */
+        }
+      }
 
       localStreamRef.current = stream;
       setLocalStream(stream);
@@ -692,7 +783,7 @@ export const useWebRTC = (
           }
         }
       }
-      Array.from(signalingPeers).forEach((peerId) => {
+      Array.from(signalingPeersLiveRef.current).forEach((peerId) => {
         if (!mediaRoutingRef.current.shouldConnectToPeer(peerId)) return;
         if (!peerConnectionsRef.current.has(peerId)) {
           peerQueueRef.current?.enqueue(peerId);
@@ -710,8 +801,14 @@ export const useWebRTC = (
         duration: 8000,
       });
       throw error;
+    } finally {
+      initializePromiseRef.current = null;
     }
-  }, [toast, getOptimizedMediaConstraints, userId, signalingPeers]);
+    };
+
+    initializePromiseRef.current = run();
+    return initializePromiseRef.current;
+  }, [toast, userId]);
 
   const toggleVideo = useCallback(async (): Promise<boolean> => {
     if (!localStreamRef.current) return isVideoEnabled;
@@ -893,9 +990,11 @@ export const useWebRTC = (
         console.log('Starting screen share...');
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
           video: {
-            width: { ideal: 1920, max: 1920 },
-            height: { ideal: 1080, max: 1080 },
-            frameRate: { ideal: 15, max: 30 }
+            // Do NOT cap width/height here: Chrome crops the selected surface to
+            // satisfy max width/height instead of scaling it down, which is what
+            // made projections look cut off / "truncated". Let the capture run at
+            // the display's native resolution and only throttle the frame rate.
+            frameRate: { ideal: 30, max: 30 }
           },
           audio: {
             echoCancellation: true,
@@ -909,6 +1008,7 @@ export const useWebRTC = (
         
         if (screenTrack) {
           screenTrackRef.current = screenTrack;
+          screenStreamRef.current = displayStream;
           setScreenShareStream(displayStream);
           
           // Handle screen share ending
@@ -932,6 +1032,7 @@ export const useWebRTC = (
             });
             
             screenTrackRef.current = null;
+            screenStreamRef.current = null;
             
             toast({
               title: "Screen Share Stopped",
@@ -1009,6 +1110,14 @@ export const useWebRTC = (
         screenTrackRef.current.stop();
         screenTrackRef.current = null;
       }
+      // Also release the shared tab/system audio — stopping only the video
+      // track left the microphone-like capture running in the background.
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => {
+          if (track.readyState !== 'ended') track.stop();
+        });
+        screenStreamRef.current = null;
+      }
 
       // Restore camera video for all peer connections
       await Promise.all(
@@ -1026,7 +1135,7 @@ export const useWebRTC = (
           }
 
           const audioSenders = pc.getSenders().filter(
-            (s) => s.track?.kind === 'audio' && s.track?.label.includes('Screen')
+            (s) => s.track?.kind === 'audio' && s.track.readyState === 'ended'
           );
           audioSenders.forEach((sender) => {
             try {
@@ -1133,7 +1242,9 @@ export const useWebRTC = (
       stream.getTracks().forEach(track => track.stop());
     });
     remoteStreamsRef.current.clear();
+    remoteScreenStreamsRef.current.clear();
     setRemoteStreams(new Map());
+    setHostScreenStream(null);
 
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
@@ -1156,6 +1267,7 @@ export const useWebRTC = (
     connectedPeers,
     peerUserNames,
     peerConnections,
+    presenceSynced: signalingPresenceSynced,
     connectionQuality,
     isOptimizing,
     toggleVideo,

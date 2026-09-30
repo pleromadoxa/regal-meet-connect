@@ -1,6 +1,6 @@
 -- Add left_at column to track when participants leave meetings
 ALTER TABLE public.meeting_participants 
-ADD COLUMN left_at timestamp with time zone;
+ADD COLUMN IF NOT EXISTS left_at timestamp with time zone;
 
 -- Create a function to calculate participation duration
 CREATE OR REPLACE FUNCTION public.calculate_participation_duration(
@@ -19,5 +19,5 @@ END;
 $$;
 
 -- Create index for better performance on meeting participation queries
-CREATE INDEX idx_meeting_participants_meeting_joined ON public.meeting_participants(meeting_id, joined_at);
-CREATE INDEX idx_meeting_participants_user_joined ON public.meeting_participants(user_id, joined_at);
+CREATE INDEX IF NOT EXISTS idx_meeting_participants_meeting_joined ON public.meeting_participants(meeting_id, joined_at);
+CREATE INDEX IF NOT EXISTS idx_meeting_participants_user_joined ON public.meeting_participants(user_id, joined_at);

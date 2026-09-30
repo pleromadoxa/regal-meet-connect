@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { acquireUserMedia, getMediaAccessErrorInfo, isMediaDevicesSupported } from '@/lib/mediaAccess';
+import { videoCaptureConstraints } from '@/lib/videoQuality';
 
 export interface MediaPermissions {
   camera: 'granted' | 'denied' | 'prompt' | 'checking';
@@ -150,17 +151,7 @@ export const useMediaPermissions = () => {
 
       const constraints: MediaStreamConstraints = {
         video: video
-          ? slowNetwork
-            ? {
-                width: { ideal: 640, max: 854 },
-                height: { ideal: 360, max: 480 },
-                frameRate: { ideal: 15, max: 24 },
-              }
-            : {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                frameRate: { ideal: 30 },
-              }
+          ? videoCaptureConstraints(slowNetwork ? 'low' : 'high')
           : false,
         audio: audio
           ? {

@@ -150,6 +150,26 @@ test.describe('WebRTC media stability', () => {
         await expect(hostPage.getByRole('button', { name: /^Unmute$/i })).toBeVisible();
         await hostPage.getByRole('button', { name: /^Unmute$/i }).click();
       }
+
+      // Reactions render cross-screen emoji burst overlay
+      const reactionToggle = hostPage.getByRole('button', { name: /Show reactions|Hide reactions/i });
+      if (await reactionToggle.isVisible()) {
+        const hideLabel = await hostPage.getByRole('button', { name: /Hide reactions/i }).count();
+        if (hideLabel === 0) await reactionToggle.click();
+        await hostPage.getByRole('button', { name: /Send celebration reaction/i }).click();
+        await expect(hostPage.locator('.meeting-reaction-particle').first()).toBeVisible({
+          timeout: 5_000,
+        });
+      }
+
+      // Peer mesh connects for both sides
+      await expect
+        .poll(async () => {
+          const hostStats = await peerStats(hostPage);
+          const guestStats = await peerStats(guestPage);
+          return hostStats.anyConnected && guestStats.anyConnected;
+        }, { timeout: 45_000 })
+        .toBeTruthy();
     } finally {
       await hostContext.close();
       await guestContext.close();
@@ -175,6 +195,15 @@ test.describe('WebRTC media stability', () => {
         timeout: 45_000,
       });
       await expect(page.getByRole('button', { name: /Open chat|Close chat/i })).toBeVisible();
+
+      const reactionToggle = page.getByRole('button', { name: /Show reactions|Hide reactions/i });
+      if (await reactionToggle.isVisible()) {
+        await reactionToggle.click();
+        await page.getByRole('button', { name: /Send celebration reaction/i }).click();
+        await expect(page.locator('.meeting-reaction-particle').first()).toBeVisible({
+          timeout: 5_000,
+        });
+      }
     } finally {
       await context.close();
     }

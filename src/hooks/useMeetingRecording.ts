@@ -44,8 +44,8 @@ export const useMeetingRecording = (meetingId: string, isHost: boolean) => {
         throw new Error('Could not get canvas context');
       }
 
-      canvas.width = 1280;
-      canvas.height = 720;
+      canvas.width = 1920;
+      canvas.height = 1080;
 
       // Start recording the canvas
       const canvasStream = canvas.captureStream(30);

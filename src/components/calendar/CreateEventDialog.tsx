@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import type { CreateCalendarEventParams } from '@/hooks/useCalendarEvents';
+import { useScheduledMeetings } from '@/hooks/useScheduledMeetings';
 import { useToast } from '@/hooks/use-toast';
 import { RECURRENCE_OPTIONS, type RecurrencePattern } from '@/lib/calendarRecurrence';
 import type { TeamCalendar } from '@/hooks/useTeamCalendars';
@@ -28,6 +29,7 @@ import type { TeamCalendar } from '@/hooks/useTeamCalendars';
 interface CreateEventDialogProps {
   selectedDate: Date;
   onCreate: (params: CreateCalendarEventParams) => Promise<unknown>;
+  onScheduled?: () => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultStartTime?: string;
@@ -40,6 +42,7 @@ interface CreateEventDialogProps {
 export const CreateEventDialog = ({
   selectedDate,
   onCreate,
+  onScheduled,
   open: controlledOpen,
   onOpenChange,
   defaultStartTime = '09:00',
@@ -63,7 +66,9 @@ export const CreateEventDialog = ({
   const [recurrence, setRecurrence] = useState<'none' | RecurrencePattern>('none');
   const [teamCalendarId, setTeamCalendarId] = useState<string>('none');
   const [reminderMinutes, setReminderMinutes] = useState(String(defaultReminderMinutes));
+  const [attachRegalMeeting, setAttachRegalMeeting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { scheduleMeeting } = useScheduledMeetings();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export const CreateEventDialog = ({
     setRecurrence('none');
     setTeamCalendarId('none');
     setReminderMinutes(String(defaultReminderMinutes));
+    setAttachRegalMeeting(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,24 +118,40 @@ export const CreateEventDialog = ({
 
     setSaving(true);
     try {
-      await onCreate({
-        title: title.trim(),
-        description: description.trim() || undefined,
-        startTime: isAllDay ? allDayStart : eventStart,
-        endTime: isAllDay ? allDayEnd : eventEnd,
-        color,
-        isAllDay,
-        location: location.trim() || undefined,
-        attendees: attendees.split(',').map((a) => a.trim()).filter(Boolean),
-        recurrencePattern: recurrence === 'none' ? null : recurrence,
-        recurrenceEndDate: recurrence !== 'none' ? addMonths(dayCopy, 3) : null,
-        teamCalendarId: teamCalendarId === 'none' ? null : teamCalendarId,
-        visibility: teamCalendarId !== 'none' ? 'team' : 'private',
-        reminderMinutes: parseInt(reminderMinutes, 10),
-      });
-      toast({ title: 'Event created', description: `"${title.trim()}" added to your calendar.` });
+      const attendeeList = attendees.split(',').map((a) => a.trim()).filter(Boolean);
+
+      if (attachRegalMeeting) {
+        await scheduleMeeting({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          scheduledTime: isAllDay ? allDayStart : eventStart,
+          durationMinutes: Math.max(15, Math.round((eventEnd.getTime() - eventStart.getTime()) / 60_000)),
+          isRecurring: recurrence !== 'none',
+          recurrencePattern: recurrence === 'none' ? null : recurrence,
+          invitees: attendeeList,
+        });
+        toast({ title: 'Regal Meeting scheduled', description: `"${title.trim()}" added with join link.` });
+      } else {
+        await onCreate({
+          title: title.trim(),
+          description: description.trim() || undefined,
+          startTime: isAllDay ? allDayStart : eventStart,
+          endTime: isAllDay ? allDayEnd : eventEnd,
+          color,
+          isAllDay,
+          location: location.trim() || undefined,
+          attendees: attendeeList,
+          recurrencePattern: recurrence === 'none' ? null : recurrence,
+          recurrenceEndDate: recurrence !== 'none' ? addMonths(dayCopy, 3) : null,
+          teamCalendarId: teamCalendarId === 'none' ? null : teamCalendarId,
+          visibility: teamCalendarId !== 'none' ? 'team' : 'private',
+          reminderMinutes: parseInt(reminderMinutes, 10),
+        });
+        toast({ title: 'Event created', description: `"${title.trim()}" added to your calendar.` });
+      }
       reset();
       setOpen(false);
+      onScheduled?.();
     } catch (err) {
       console.error(err);
       toast({ title: 'Could not create event', description: 'Please try again.', variant: 'destructive' });
@@ -186,6 +208,15 @@ export const CreateEventDialog = ({
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center justify-between rounded-lg border border-orange-500/20 bg-orange-500/5 px-3 py-2">
+            <div>
+              <Label htmlFor="attach-meet" className="text-sm text-orange-200">Attach Regal Meeting</Label>
+              <p className="text-[10px] text-white/40">Auto-generates join link & syncs to calendar</p>
+            </div>
+            <Switch id="attach-meet" checked={attachRegalMeeting} onCheckedChange={setAttachRegalMeeting} />
+          </div>
+          {!attachRegalMeeting && (
+            <>
           <div className="space-y-2">
             <Label>Repeat</Label>
             <Select value={recurrence} onValueChange={(v) => setRecurrence(v as 'none' | RecurrencePattern)}>
@@ -226,19 +257,21 @@ export const CreateEventDialog = ({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="attendees">Invite teammates</Label>
-            <Input id="attendees" value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="alex@company.com" className="border-white/10 bg-black/30 text-white" />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="location">Location / link</Label>
             <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} className="border-white/10 bg-black/30 text-white" />
+          </div>
+            </>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="attendees">{attachRegalMeeting ? 'Invite by email' : 'Invite teammates'}</Label>
+            <Input id="attendees" value={attendees} onChange={(e) => setAttendees(e.target.value)} placeholder="alex@company.com" className="border-white/10 bg-black/30 text-white" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="border-white/10 bg-black/30 text-white" />
           </div>
           <Button type="submit" variant="premium" className="w-full" disabled={saving || !title.trim()}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create event'}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : attachRegalMeeting ? 'Schedule Regal Meeting' : 'Create event'}
           </Button>
         </form>
       </DialogContent>

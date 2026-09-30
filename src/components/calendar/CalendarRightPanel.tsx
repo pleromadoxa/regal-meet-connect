@@ -10,6 +10,7 @@ interface CalendarRightPanelProps {
   onEventClick: (event: CalendarEvent) => void;
   onNewEvent: () => void;
   onScheduleMeet: () => void;
+  embedded?: boolean;
   className?: string;
 }
 
@@ -18,11 +19,14 @@ export const CalendarRightPanel = ({
   onEventClick,
   onNewEvent,
   onScheduleMeet,
+  embedded = false,
   className,
 }: CalendarRightPanelProps) => (
   <aside
     className={cn(
-      'flex w-full shrink-0 flex-col gap-4 rounded-2xl border border-white/10 bg-[#0d0d0d]/80 p-4 backdrop-blur-sm xl:w-64',
+      'flex w-full shrink-0 flex-col gap-4',
+      !embedded &&
+        'rounded-2xl border border-white/10 bg-[#0d0d0d]/80 p-4 backdrop-blur-sm xl:w-64',
       className
     )}
   >

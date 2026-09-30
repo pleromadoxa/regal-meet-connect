@@ -20,6 +20,8 @@ export interface ScheduledMeeting {
   status: string;
   created_at: string;
   updated_at: string;
+  brief_agenda?: string | null;
+  follow_up_of_meeting_id?: string | null;
 }
 
 export interface MeetingInvitation {
@@ -45,7 +47,7 @@ export const useScheduledMeetings = () => {
   const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
   const [invitations, setInvitations] = useState<MeetingInvitation[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const fetchScheduledMeetings = useCallback(async () => {
@@ -131,6 +133,7 @@ export const useScheduledMeetings = () => {
 
       // Send email notifications
       try {
+        const hostName = profile?.display_name?.trim() || user.email?.split('@')[0] || 'Host';
         await supabase.functions.invoke('send-meeting-invitation', {
           body: {
             meeting: {
@@ -142,6 +145,7 @@ export const useScheduledMeetings = () => {
               link: meetingLink
             },
             invitees: params.invitees,
+            hostName,
             hostEmail: user.email
           }
         });
